@@ -17,6 +17,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
 <script>
 /* Relative paths inside a manifest resolve against the MANIFEST's own address.
    The manifest above is a data: URL (so this stays one file), which has no
@@ -1083,7 +1084,7 @@
   </div>
 </div>
 
-<script type="application/json" id="catalog-data">{"shop": {"name_ta": "A.R.S பட்டாசுக் கடை", "name_en": "A.R.S CRACKERS SHOP", "address_ta": "1/5 மெயின் ரோடு, விஜய்நகர், கண்ணாங்குளம் பஸ்டாப் எதிரில், தண்ணீர்பந்தல், புத்தூர்.", "address_en": "1/5 Main Road, Vijayanagar, Opp. Kannangulam Bus Stand, Thanneerpandhal, Puthur.", "phones": ["8760209888"], "tag_ta": "விலை பட்டியல் - 2026 (திருத்தப்பட்டது)", "tag_en": "PRICE LIST — 2026 (REVISED)"}, "categories": [{"ta": "வெடி வகைகள்", "en": "Sound Bombs", "items": [{"ta": "2¾\" குருவி", "en": "2¾\" Kuruvi Bomb", "price": 16}, {"ta": "4\" லட்சுமி", "en": "4\" Lakshmi Bomb", "price": 30}, {"ta": "4\" டீலக்ஸ் லட்சுமி", "en": "4\" Deluxe Lakshmi Bomb", "price": 45}, {"ta": "4\" கோல்டு லட்சுமி", "en": "4\" Gold Vinayagar Bomb", "price": 56}, {"ta": "4\" ஸ்பைடர் மேன்", "en": "4\" Spider-Man", "price": 80}, {"ta": "5\" ஜல்லிக்கட்டு", "en": "5\" Hanuman Bomb", "price": 100}, {"ta": "6\" டிராகன்", "en": "5\" Kamsan Bomb", "price": 125}]}, {"ta": "பூச்சுட்டி வகைகள்", "en": "Flower Pots", "items": [{"ta": "பூச்சட்டி பெரியது", "en": "Flower Pot — Big", "price": 95}, {"ta": "பூச்சட்டி ஸ்பெஷல்", "en": "Flower Pot — Special", "price": 150}, {"ta": "பூச்சட்டி அசோகா", "en": "Flower Pot — Ashoka", "price": 200}, {"ta": "பூச்சட்டி கலர் கோட்டி", "en": "Flower Pot — Colour Koti", "price": 300}, {"ta": "பூச்சட்டி கலர் கோட்டி டீலக்ஸ்", "en": "Flower Pot — Colour Koti Deluxe", "price": 450}]}, {"ta": "சக்கரம் வகைகள்", "en": "Ground Chakkars (Spinning Wheels)", "items": [{"ta": "சக்கரம் பெரியது", "en": "Chakkar — Big", "price": 88}, {"ta": "சக்கரம் ஸ்பெஷல்", "en": "Chakkar — Special", "price": 150}, {"ta": "சக்கரம் டீலக்ஸ்", "en": "Chakkar — Deluxe", "price": 225}, {"ta": "கம்பி சக்கரம்", "en": "Wire Chakkar", "price": 300}]}, {"ta": "விசிலிங் ராக்கெட்", "en": "Whistling Rocket", "items": [{"ta": "விசிலிங் ராக்கெட்", "en": "Whistling Rocket", "price": 300}]}, {"ta": "சாட்டை வகைகள்", "en": "Whip / Pencil Crackers", "items": [{"ta": "7\" பென்சில்", "en": "7\" Pencil Cracker", "price": 50}, {"ta": "1½\" சாட்டை", "en": "1½\" Whip Cracker", "price": 50}, {"ta": "4\" சாட்டை", "en": "4\" Whip Cracker", "price": 150}]}, {"ta": "பிரிஜிலி வகைகள் (கீனி வெடி)", "en": "Brijili Crackers (Kini Vedi)", "items": [{"ta": "சிவப்பு பிரிஜிலி", "en": "Red Brijili", "price": 50}, {"ta": "வரி பிரிஜிலி", "en": "Striped Brijili", "price": 55}, {"ta": "காக்கி பிஜிலி", "en": "kakki Bijli", "price": 100}]}, {"ta": "சரம் வகைகள்", "en": "Garland Crackers (Saram)", "items": [{"ta": "28 சோர்சா", "en": "28-shot Sorsa Garland", "price": 25}, {"ta": "28 ஜெய்ண்ட்", "en": "28-shot Joint Garland", "price": 38}, {"ta": "56 ஜெய்ண்ட்", "en": "56-shot Joint Garland", "price": 75}, {"ta": "50 டீலக்ஸ்", "en": "50 Deluxe", "price": 150}, {"ta": "100 டீலக்ஸ்", "en": "100 Deluxe", "price": 300}]}, {"ta": "வாலா & பாம் வகைகள்", "en": "Vala & Bomb Crackers", "items": [{"ta": "100 வாலா", "en": "100 Vala", "price": 75}, {"ta": "1000 வாலா", "en": "1000 Vala", "price": 375}, {"ta": "2000 வாலா", "en": "2000 Vala", "price": 750}, {"ta": "5000 வாலா", "en": "5000 Vala", "price": 1250}, {"ta": "10000 வாலா", "en": "10000 Vala", "price": 2500}, {"ta": "கிளாசிக் பாம்", "en": "Classic Palm", "price": 200}]}, {"ta": "பாம் வகைகள்", "en": "Bomb Varieties", "items": [{"ta": "அக்னி பாம்", "en": "Agni Bomb", "price": 300}, {"ta": "1/4 கிலோ பாம்", "en": "1/4 kg bomb", "price": 75}, {"ta": "1/2 கிலோ", "en": "1/2 kg bomb", "price": 150}, {"ta": "1 கிலோ", "en": "1 kg bomb", "price": 275}]}, {"ta": "கிட்ஸ் ஸ்பெஷல்", "en": "Kids Special", "items": [{"ta": "சிட்டுபுட்டு", "en": "Sittu Buttu", "price": 50}, {"ta": "சைரன் & மினி சைரன்", "en": "Siren & Mini Siren", "price": 275}, {"ta": "டான்சிங் பட்டாம்பூச்சி", "en": "Dancing Butterfly", "price": 150}, {"ta": "பம்பரம்", "en": "Pambaram (Spin Top)", "price": 200}, {"ta": "ஹெலிகாப்டர்", "en": "helicopter", "price": 188}]}, {"ta": "அலுட்டு (பைப்) & மட் பவுண்டைன் வகைகள்", "en": "Pipe & Mud Fountain Crackers", "items": [{"ta": "பென்டா 5 இன் 1", "en": "Penta 5-in-1", "price": 300}, {"ta": "2\" பைப் 2pc", "en": "2\" Pipe", "price": 300}, {"ta": "2\" பைப் 3pc", "en": "2\" Pipe (3 pc)", "price": 450}, {"ta": "3½\" பைப்", "en": "3½\" Pipe", "price": 413}, {"ta": "4½\" பைப்", "en": "4½\" Pipe", "price": 525}, {"ta": "7\" ஷாட்", "en": "7\" Shot", "price": 175}, {"ta": "கோல்டன் ஸ்டார்", "en": "Golden star", "price": 450}, {"ta": "ஜாஸ்மின்", "en": "Jasmine", "price": 575}]}, {"ta": "மட் பவுண்டைன்", "en": "Mud Fountain", "items": [{"ta": "பாப்கார்ன்", "en": "Popcorn", "price": 400}]}, {"ta": "மல்டி ஷாட் வகைகள்", "en": "Multi Shot Crackers", "items": [{"ta": "30 ஷாட்", "en": "30 Shot", "price": 625}, {"ta": "60 ஷாட்", "en": "60 Shot", "price": 1250}, {"ta": "120 ஷாட்", "en": "120 Shot", "price": 2500}, {"ta": "240 ஷாட்", "en": "240 Shot", "price": 5000}, {"ta": "2\" 30 ஷாட் செட் அவுட்", "en": "2\" 30 Setout", "price": 4000}, {"ta": "3\" 30 ஷாட் செட் அவுட்", "en": "3\" 30 Setout", "price": 5000}, {"ta": "10*10 ஷாட்", "en": "10*10 Shot", "price": 5000}]}, {"ta": "மத்தாப்பு வகைகள்", "en": "Sparklers (Mathap)", "items": [{"ta": "7 செ.மீ சாதா", "en": "7 cm Plain", "price": 16}, {"ta": "7 செ.மீ கலர்", "en": "7 cm Colour", "price": 18}, {"ta": "10 செ.மீ சாதா", "en": "10 cm Plain", "price": 30}, {"ta": "10 செ.மீ கலர்", "en": "10 cm Colour", "price": 32}, {"ta": "10 செ.மீ பச்சை", "en": "10 cm Green", "price": 35}, {"ta": "10 செ.மீ சிவப்பு", "en": "10 cm Red", "price": 30}, {"ta": "15 செ.மீ சாதா", "en": "15 cm Plain", "price": 69}, {"ta": "15 செ.மீ கலர்", "en": "15 cm Colour", "price": 75}, {"ta": "15 செ.மீ பச்சை", "en": "15 cm Green", "price": 81}, {"ta": "15 செ.மீ சிவப்பு", "en": "15 cm Red", "price": 88}, {"ta": "30 செ.மீ சாதா", "en": "30 cm Plain", "price": 69}, {"ta": "30 செ.மீ கலர்", "en": "30 cm Colour", "price": 75}, {"ta": "30 செ.மீ பச்சை", "en": "30 cm Green", "price": 81}, {"ta": "30 செ.மீ சிவப்பு", "en": "30 cm Red", "price": 88}, {"ta": "50 செ.மீ சாதா", "en": "50 cm Plain", "price": 250}, {"ta": "50 செ.மீ கலர்", "en": "50 cm Colour", "price": 275}, {"ta": "75 செ.மீ சாதா", "en": "75 cm Plain", "price": 300}]}, {"ta": "கிஃப்ட் பாக்ஸ்", "en": "Gift Box", "items": [{"ta": "25 வகை", "en": "30 Varieties", "price": 875}, {"ta": "35 வகை", "en": "40 Varieties", "price": 1250}]}, {"ta": "ARS ஸ்பெஷல் 2026", "en": "ARS Special 2026", "items": [{"ta": "பீகாக் ஃபெதர்", "en": "Peacock Feather", "price": 175}, {"ta": "குல்பி பவுண்டைன்", "en": "Kulfi Fountain", "price": 200}, {"ta": "லில்லிமன் ட்ரீ", "en": "Lillimun Tree", "price": 200}, {"ta": "கலர் ஸ்மோக்", "en": "Colour Smoke", "price": 250}, {"ta": "ட்ரை கலர்ஸ் 5 இன் 1", "en": "Trikers 5-in-1", "price": 450}, {"ta": "மெகா பீகாக் படா", "en": "Mega Peacock Pata", "price": 575}, {"ta": "பீகாக் சீரியல்", "en": "Peacock Serial", "price": 250}, {"ta": "டின் 2 பீஸ்", "en": "Tin — 2 pc", "price": 313}, {"ta": "டின் 3 பீஸ்", "en": "Tin — 3 pc", "price": 450}, {"ta": "பஞ்சதந்த்ரா இன் 1", "en": "Panchatantra-in-1", "price": 225}, {"ta": "ஃப்ரூட்ஸ் 5 இன் 1", "en": "Fruits 5-in-1", "price": 350}, {"ta": "ஸ்நாக்ஸ் பவுண்டைன்", "en": "Snakes Fountain", "price": 300}, {"ta": "A.K47", "en": "Gun", "price": 225}, {"ta": "போட்டோ ஃப்ளாஷ்", "en": "Photo Flash", "price": 150}, {"ta": "பென்சில் பெரியது", "en": "Pencil Malargal", "price": 250}, {"ta": "பென்சில் சிறியது", "en": "Pencil Mini", "price": 175}, {"ta": "ட்ரோன்", "en": "Drone", "price": 225}]}, {"ta": "தீப்பெட்டி மத்தாப்பு, கேப் & பாம்பு மாத்திரை", "en": "Matchbox Sparklers, Caps & Snake Tablets", "items": [{"ta": "மினி 3 இன் 1", "en": "Mini 3-in-1", "price": 45}, {"ta": "ஜாக்கிசான்", "en": "Jack Cigar", "price": 100}, {"ta": "ஜேம்ஸ் பாண்ட்", "en": "James Bond", "price": 125}, {"ta": "குயில் 10 இன் 1", "en": "Kuyil 10-in-1", "price": 250}, {"ta": "பிக் பாஸ்", "en": "Big Boss", "price": 350}, {"ta": "ரோல் கேப்", "en": "Roll Cap", "price": 100}, {"ta": "ரிங் கேப்", "en": "Ring gap", "price": 12}, {"ta": "அனகோண்டா", "en": "Anaconda", "price": 125}, {"ta": "பாம்பு மாத்திரை", "en": "Snake Tablet", "price": 35}]}]}</script>
+<script type="application/json" id="catalog-data">{"shop": {"name_ta": "A.R.S பட்டாசுக் கடை", "name_en": "A.R.S CRACKERS SHOP", "address_ta": "1/5 மெயின் ரோடு, விஜய்நகர், கண்ணாங்குளம் பஸ்டாப் எதிரில், தண்ணீர்பந்தல், புத்தூர்.", "address_en": "1/5 Main Road, Vijayanagar, Opp. Kannangulam Bus Stand, Thanneerpandhal, Puthur.", "phones": ["8760209888"], "tag_ta": "விலை பட்டியல் - 2026 (திருத்தப்பட்டது)", "tag_en": "PRICE LIST — 2026 (REVISED)"}, "categories": [{"ta": "வெடி வகைகள்", "en": "Sound Bombs", "items": [{"ta": "2¾\" குருவி", "en": "2¾\" Kuruvi Bomb", "price": 16}, {"ta": "4\" லட்சுமி", "en": "4\" Lakshmi Bomb", "price": 25}, {"ta": "4\" டீலக்ஸ் லட்சுமி", "en": "4\" Deluxe Lakshmi Bomb", "price": 40}, {"ta": "4\" கோல்டு லட்சுமி", "en": "4\" Gold Vinayagar Bomb", "price": 50}, {"ta": "4\" ஸ்பைடர் மேன்", "en": "4\" Spider-Man", "price": 60}, {"ta": "5\" ஜல்லிக்கட்டு", "en": "5\" Hanuman Bomb", "price": 80}, {"ta": "6\" டிராகன்", "en": "5\" Kamsan Bomb", "price": 125}]}, {"ta": "பூச்சுட்டி வகைகள்", "en": "Flower Pots", "items": [{"ta": "பூச்சட்டி பெரியது", "en": "Flower Pot — Big", "price": 80}, {"ta": "பூச்சட்டி ஸ்பெஷல்", "en": "Flower Pot — Special", "price": 120}, {"ta": "பூச்சட்டி அசோகா", "en": "Flower Pot — Ashoka", "price": 180}, {"ta": "பூச்சட்டி கலர் கோட்டி", "en": "Flower Pot — Colour Koti", "price": 300}, {"ta": "பூச்சட்டி கலர் கோட்டி டீலக்ஸ்", "en": "Flower Pot — Colour Koti Deluxe", "price": 450}]}, {"ta": "சக்கரம் வகைகள்", "en": "Ground Chakkars (Spinning Wheels)", "items": [{"ta": "சக்கரம் பெரியது", "en": "Chakkar — Big", "price": 60}, {"ta": "சக்கரம் ஸ்பெஷல்", "en": "Chakkar — Special", "price": 120}, {"ta": "சக்கரம் டீலக்ஸ்", "en": "Chakkar — Deluxe", "price": 180}, {"ta": "கம்பி சக்கரம்", "en": "Wire Chakkar", "price": 250}]}, {"ta": "விசிலிங் ராக்கெட்", "en": "Whistling Rocket", "items": [{"ta": "விசிலிங் ராக்கெட்", "en": "Whistling Rocket", "price": 250}]}, {"ta": "சாட்டை வகைகள்", "en": "Whip / Pencil Crackers", "items": [{"ta": "7\" பென்சில்", "en": "7\" Pencil Cracker", "price": 45}, {"ta": "1½\" சாட்டை", "en": "1½\" Whip Cracker", "price": 45}, {"ta": "4\" சாட்டை", "en": "4\" Whip Cracker", "price": 120}]}, {"ta": "பிரிஜிலி வகைகள் (கீனி வெடி)", "en": "Brijili Crackers (Kini Vedi)", "items": [{"ta": "சிவப்பு பிரிஜிலி", "en": "Red Brijili", "price": 45}, {"ta": "வரி பிரிஜிலி", "en": "Striped Brijili", "price": 45}, {"ta": "காக்கி பிஜிலி", "en": "kakki Bijli", "price": 100}]}, {"ta": "சரம் வகைகள்", "en": "Garland Crackers (Saram)", "items": [{"ta": "28 சோர்சா", "en": "28-shot Sorsa Garland", "price": 20}, {"ta": "28 ஜெய்ண்ட்", "en": "28-shot Joint Garland", "price": 30}, {"ta": "56 ஜெய்ண்ட்", "en": "56-shot Joint Garland", "price": 60}, {"ta": "50 டீலக்ஸ்", "en": "50 Deluxe", "price": 135}, {"ta": "100 டீலக்ஸ்", "en": "100 Deluxe", "price": 270}]}, {"ta": "வாலா & பாம் வகைகள்", "en": "Vala & Bomb Crackers", "items": [{"ta": "100 வாலா", "en": "100 Vala", "price": 60}, {"ta": "1000 வாலா", "en": "1000 Vala", "price": 300}, {"ta": "2000 வாலா", "en": "2000 Vala", "price": 700}, {"ta": "5000 வாலா", "en": "5000 Vala", "price": 1200}, {"ta": "10000 வாலா", "en": "10000 Vala", "price": 2400}, {"ta": "கிளாசிக் பாம்", "en": "Classic Palm", "price": 200}]}, {"ta": "பாம் வகைகள்", "en": "Bomb Varieties", "items": [{"ta": "அக்னி பாம்", "en": "Agni Bomb", "price": 250}, {"ta": "1/4 கிலோ பாம்", "en": "1/4 kg bomb", "price": 300}, {"ta": "1/2 கிலோ", "en": "1/2 kg bomb", "price": 150}, {"ta": "1 கிலோ", "en": "1 kg bomb", "price": 275}]}, {"ta": "கிட்ஸ் ஸ்பெஷல்", "en": "Kids Special", "items": [{"ta": "சிட்டுபுட்டு", "en": "Sittu Buttu", "price": 50}, {"ta": "சைரன் & மினி சைரன்", "en": "Siren & Mini Siren", "price": 225}, {"ta": "டான்சிங் பட்டாம்பூச்சி", "en": "Dancing Butterfly", "price": 150}, {"ta": "பம்பரம்", "en": "Pambaram (Spin Top)", "price": 180}, {"ta": "ஹெலிகாப்டர்", "en": "helicopter", "price": 150}]}, {"ta": "அலுட்டு (பைப்) & மட் பவுண்டைன் வகைகள்", "en": "Pipe & Mud Fountain Crackers", "items": [{"ta": "பென்டா 5 இன் 1", "en": "Penta 5-in-1", "price": 240}, {"ta": "2\" பைப் 2pc", "en": "2\" Pipe", "price": 150}, {"ta": "2\" பைப் 3pc", "en": "2\" Pipe (3 pc)", "price": 400}, {"ta": "3½\" பைப்", "en": "3½\" Pipe", "price": 330}, {"ta": "4½\" பைப்", "en": "4½\" Pipe", "price": 420}, {"ta": "7\" ஷாட்", "en": "7\" Shot", "price": 120}, {"ta": "கோல்டன் ஸ்டார்", "en": "Golden star", "price": 450}, {"ta": "ஜாஸ்மின்", "en": "Jasmine", "price": 575}]}, {"ta": "மட் பவுண்டைன்", "en": "Mud Fountain", "items": [{"ta": "பாப்கார்ன்", "en": "Popcorn", "price": 300}]}, {"ta": "மல்டி ஷாட் வகைகள்", "en": "Multi Shot Crackers", "items": [{"ta": "30 ஷாட்", "en": "30 Shot", "price": 600}, {"ta": "60 ஷாட்", "en": "60 Shot", "price": 1000}, {"ta": "120 ஷாட்", "en": "120 Shot", "price": 2000}, {"ta": "240 ஷாட்", "en": "240 Shot", "price": 3800}, {"ta": "2\" 30 ஷாட் செட் அவுட்", "en": "2\" 30 Setout", "price": 4000}, {"ta": "3\" 30 ஷாட் செட் அவுட்", "en": "3\" 30 Setout", "price": 5000}, {"ta": "10*10 ஷாட்", "en": "10*10 Shot", "price": 5000}]}, {"ta": "மத்தாப்பு வகைகள்", "en": "Sparklers (Mathap)", "items": [{"ta": "7 செ.மீ சாதா", "en": "7 cm Plain", "price": 16}, {"ta": "7 செ.மீ கலர்", "en": "7 cm Colour", "price": 18}, {"ta": "10 செ.மீ சாதா", "en": "10 cm Plain", "price": 26}, {"ta": "10 செ.மீ கலர்", "en": "10 cm Colour", "price": 28}, {"ta": "10 செ.மீ பச்சை", "en": "10 cm Green", "price": 30}, {"ta": "10 செ.மீ சிவப்பு", "en": "10 cm Red", "price": 32}, {"ta": "15 செ.மீ சாதா", "en": "15 cm Plain", "price": 55}, {"ta": "15 செ.மீ கலர்", "en": "15 cm Colour", "price": 60}, {"ta": "15 செ.மீ பச்சை", "en": "15 cm Green", "price": 65}, {"ta": "15 செ.மீ சிவப்பு", "en": "15 cm Red", "price": 70}, {"ta": "30 செ.மீ சாதா", "en": "30 cm Plain", "price": 55}, {"ta": "30 செ.மீ கலர்", "en": "30 cm Colour", "price": 60}, {"ta": "30 செ.மீ பச்சை", "en": "30 cm Green", "price": 65}, {"ta": "30 செ.மீ சிவப்பு", "en": "30 cm Red", "price": 70}, {"ta": "50 செ.மீ சாதா", "en": "50 cm Plain", "price": 200}, {"ta": "50 செ.மீ கலர்", "en": "50 cm Colour", "price": 225}, {"ta": "75 செ.மீ சாதா", "en": "75 cm Plain", "price": 225}]}, {"ta": "கிஃப்ட் பாக்ஸ்", "en": "Gift Box", "items": [{"ta": "25 வகை", "en": "30 Varieties", "price": 800}, {"ta": "35 வகை", "en": "40 Varieties", "price": 1200}]}, {"ta": "ARS ஸ்பெஷல் 2026", "en": "ARS Special 2026", "items": [{"ta": "பீகாக் ஃபெதர்", "en": "Peacock Feather", "price": 150}, {"ta": "குல்பி பவுண்டைன்", "en": "Kulfi Fountain", "price": 165}, {"ta": "லில்லிமன் ட்ரீ", "en": "Lillimun Tree", "price": 165}, {"ta": "கலர் ஸ்மோக்", "en": "Colour Smoke", "price": 250}, {"ta": "ட்ரை கலர்ஸ் 5 இன் 1", "en": "Trikers 5-in-1", "price": 350}, {"ta": "மெகா பீகாக் படா", "en": "Mega Peacock Pata", "price": 500}, {"ta": "பீகாக் சீரியல்", "en": "Peacock Serial", "price": 250}, {"ta": "டின் 2 பீஸ்", "en": "Tin — 2 pc", "price": 360}, {"ta": "டின் 3 பீஸ்", "en": "Tin — 3 pc", "price": 250}, {"ta": "பஞ்சதந்த்ரா இன் 1", "en": "Panchatantra-in-1", "price": 180}, {"ta": "ஃப்ரூட்ஸ் 5 இன் 1", "en": "Fruits 5-in-1", "price": 350}, {"ta": "ஸ்நாக்ஸ் பவுண்டைன்", "en": "Snakes Fountain", "price": 300}, {"ta": "A.K47", "en": "Gun", "price": 250}, {"ta": "போட்டோ ஃப்ளாஷ்", "en": "Photo Flash", "price": 150}, {"ta": "பென்சில் பெரியது", "en": "Pencil Malargal", "price": 250}, {"ta": "பென்சில் சிறியது", "en": "Pencil Mini", "price": 150}, {"ta": "ட்ரோன்", "en": "Drone", "price": 200}]}, {"ta": "தீப்பெட்டி மத்தாப்பு, கேப் & பாம்பு மாத்திரை", "en": "Matchbox Sparklers, Caps & Snake Tablets", "items": [{"ta": "மினி 3 இன் 1", "en": "Mini 3-in-1", "price": 40}, {"ta": "ஜாக்கிசான்", "en": "Jack Cigar", "price": 100}, {"ta": "ஜேம்ஸ் பாண்ட்", "en": "James Bond", "price": 100}, {"ta": "குயில் 10 இன் 1", "en": "Kuyil 10-in-1", "price": 220}, {"ta": "பிக் பாஸ்", "en": "Big Boss", "price": 280}, {"ta": "ரோல் கேப்", "en": "Roll Cap", "price": 100}, {"ta": "ரிங் கேப்", "en": "Ring gap", "price": 30}, {"ta": "அனகோண்டா", "en": "Anaconda", "price": 313}, {"ta": "பாம்பு மாத்திரை", "en": "Snake Tablet", "price": 450}]}]}</script>
 <script>
 const DATA = JSON.parse(document.getElementById('catalog-data').textContent);
 const SHOP = DATA.shop;
@@ -1094,6 +1095,13 @@ function saveJSON(key, val){ try { localStorage.setItem(key, JSON.stringify(val)
 // Kept so the Firebase sync block below (further down this file) can still write to
 // localStorage exactly as before after it wraps saveJSON to also mirror admin data to the cloud.
 const _rawSaveJSON = saveJSON;
+
+/* The shop's price list shipped inside this file (the #catalog-data block) carries this
+   version. Bump it whenever that block is replaced with a new official list: every device
+   then drops its own saved copy of the item list and takes the new one (see CATEGORIES
+   below), and the server copy is replaced too (see FB_DOCS.pricelist). Keep it sortable
+   as text (date first) - a larger value means a newer list. */
+const PRICE_LIST_VERSION = '2026-10-07-v104b';
 
 /* If this file IS a downloaded backup (it carries an embedded #backup-seed-data block),
    pre-fill localStorage from it the very first time it's opened — before anything else
@@ -1106,7 +1114,13 @@ const _rawSaveJSON = saveJSON;
   if(!seedEl) return;
   try{
     const seed = JSON.parse(seedEl.textContent);
-    if(seed.categories && !localStorage.getItem('ars_catalog')) localStorage.setItem('ars_catalog', JSON.stringify({categories: seed.categories}));
+    if(seed.categories && !localStorage.getItem('ars_catalog')){
+      localStorage.setItem('ars_catalog', JSON.stringify({categories: seed.categories}));
+      // A backup taken on this same price-list version keeps its own item list (it may hold
+      // the admin's later edits). A backup from an older list carries no/older stamp, so the
+      // version check below replaces its item list with the current one.
+      if(seed.priceListVersion && !localStorage.getItem('ars_price_list_version')) localStorage.setItem('ars_price_list_version', JSON.stringify(seed.priceListVersion));
+    }
     if(seed.users && !localStorage.getItem('ars_users')) localStorage.setItem('ars_users', JSON.stringify(seed.users));
     if(seed.inventory && !localStorage.getItem('ars_inventory')) localStorage.setItem('ars_inventory', JSON.stringify(seed.inventory));
     if(seed.discount && !localStorage.getItem('ars_discount')) localStorage.setItem('ars_discount', JSON.stringify(seed.discount));
@@ -1120,8 +1134,35 @@ const _rawSaveJSON = saveJSON;
 /* The price-list catalog (categories + items) can be edited at runtime (add/delete/move
    items, add categories). Those structural changes are persisted here under 'ars_catalog'
    so they survive a reload — previously they only lived in memory for that one tab session
-   and silently reverted to the factory list on every refresh. */
+   and silently reverted to the factory list on every refresh.
+
+   A saved snapshot belongs to ONE version of the shop's price list. When this file ships
+   a new official list (PRICE_LIST_VERSION changed), the snapshot from the previous list is
+   dropped completely and the new list is used as-is - items are never merged across lists.
+   (Merging by name was tried and is wrong: a renamed item or category counts as "missing",
+   so the new list got added ON TOP of the old one - 90 old + 42 "new" = 132 instead of 104.)
+   Prices, units and custom names are stored by item POSITION, so they are dropped together
+   with the old item list, as are half-filled carts; bills already made keep their own copy
+   of names and prices and are not touched. */
 const CATEGORIES = (function(){
+  if(loadJSON('ars_price_list_version', null) !== PRICE_LIST_VERSION){
+    var hadOld = false;
+    try{
+      hadOld = !!localStorage.getItem('ars_catalog') || !!localStorage.getItem('ars_inventory');
+      ['ars_catalog', 'ars_inventory', 'ars_catnames', 'ars_cart1', 'ars_cart2'].forEach(function(k){ localStorage.removeItem(k); });
+      // The old list must not be uploaded: forget any "this phone has unsent price edits" mark.
+      var d = JSON.parse(localStorage.getItem('ars_fb_dirty') || '{}') || {};
+      if(d.pricelist){ delete d.pricelist; localStorage.setItem('ars_fb_dirty', JSON.stringify(d)); }
+    }catch(e){}
+    saveJSON('ars_price_list_version', PRICE_LIST_VERSION);
+    if(hadOld){
+      var n = 0; DATA.categories.forEach(function(c){ n += c.items.length; });
+      window._catalogMergeNote = 'Price list replaced with the shop\'s latest list: ' + n + ' items.';
+      // With a Sheet web-app connected, send this list to the Sheet rather than pulling old rows.
+      try{ setSheetPriceDirty(true); }catch(e){}
+    }
+    return DATA.categories;
+  }
   const saved = loadJSON('ars_catalog', null);
   return (saved && Array.isArray(saved.categories) && saved.categories.length) ? saved.categories : DATA.categories;
 })();
@@ -1210,6 +1251,7 @@ if(USERS['Ravi'] && USERS['Ravi'].pin === '123456' && USERS['Ravi'].role === 'ad
   if(added) saveJSON('ars_users', USERS);
 })();
 let INV = seedInventory();
+
 let DISCOUNT = seedDiscount();
 let UPI = seedUpiSettings();
 // One-time migration: if an existing install still has the untouched blank
@@ -1246,15 +1288,25 @@ let SALES = loadJSON('ars_sales', []);
    needed. */
 
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyD5i6aoxA72LdZB7-d1lcYjsUmD7aWMZFU",
-  authDomain: "a-r-s-crackers-shop-price.firebaseapp.com",
-  databaseURL: "https://a-r-s-crackers-shop-price-default-rtdb.firebaseio.com",
-  projectId: "a-r-s-crackers-shop-price",
-  storageBucket: "a-r-s-crackers-shop-price.firebasestorage.app",
-  messagingSenderId: "1018578326286",
-  appId: "1:1018578326286:web:3138bb7042899093d4bd5f"
+  apiKey: "AIzaSyCSDxhPA8SPHvRoeCCFpbIF_OXb9RRugqc",
+  authDomain: "ars-crackers-seller.firebaseapp.com",
+  databaseURL: "https://ars-crackers-seller-default-rtdb.firebaseio.com",
+  projectId: "ars-crackers-seller",
+  storageBucket: "ars-crackers-seller.firebasestorage.app",
+  messagingSenderId: "396366438499",
+  appId: "1:396366438499:web:6147e4d8b24676462c9856",
+  measurementId: "G-7C62N9TW7R"
 };
 let FB_CONFIG = loadJSON('ars_firebase_config', null) || DEFAULT_FIREBASE_CONFIG;
+// One-time migration: a device that had connected to the OLD project through
+// Admin → Backup has that config cached locally and would otherwise keep using it
+// forever, even after the shop moves to a new Firebase project. If what's saved on
+// this device doesn't match the new default, drop it so everyone lands on the
+// new project on their next load.
+if(FB_CONFIG && FB_CONFIG.projectId !== DEFAULT_FIREBASE_CONFIG.projectId){
+  saveJSON('ars_firebase_config', null);
+  FB_CONFIG = DEFAULT_FIREBASE_CONFIG;
+}
 let _fbDb = null;
 let _fbStorage = null;
 let _fbReady = false;
@@ -1376,13 +1428,23 @@ function fbRefreshUI(what){
    - The whole price list travels as ONE document, so another phone can never
      see new item positions with old prices (or the reverse). */
 let _fbDirty = loadJSON('ars_fb_dirty', {}) || {};
+/* Version of the price list this phone holds: the one shipped in this file, or a newer one
+   it has since received from the server (so a phone still running an older copy of the app
+   never pushes its older list over a newer one). */
+let _plDocVersion = (function(){
+  var v = loadJSON('ars_price_list_doc_version', null);
+  return (typeof v === 'string' && v > PRICE_LIST_VERSION) ? v : PRICE_LIST_VERSION;
+})();
 const _fbDocSeq = {};
 const _fbDocTimers = {};
 const FB_DOCS = {
   pricelist: {
     path: 'pricelist',
-    get: function(){ return { categories: CATEGORIES, inventory: INV, catnames: CATNAMES }; },
+    get: function(){ return { categories: CATEGORIES, inventory: INV, catnames: CATNAMES, version: _plDocVersion }; },
     isEmpty: function(){ return !CATEGORIES.length; },
+    // The server copy is from an OLDER price list than this phone's (or from before lists
+    // were versioned at all) - it must never be loaded over the current list.
+    stale: function(r){ return String((r && r.version) || '') < _plDocVersion; },
     apply: applyRemotePricelist
   },
   users: {
@@ -1429,6 +1491,12 @@ function fbOnDocValue(name, remote){
     if(!doc.isEmpty()) fbPushDoc(name);
     return;
   }
+  if(doc.stale && doc.stale(remote)){
+    // Server still holds an older price list: replace it with this phone's. A customer's
+    // read-only price page cannot write, so it simply keeps the list shipped in this file.
+    if(!_fbReadOnly) fbPushDoc(name);
+    return;
+  }
   var local = null;
   try{ local = doc.get(); }catch(e){}
   if(fbSame(remote, local)) return;                        // already identical (includes the echo of our own upload)
@@ -1446,6 +1514,8 @@ function applyRemotePricelist(r){
   cats.forEach(function(c){ CATEGORIES.push(c); });
   INV = fbToObj(r.inventory);
   CATNAMES = fbToObj(r.catnames);
+  var rv = String(r.version || '');
+  if(rv > _plDocVersion){ _plDocVersion = rv; _rawSaveJSON('ars_price_list_doc_version', rv); }
   _rawSaveJSON('ars_catalog', {categories: CATEGORIES});
   _rawSaveJSON('ars_inventory', INV);
   _rawSaveJSON('ars_catnames', CATNAMES);
@@ -1663,10 +1733,17 @@ function fbApplyMeta(meta){
 function initFirebase(opts){
   if(opts && opts.readOnly) _fbReadOnly = true;
   if(!FB_CONFIG || !window.firebase || _fbDb) return;
+  if(!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+  // Storage needs no databaseURL, so set it up on its own first — a project with
+  // Storage but no Realtime Database enabled yet should still get image uploads working
+  // even while the try block below (sales/catalog/accounts sync) can't connect.
+  try{ if(window.firebase.storage) _fbStorage = firebase.storage(); }catch(e){}
+  // Google Analytics (measurementId in FB_CONFIG) — page-view/usage tracking only,
+  // never touches sales/catalog/account data. Safe to skip silently if the library
+  // or a measurementId isn't present (e.g. offline-cached pages, or configs without it).
+  try{ if(window.firebase.analytics && FB_CONFIG.measurementId) firebase.analytics(); }catch(e){}
   try{
-    if(!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
     _fbDb = firebase.database();
-    _fbStorage = firebase.storage();
 
     // Connection state, so the admin can see at a glance whether it's live.
     _fbDb.ref('.info/connected').on('value', function(snap){
@@ -2232,15 +2309,17 @@ let cart1 = loadJSON('ars_cart1', {}); // Bill 1 cart
 let cart2 = loadJSON('ars_cart2', {}); // Bill 2 cart
 let activeBillingTab = 1; // Track which bill (1 or 2)
 cart = cart1; // Default to Bill 1
+const PRICE_SHEET_LINK = 'https://docs.google.com/spreadsheets/d/1ddvD_m-WQw20k8DHhlP4BQKjOkcyxFQi2H0lXqm7N0o/edit';
+const OLD_PRICE_SHEET_ID = '16E0gFL-Z9kamEnROR6-90-FTGRtDlkXD';   // the retired 90-item sheet
 let DRIVE_SYNC = loadJSON('ars_drive_sync', {
-  sheetLink: 'https://docs.google.com/spreadsheets/d/16E0gFL-Z9kamEnROR6-90-FTGRtDlkXD/edit?usp=drivesdk&ouid=107316316665405098223&rtpof=true&sd=true',
+  sheetLink: PRICE_SHEET_LINK,
   autoSync: false, // repeating 5-minute polling is OFF by default — a one-time sync still always runs on app open, see startDriveSyncTimer()
   lastSync: null, lastStatus: ''
 });
-// One-time migration: existing installs that never configured a Sheet link
-// get this one applied automatically too, so it's the same for everyone.
-if(DRIVE_SYNC && !DRIVE_SYNC.sheetLink){
-  DRIVE_SYNC.sheetLink = 'https://docs.google.com/spreadsheets/d/16E0gFL-Z9kamEnROR6-90-FTGRtDlkXD/edit?usp=drivesdk&ouid=107316316665405098223&rtpof=true&sd=true';
+// Migration: installs that never configured a Sheet link, or that are still pointed at
+// the retired 90-item sheet, move to the current one so it's the same for everyone.
+if(DRIVE_SYNC && (!DRIVE_SYNC.sheetLink || String(DRIVE_SYNC.sheetLink).indexOf(OLD_PRICE_SHEET_ID) !== -1)){
+  DRIVE_SYNC.sheetLink = PRICE_SHEET_LINK;
   saveJSON('ars_drive_sync', DRIVE_SYNC);
 }
 let activeCat = 'ALL';
@@ -2473,6 +2552,10 @@ function enterApp(){
   buildCatNav();
   setTab('billing1');
   refreshNotifBadges();
+  if(window._catalogMergeNote){
+    showAdminNotification('✓ ' + window._catalogMergeNote);
+    window._catalogMergeNote = null;
+  }
   initFirebase();   // open live listeners so other devices' bills appear instantly
   startFbFullSyncTimer();   // plus a full re-sync every 40 minutes
   fbFullSync();
@@ -2693,9 +2776,12 @@ function applyGvizTable(table){
   if(!table || !table.cols || !table.rows) return;
   const labels = table.cols.map(c => String((c && c.label) || '').trim());
   const colKey = labels.indexOf('ItemKey');
-  const colPrice = labels.indexOf('Price (₹)');
+  let colPrice = labels.indexOf('Price (₹)');
+  if(colPrice === -1) colPrice = labels.indexOf('Price (Rs)');
   const colUnit = labels.indexOf('Unit');
+  const colName = labels.indexOf('Item Name (English)');
   if(colKey === -1 || colPrice === -1) return; // not our expected sheet format
+  const normName = v => String(v == null ? '' : v).trim().toLowerCase();
 
   let applied = 0;
   table.rows.forEach(row => {
@@ -2703,6 +2789,15 @@ function applyGvizTable(table){
     const kCell = row.c[colKey];
     const k = kCell ? String(kCell.v != null ? kCell.v : (kCell.f || '')).trim() : '';
     if(!k || !/^\d+_\d+$/.test(k)) return;
+    // ItemKey is only a POSITION in the list. A row is applied only if that position exists
+    // and (when the sheet has the name column) still holds the same item - otherwise a sheet
+    // made for a different item list would put its prices on the wrong items.
+    const kp = k.split('_'), kci = +kp[0], kii = +kp[1];
+    if(!CATEGORIES[kci] || !CATEGORIES[kci].items[kii]) return;
+    if(colName !== -1){
+      const rowName = normName(row.c[colName] && row.c[colName].v);
+      if(rowName !== normName(getItemName(kci, kii).en) && rowName !== normName(CATEGORIES[kci].items[kii].en)) return;
+    }
     const priceCell = row.c[colPrice];
     if(!priceCell || priceCell.v == null) return;
     const price = Math.max(0, parseFloat(priceCell.v) || 0);
@@ -6286,7 +6381,8 @@ function buildBackupHtmlString(){
   const backup = {
     exportedAt: new Date().toISOString(),
     categories: CATEGORIES, users: USERS, inventory: INV, discount: DISCOUNT, upi: UPI,
-    categoryNames: CATNAMES, sales: SALES, loginHistory: LOGIN_HISTORY
+    categoryNames: CATNAMES, sales: SALES, loginHistory: LOGIN_HISTORY,
+    priceListVersion: _plDocVersion
   };
 
   // Take a full copy of this running app (markup + all CSS + all JS, unchanged) and embed

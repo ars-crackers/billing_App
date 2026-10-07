@@ -1,0 +1,38 @@
+{
+ "name": "A.R.S Crackers Billing",
+ "short_name": "ARS Billing",
+ "description": "A.R.S Crackers Billing",
+ "display": "standalone",
+ "orientation": "portrait",
+ "start_url": "ARS_Seller_Billing_App.html",
+ "scope": "./",
+ "id": "ARS_Seller_Billing_App.html",
+ "background_color": "#fff8ea",
+ "theme_color": "#7a1414",
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "maskable"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
