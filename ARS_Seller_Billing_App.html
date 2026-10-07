@@ -5333,25 +5333,40 @@ function moveItemCategory(k, newCiRaw){
   const price = inv.price;
   const unit = inv.unit || 'box';
 
+  // Bug A fix: save cart quantities for the moved item BEFORE re-keying anything
+  const movedQty1 = cart1[k] != null ? cart1[k] : null;
+  const movedQty2 = cart2[k] != null ? cart2[k] : null;
+
   // Remove the underlying catalog item from its old category
   const [movedItem] = CATEGORIES[oldCi].items.splice(oldIi, 1);
   delete INV[k];
 
-  // Re-key all inventory entries for items that shifted index in the old category
+  // Re-key all inventory AND cart entries for items that shifted index in the old category
   const oldCatCount = CATEGORIES[oldCi].items.length;
   for(let i = oldIi; i < oldCatCount; i++){
     const fromKey = key(oldCi, i + 1);
     const toKey = key(oldCi, i);
     if(INV[fromKey]){ INV[toKey] = INV[fromKey]; delete INV[fromKey]; }
+    // Bug A fix: shift cart quantities down to match the new index
+    [cart1, cart2].forEach(function(c){
+      if(c[fromKey] != null){ c[toKey] = c[fromKey]; delete c[fromKey]; }
+      else { delete c[toKey]; }
+    });
   }
+  // Drop the moved item's old cart key
+  delete cart1[k]; delete cart2[k];
 
   // Add it to the new category, carrying the (possibly custom) names
   const newIi = CATEGORIES[newCi].items.length;
   CATEGORIES[newCi].items.push({ ta: movedItem.ta, en: movedItem.en, price: movedItem.price });
   const newKey = key(newCi, newIi);
   INV[newKey] = { price, unit, name_ta: name.ta, name_en: name.en };
+  // Bug A fix: restore saved cart quantities under the new key
+  if(movedQty1 != null) cart1[newKey] = movedQty1;
+  if(movedQty2 != null) cart2[newKey] = movedQty2;
 
   saveJSON('ars_inventory', INV);
+  saveCart();
   saveCatalog();
   buildCatNav();
   render();
