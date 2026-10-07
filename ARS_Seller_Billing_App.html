@@ -802,6 +802,12 @@
 
 <!-- ================= MAIN APP ================= -->
 <div id="app" class="hidden">
+  <!-- Sync-wait banner: shown briefly after login until Firebase confirms latest prices -->
+  <div id="syncWaitBanner" style="display:none; position:fixed; inset:0; z-index:25000; background:rgba(74,12,12,0.92); color:#fff8e6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ffd27a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1.1s linear infinite;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    <div style="font-size:16px; font-weight:700; text-align:center; padding:0 24px;">வாழ்த்துக்கள்! விலைப்பட்டியல் புதுப்பிக்கிறது…<br><span style="font-size:13px; font-weight:400; color:#ffd27a;">Loading latest prices from server…</span></div>
+  </div>
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
   <div id="appScroll" class="app-scroll">
     <header class="shop-info-block">
       <div class="shop-row">
@@ -1489,24 +1495,26 @@ function fbOnDocValue(name, remote){
   var doc = FB_DOCS[name];
   if(fbCanon(remote) === undefined){
     // Nothing on the server yet (first ever connection) — upload what this phone has.
+    if(name === 'pricelist'){ _fbPricelistLive = true; hideSyncWaitBanner(); }
     if(!doc.isEmpty()) fbPushDoc(name);
     return;
   }
   if(doc.stale && doc.stale(remote)){
     // Server still holds an older price list: replace it with this phone's. A customer's
     // read-only price page cannot write, so it simply keeps the list shipped in this file.
+    if(name === 'pricelist'){ _fbPricelistLive = true; hideSyncWaitBanner(); }
     if(!_fbReadOnly) fbPushDoc(name);
     return;
   }
   var local = null;
   try{ local = doc.get(); }catch(e){}
   if(fbSame(remote, local)){                               // already identical (includes the echo of our own upload)
-    if(name === 'pricelist'){ _fbPricelistLive = true; try{ updatePublicPriceStamp(); }catch(e){} }
+    if(name === 'pricelist'){ _fbPricelistLive = true; hideSyncWaitBanner(); try{ updatePublicPriceStamp(); }catch(e){} }
     return;
   }
   if(_fbDirty[name] && !_fbReadOnly){ fbPushDoc(name); return; }   // this phone has edits the server hasn't seen — send them
   try{ doc.apply(remote); }catch(e){}
-  if(name === 'pricelist'){ _fbPricelistLive = true; try{ updatePublicPriceStamp(); }catch(e){} }
+  if(name === 'pricelist'){ _fbPricelistLive = true; hideSyncWaitBanner(); try{ updatePublicPriceStamp(); }catch(e){} }
 }
 
 function applyRemotePricelist(r){
@@ -2486,6 +2494,10 @@ async function logout(){
   document.getElementById('loginScreen').classList.remove('hidden');
   initLoginScreen();
 }
+function hideSyncWaitBanner(){
+  var b = document.getElementById('syncWaitBanner');
+  if(b) b.style.display = 'none';
+}
 function enterApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
@@ -2497,6 +2509,14 @@ function enterApp(){
   if(window._catalogMergeNote){
     showAdminNotification('✓ ' + window._catalogMergeNote);
     window._catalogMergeNote = null;
+  }
+  // Show sync-wait banner until Firebase confirms latest prices (usually < 2s on good signal)
+  // Bypass if price list was already confirmed live in a previous login this session,
+  // or after 6s fallback so a weak signal never blocks the seller permanently.
+  if(!_fbPricelistLive){
+    var b = document.getElementById('syncWaitBanner');
+    if(b) b.style.display = 'flex';
+    setTimeout(hideSyncWaitBanner, 6000); // 6s hard fallback — never block the seller forever
   }
   initFirebase();   // open live listeners so other devices' bills appear instantly
   startFbFullSyncTimer();   // plus a full re-sync every 40 minutes
