@@ -134,7 +134,8 @@
   .sync-badge{font-size:10.5px; color:#ffe9c4; cursor:pointer; display:flex; align-items:center; gap:4px;
     padding:4px 8px; border-radius:6px; background:rgba(255,255,255,0.08); white-space:nowrap;}
   .sync-badge:active{background:rgba(255,255,255,0.18);}
-  .sync-badge.syncing #syncIcon{display:inline-block; animation:spin 1s linear infinite;}
+  .sync-badge.syncing #syncIcon{display:inline-block; animation:fbPulse .8s ease-in-out infinite;}
+  @keyframes fbPulse{0%,100%{opacity:1; transform:scale(1);} 50%{opacity:.35; transform:scale(.8);}}
   @keyframes spin{from{transform:rotate(0deg);} to{transform:rotate(360deg);}}
   .sync-badge.sync-error{color:#ffb3a8;}
   .sync-badge.sync-ok{color:#9be8b0;}
@@ -818,8 +819,8 @@
       </div>
       <div class="user-bar">
         <div class="u-info">Logged in as <b id="userNameTag"></b></div>
-        <div class="sync-badge" id="syncBadge" onclick="syncFromGoogleDrive(true)" title="Tap to sync now">
-          <span id="syncIcon">🔄</span> <span id="syncLastText">Not synced</span>
+        <div class="sync-badge" id="syncBadge" onclick="fbManualSync()" title="Firebase sync — tap to sync now">
+          <span id="syncIcon">&#128293;</span> <span id="syncLastText">Connecting…</span>
         </div>
       </div>
     </header>
@@ -1158,8 +1159,6 @@ const CATEGORIES = (function(){
     if(hadOld){
       var n = 0; DATA.categories.forEach(function(c){ n += c.items.length; });
       window._catalogMergeNote = 'Price list replaced with the shop\'s latest list: ' + n + ' items.';
-      // With a Sheet web-app connected, send this list to the Sheet rather than pulling old rows.
-      try{ setSheetPriceDirty(true); }catch(e){}
     }
     return DATA.categories;
   }
@@ -1351,6 +1350,7 @@ function firebaseStatusText(){
 function updateFbStatusEl(){
   var el = document.getElementById('fbStatus');
   if(el) el.textContent = firebaseStatusText();
+  try{ updateSyncBadge(); }catch(e){}
 }
 function fbNoteError(e){
   _fbLastError = String((e && (e.code || e.message)) || e || 'unknown error');
@@ -1428,6 +1428,7 @@ function fbRefreshUI(what){
    - The whole price list travels as ONE document, so another phone can never
      see new item positions with old prices (or the reverse). */
 let _fbDirty = loadJSON('ars_fb_dirty', {}) || {};
+var _fbPricelistLive = false;   // true once the server's own price list has been received in this session
 /* Version of the price list this phone holds: the one shipped in this file, or a newer one
    it has since received from the server (so a phone still running an older copy of the app
    never pushes its older list over a newer one). */
@@ -1499,9 +1500,13 @@ function fbOnDocValue(name, remote){
   }
   var local = null;
   try{ local = doc.get(); }catch(e){}
-  if(fbSame(remote, local)) return;                        // already identical (includes the echo of our own upload)
+  if(fbSame(remote, local)){                               // already identical (includes the echo of our own upload)
+    if(name === 'pricelist'){ _fbPricelistLive = true; try{ updatePublicPriceStamp(); }catch(e){} }
+    return;
+  }
   if(_fbDirty[name] && !_fbReadOnly){ fbPushDoc(name); return; }   // this phone has edits the server hasn't seen — send them
   try{ doc.apply(remote); }catch(e){}
+  if(name === 'pricelist'){ _fbPricelistLive = true; try{ updatePublicPriceStamp(); }catch(e){} }
 }
 
 function applyRemotePricelist(r){
@@ -1904,7 +1909,7 @@ async function testFirebaseConnection(){
     ok('Bills on server: ' + snaps[2].numChildren() + ' (this phone: ' + (loadJSON('ars_sales', []) || []).length + ')');
     ok('Login history on server: ' + snaps[3].numChildren() + ' (this phone: ' + (loadJSON('ars_login_history', []) || []).length + ')');
     ok('Price-change records on server: ' + snaps[4].numChildren());
-    var same = fbSame({categories: pl.categories, inventory: pl.inventory, catnames: pl.catnames}, FB_DOCS.pricelist.get());
+    var same = fbSame({categories: pl.categories, inventory: pl.inventory, catnames: pl.catnames, version: pl.version}, FB_DOCS.pricelist.get());
     if(same) ok('Price list on this phone matches the server exactly');
     else lines.push('<span style="color:#b45309; font-weight:700;">•</span> Price list on this phone differs from the server right now' + (_fbDirty.pricelist ? ' (upload in progress)' : '') + ' — it should match within a few seconds.');
     show();
@@ -2038,7 +2043,6 @@ saveJSON = function(key, val){
     if(key === 'ars_catalog' || key === 'ars_inventory' || key === 'ars_catnames'){
       schedulePriceChangeDiff();
       fbDocChanged('pricelist');
-      scheduleSheetPricePush();
     }
     else if(key === 'ars_users') fbDocChanged('users');
     else if(key === 'ars_upi') fbDocChanged('upi');
@@ -2060,11 +2064,14 @@ saveJSON = function(key, val){
    Rows are keyed by bill id, so a re-send updates that row instead of adding
    a duplicate, and a cancelled bill overwrites its own row.
 
-   Bills are always saved on the device first. Anything that fails to upload
-   (no signal, script not set up yet) is kept marked and retried on the next
-   sync, so nothing is ever lost. */
+   ONE-WAY AND MANUAL: the sheet is an extra copy only. Nothing is ever read from it
+   into the app, so editing or deleting anything in the sheet can never change the app
+   or the Firebase server. Nothing is sent automatically either - the admin sends the
+   current price list and bills by tapping "Save to Google Sheet Now" in Admin -> Backup. */
 
 var SHEET_BACKUP = loadJSON('ars_sheet_backup', { webAppUrl: '' });
+// Settings of the old two-way Google Sheet sync - no longer used by anything.
+try{ localStorage.removeItem('ars_drive_sync'); localStorage.removeItem('ars_sheet_price_dirty'); }catch(e){}
 
 /* Paste-ready Apps Script for the one-time setup (displayed in Admin -> Backup).
    Upserts by Bill ID into a "Sales" tab, creating it with headers if missing. */
@@ -2142,25 +2149,11 @@ async function pushSaleToSheet(sale){
       if(cur){ cur._sheetSynced = true; saveJSON('ars_sales', list); SALES = list; }
       return true;
     }
-  }catch(e){ /* offline or unreachable — retried later */ }
+  }catch(e){ /* offline or unreachable - stays marked "not yet saved" for the next manual save */ }
   return false;
 }
 
-/* ---- Price list -> Google Sheet (admin only) ----
-   Every price change, item added/removed/renamed or category change rewrites the
-   whole "Price List" tab so the Sheet always mirrors the app. A "not yet sent"
-   mark is kept until the Sheet confirms, so nothing is lost offline. */
-var _sheetPriceTimer = null;
-function sheetPriceDirty(){ try{ return localStorage.getItem('ars_sheet_price_dirty') === '1'; }catch(e){ return false; } }
-function setSheetPriceDirty(v){ try{ if(v) localStorage.setItem('ars_sheet_price_dirty', '1'); else localStorage.removeItem('ars_sheet_price_dirty'); }catch(e){} }
-function scheduleSheetPricePush(){
-  if(!SHEET_BACKUP.webAppUrl) return;
-  if(_priceChangeSource === 'Google Sheet sync') return;     // that change CAME from the Sheet
-  if(typeof session === 'undefined' || !session || session.role !== 'admin') return;
-  setSheetPriceDirty(true);
-  clearTimeout(_sheetPriceTimer);
-  _sheetPriceTimer = setTimeout(pushPriceListToSheet, 1500);
-}
+/* ---- Price list rows for the Google Sheet copy ---- */
 function priceListSheetRows(){
   var rows = [['No.', 'Category (EN)', 'Item Name (English)', 'Item Name (Tamil)', 'Price (\u20b9)', 'Unit', 'ItemKey']];
   var n = 1;
@@ -2182,104 +2175,48 @@ async function pushPriceListToSheet(){
       body: JSON.stringify({ action: 'pricelist', secret: SHEET_BACKUP.secret || '', rows: priceListSheetRows() })
     });
     var data = await res.json().catch(function(){ return null; });
-    if(data && data.status === 'ok'){ setSheetPriceDirty(false); return true; }
-  }catch(e){ /* offline - retried on next sync */ }
+    if(data && data.status === 'ok') return true;
+  }catch(e){ /* offline or unreachable - the admin can tap Save again */ }
   return false;
 }
 
-/* Uploads anything still outstanding, oldest first. */
-async function retryPendingSheetBackups(){
-  if(!SHEET_BACKUP.webAppUrl) return;
-  if(sheetPriceDirty()) await pushPriceListToSheet();
-  var list = loadJSON('ars_sales', []) || [];
-  var pending = list.filter(function(s){ return !s._sheetSynced; });
-  for(var i = 0; i < pending.length; i++){
-    await pushSaleToSheet(pending[i]);
-  }
-  var el = document.getElementById('sheetBackupStatus');
-  if(el) el.textContent = backupStatusText();
-}
-
-/* Reads the Sales tab back down so every device — the admin's especially —
-   ends up holding every seller's bills. This is what makes the Google Sheet
-   the master record: each phone uploads its own bills, and on the next sync
-   each phone pulls down everyone else's.
-
-   Matched by Bill ID, so a bill already held locally is never duplicated; if
-   its status changed elsewhere (cancelled on another device) that is applied.
-   Bills that arrive this way are marked as already backed up, so they are not
-   pushed straight back up again. */
-function applySalesFromSheet(table){
-  if(!table || !table.cols || !table.rows) return;
-  var labels = table.cols.map(function(col){ return String((col && col.label) || '').trim(); });
-  var idx = {};
-  ['Bill ID','Bill No','Date','Seller','Status','Subtotal','Discount %','Discount',
-   'Total','Paid','Payment','Phone','ItemsJSON'].forEach(function(name){
-    idx[name] = labels.indexOf(name);
-  });
-  if(idx['Bill ID'] === -1) return;            // not the expected sheet
-
-  function val(row, name){
-    var i = idx[name];
-    if(i === -1 || !row.c[i]) return null;
-    return row.c[i].v != null ? row.c[i].v : null;
-  }
-
-  var list = loadJSON('ars_sales', []) || [];
-  var byId = {};
-  list.forEach(function(s){ byId[s.id] = s; });
-  var changed = false;
-
-  table.rows.forEach(function(row){
-    if(!row || !row.c) return;
-    var id = val(row, 'Bill ID');
-    if(!id) return;
-    id = String(id);
-    var status = String(val(row, 'Status') || 'confirmed');
-
-    var existing = byId[id];
-    if(existing){
-      if(existing.status !== status){ existing.status = status; changed = true; }
+/* Admin -> Backup -> "Save to Google Sheet Now". Sends the whole price list, then every
+   bill that is not in the sheet yet or has changed since it was last sent (a cancelled
+   bill overwrites its own row). The first bill goes alone so the script can create the
+   "Sales" tab once; the rest go four at a time. */
+var _sheetSaveBusy = false;
+async function saveAllToGoogleSheet(){
+  if(typeof session === 'undefined' || !session || session.role !== 'admin') return;
+  if(_sheetSaveBusy) return;
+  function status(t){ var el = document.getElementById('sheetBackupStatus'); if(el) el.textContent = t; }
+  if(!SHEET_BACKUP.webAppUrl){ status(backupStatusText()); return; }
+  _sheetSaveBusy = true;
+  try{
+    status('Saving price list…');
+    if(!(await pushPriceListToSheet())){
+      status('\u2717 Could not save to the Google Sheet. Check the Web App URL, the secret word and the internet, then tap Save again.');
       return;
     }
-
-    var items = [];
-    try{ items = JSON.parse(val(row, 'ItemsJSON') || '[]'); }catch(e){ items = []; }
-
-    list.push({
-      id: id,
-      billNo: val(row, 'Bill No'),
-      time: val(row, 'Date'),
-      sellerName: val(row, 'Seller') || '',
-      status: status,
-      items: items,
-      subtotal: Number(val(row, 'Subtotal')) || 0,
-      discountPercent: Number(val(row, 'Discount %')) || 0,
-      discount: Number(val(row, 'Discount')) || 0,
-      total: Number(val(row, 'Total')) || 0,
-      paidAmount: val(row, 'Paid'),
-      paymentMethod: val(row, 'Payment') || 'cash',
-      buyerPhone: val(row, 'Phone') || '',
-      _sheetSynced: true          // came from the sheet; don't re-upload it
-    });
-    changed = true;
-  });
-
-  if(changed){
-    saveJSON('ars_sales', list);
-    SALES = list;
-    var adminOpen = !document.getElementById('adminScreen').classList.contains('hidden');
-    if(adminOpen) renderAdmin();
-    else if(activeTab === 'history') render();
-    refreshNotifBadges();
-  }
+    var pending = (loadJSON('ars_sales', []) || []).filter(function(x){ return !x._sheetSynced; });
+    var total = pending.length, done = 0, failed = 0, next = 1;
+    async function send(sale){
+      if(await pushSaleToSheet(sale)) done++; else failed++;
+      status('Saving bills… ' + (done + failed) + ' / ' + total);
+    }
+    async function worker(){ while(next < total){ await send(pending[next++]); } }
+    if(total) await send(pending[0]);
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    if(!failed){ SHEET_BACKUP.lastSavedAt = Date.now(); saveJSON('ars_sheet_backup', SHEET_BACKUP); }
+    status(failed ? '\u2717 ' + failed + ' of ' + total + ' bill(s) could not be saved. Tap Save again to retry them.' : backupStatusText());
+    if(!failed) showAdminNotification('\u2713 Saved to Google Sheet');
+  } finally { _sheetSaveBusy = false; }
 }
 
 function backupStatusText(){
-  if(!SHEET_BACKUP.webAppUrl) return 'Not set up — bills are saved on this device only.';
+  if(!SHEET_BACKUP.webAppUrl) return 'Not set up. This sheet copy is optional - everything is already stored on Firebase.';
   var n = pendingBackupCount();
-  return n === 0 ? '\u2713 All bills backed up to the Google Sheet.'
-                 : n + ' bill(s) waiting to upload — they will go up automatically.';
+  var last = SHEET_BACKUP.lastSavedAt ? 'Last saved ' + new Date(SHEET_BACKUP.lastSavedAt).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'}) + '. ' : 'Not saved yet. ';
+  return last + (n === 0 ? 'All bills are in the sheet.' : n + ' bill(s) not yet saved to the sheet.');
 }
 
 let BILL_COUNTER = loadJSON('ars_bill_counter', 0);
@@ -2309,19 +2246,6 @@ let cart1 = loadJSON('ars_cart1', {}); // Bill 1 cart
 let cart2 = loadJSON('ars_cart2', {}); // Bill 2 cart
 let activeBillingTab = 1; // Track which bill (1 or 2)
 cart = cart1; // Default to Bill 1
-const PRICE_SHEET_LINK = 'https://docs.google.com/spreadsheets/d/1ddvD_m-WQw20k8DHhlP4BQKjOkcyxFQi2H0lXqm7N0o/edit';
-const OLD_PRICE_SHEET_ID = '16E0gFL-Z9kamEnROR6-90-FTGRtDlkXD';   // the retired 90-item sheet
-let DRIVE_SYNC = loadJSON('ars_drive_sync', {
-  sheetLink: PRICE_SHEET_LINK,
-  autoSync: false, // repeating 5-minute polling is OFF by default — a one-time sync still always runs on app open, see startDriveSyncTimer()
-  lastSync: null, lastStatus: ''
-});
-// Migration: installs that never configured a Sheet link, or that are still pointed at
-// the retired 90-item sheet, move to the current one so it's the same for everyone.
-if(DRIVE_SYNC && (!DRIVE_SYNC.sheetLink || String(DRIVE_SYNC.sheetLink).indexOf(OLD_PRICE_SHEET_ID) !== -1)){
-  DRIVE_SYNC.sheetLink = PRICE_SHEET_LINK;
-  saveJSON('ars_drive_sync', DRIVE_SYNC);
-}
 let activeCat = 'ALL';
 let activeTab = 'billing1';
 let adminTab = 'sales';
@@ -2560,448 +2484,43 @@ function enterApp(){
   startFbFullSyncTimer();   // plus a full re-sync every 40 minutes
   fbFullSync();
   updateSyncBadge();
-  startDriveSyncTimer();
-  setInterval(updateSyncBadge, 30000); // keep "Synced X min ago" text fresh
+  setInterval(updateSyncBadge, 30000); // also catches the phone going offline / coming back
   ensureJsPDF().catch(()=>{ /* will retry on demand when the share button is tapped */ });
   ensureHtml2Canvas().catch(()=>{ /* will retry on demand when the share button is tapped */ });
 }
 
-/* ================= GOOGLE SHEET LIVE PRICING SYNC =================
-   Admin keeps a Google Sheet (one row per item, matched by a hidden ItemKey
-   column) shared as "Anyone with the link — Viewer". Every device (admin's own
-   and every seller's) periodically reads that sheet's live data and applies
-   whatever prices it finds. Editing a cell in the Sheet — from a phone, the
-   Sheets app, anywhere — is reflected on every device within 5 minutes.
-   Nothing needs to be re-downloaded or re-uploaded, ever.
-
-   IMPORTANT: this does NOT use fetch() to read the sheet. Google's own CSV/XLSX
-   export links (docs.google.com/.../export?format=csv) block cross-site fetch()
-   entirely (no Access-Control-Allow-Origin header — a hard Google restriction,
-   not a sharing-permission issue), so a plain fetch() call always fails there,
-   even for a fully public sheet. Instead this uses Google's Visualization API
-   (gviz/tq), which is *specifically designed* to be read from any other website
-   via a dynamic <script> tag (the classic "JSONP" technique) — script tags are
-   never subject to the browser's cross-origin restrictions, so this works
-   reliably from a plain static HTML file with no proxy or server needed. */
-
-function extractSheetIdAndGid(input){
-  if(!input) return null;
-  input = input.trim();
-  const idMatch = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-  const id = idMatch ? idMatch[1] : (/^[a-zA-Z0-9_-]{20,}$/.test(input) ? input : null);
-  if(!id) return null;
-  const gidMatch = input.match(/[?&#]gid=(\d+)/);
-  const gid = gidMatch ? gidMatch[1] : '0';
-  return { id, gid };
-}
-
-function saveDriveSyncSettings(sheetLink, autoSync){
-  DRIVE_SYNC.sheetLink = (sheetLink || '').trim();
-  DRIVE_SYNC.autoSync = !!autoSync;
-  saveJSON('ars_drive_sync', DRIVE_SYNC);
-  startDriveSyncTimer();
-}
-
-let _driveSyncTimer = null;
-function startDriveSyncTimer(){
-  if(_driveSyncTimer) clearInterval(_driveSyncTimer);
-  if(!DRIVE_SYNC.sheetLink) return;
-  // Always sync once whenever the app is opened, regardless of the auto-sync
-  // toggle below — that toggle only controls whether it KEEPS re-checking
-  // every 5 minutes afterward, not the initial sync-on-open.
-  syncFromGoogleDrive(false);
-  if(DRIVE_SYNC.autoSync){
-    _driveSyncTimer = setInterval(()=>syncFromGoogleDrive(false), 5*60*1000);
-  }
-}
-
+/* ================= FIREBASE SYNC BADGE (header) =================
+   Shows whether this phone is live with the Firebase server - the one place prices,
+   bills and accounts are synced through. Tapping it runs a full re-sync with Firebase
+   now. No Google Sheet is involved: nothing is ever read from a sheet into the app. */
+var _fbManualSyncBusy = false;
 function updateSyncBadge(){
   const badge = document.getElementById('syncBadge');
   const text = document.getElementById('syncLastText');
   if(!badge || !text) return;
-  badge.classList.remove('sync-error','sync-ok','syncing');
-  if(!DRIVE_SYNC.sheetLink){
-    text.textContent = 'Sync not set up';
-    return;
-  }
-  if(DRIVE_SYNC.lastStatus === 'error'){
-    badge.classList.add('sync-error');
-    text.textContent = 'Sync failed';
-    return;
-  }
-  if(!DRIVE_SYNC.lastSync){
-    text.textContent = 'Not synced yet';
-    return;
-  }
+  badge.classList.remove('sync-error', 'sync-ok');
+  if(_fbManualSyncBusy){ text.textContent = 'Syncing…'; return; }
+  if(fbIsDenied()){ badge.classList.add('sync-error'); text.textContent = 'Firebase blocked'; return; }
+  if(navigator.onLine === false || !window.firebase){ badge.classList.add('sync-error'); text.textContent = 'Offline'; return; }
+  if(!_fbDb || !_fbReady){ text.textContent = 'Connecting…'; return; }
+  if(_fbLastError){ badge.classList.add('sync-error'); text.textContent = 'Sync error'; return; }
+  const waiting = Object.keys(_fbDirty || {}).length + Object.keys(_fbUnsentSales || {}).length;
   badge.classList.add('sync-ok');
-  const mins = Math.max(0, Math.round((Date.now() - DRIVE_SYNC.lastSync) / 60000));
-  text.textContent = mins < 1 ? 'Synced just now' : ('Synced ' + mins + ' min ago');
+  text.textContent = waiting ? 'Uploading…' : 'Firebase live';
 }
-
-/* Loads the sheet's data via a <script> tag calling back into a uniquely-named
-   global function — Google's supported cross-domain method for this API.
-   Resolves with the parsed gviz "table" object, or rejects on timeout/error. */
-/* Loads one tab's data via a <script> tag calling back into a uniquely-named
-   global function — Google's supported cross-domain method for this API.
-   `sheetRef` is either {gid} or {name} (tab name) to target a specific tab.
-   Resolves with the parsed gviz "table" object, or rejects on timeout/error/
-   missing tab (a missing tab is a normal, expected case for the optional
-   UPI/Accounts tabs, so callers should treat that rejection as
-   "tab not present" rather than a hard failure). */
-function fetchGvizTable(sheetId, sheetRef){
-  return new Promise((resolve, reject) => {
-    const cbName = '__arsGvizCb_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
-    const script = document.createElement('script');
-    let done = false;
-
-    const cleanup = () => {
-      delete window[cbName];
-      if(script.parentNode) script.parentNode.removeChild(script);
-      clearTimeout(timer);
-    };
-    const timer = setTimeout(() => {
-      if(done) return;
-      done = true;
-      cleanup();
-      reject(new Error('Timed out — check the sheet is shared as "Anyone with the link".'));
-    }, 15000);
-
-    window[cbName] = function(response){
-      if(done) return;
-      done = true;
-      cleanup();
-      if(!response || response.status !== 'ok'){
-        reject(new Error((response && response.errors && response.errors[0] && response.errors[0].detailed_message) || 'Sheet/tab not found or not shared.'));
-        return;
-      }
-      resolve(response.table);
-    };
-
-    script.onerror = () => {
-      if(done) return;
-      done = true;
-      cleanup();
-      reject(new Error('Could not load the sheet — check the link and sharing settings.'));
-    };
-
-    const refParam = sheetRef.name ? ('sheet=' + encodeURIComponent(sheetRef.name)) : ('gid=' + encodeURIComponent(sheetRef.gid || '0'));
-    // headers=1 explicitly tells Google "row 1 is the header row" — without
-    // it, Google guesses based on the row(s) that follow, and guesses wrong
-    // if there's a blank row right after the header (which is exactly what
-    // broke sync before: it silently returned no column labels at all).
-    script.src = 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(sheetId) +
-      '/gviz/tq?' + refParam + '&headers=1' +
-      '&tqx=responseHandler:' + cbName +
-      '&_=' + Date.now();
-    document.head.appendChild(script);
-  });
-}
-
-/* Fetches an optional named tab; resolves to null (not an error) if that tab
-   simply doesn't exist in the sheet — lets UPI/Accounts tabs be
-   entirely optional extras on top of the required "Price List" tab. */
-async function fetchOptionalTab(sheetId, tabName){
-  try{
-    return await fetchGvizTable(sheetId, { name: tabName });
-  } catch(e){
-    return null;
-  }
-}
-
-async function syncFromGoogleDrive(manual){
-  if(!DRIVE_SYNC.sheetLink){
-    if(manual) alert('No Google Sheet linked yet. Set it up in Admin → Backup.');
-    return;
-  }
-  const parsed = extractSheetIdAndGid(DRIVE_SYNC.sheetLink);
-  if(!parsed){
-    if(manual) alert('That doesn\'t look like a valid Google Sheet link.');
-    return;
-  }
+async function fbManualSync(){
+  if(_fbManualSyncBusy) return;
   const badge = document.getElementById('syncBadge');
+  _fbManualSyncBusy = true;
   if(badge) badge.classList.add('syncing');
-  try{
-    // Prices: try the named "Price List" tab first (matches the template),
-    // otherwise whatever tab the link's gid points to, for sheets that were
-    // renamed or built by hand.
-    // Deliberately non-fatal: if the price tab is missing or unreadable, the
-    // sale history below must still upload and download. Letting a price
-    // problem abort the whole sync would silently stop the admin ever
-    // receiving the sellers' bills.
-    DRIVE_SYNC.pricesOk = false;
-    try{
-      if(sheetPriceDirty() && SHEET_BACKUP.webAppUrl){
-        // the app has newer price/item changes than the Sheet - send them first, never pull stale rows over them
-        DRIVE_SYNC.pricesOk = await pushPriceListToSheet();
-      } else {
-        let priceTable = await fetchOptionalTab(parsed.id, 'Price List');
-        if(!priceTable) priceTable = await fetchGvizTable(parsed.id, { gid: parsed.gid });
-        if(priceTable){ applyGvizTable(priceTable); DRIVE_SYNC.pricesOk = true; }
-      }
-    }catch(e){ /* prices unavailable this time; carry on with the rest */ }
-
-    // Optional extra tabs — silently skipped if not present in the sheet.
-    const upiTable = await fetchOptionalTab(parsed.id, 'UPI');
-    if(upiTable) applyUpiTable(upiTable);
-
-    const accountsTable = await fetchOptionalTab(parsed.id, 'Accounts');
-    if(accountsTable) applyAccountsTable(accountsTable);
-
-    // Upload any bills that couldn't be backed up earlier (made offline, etc.)
-    await retryPendingSheetBackups();
-
-    // ...then pull down every other device's bills, so the admin sees them all.
-    const salesTable = await fetchOptionalTab(parsed.id, 'Sales');
-    if(salesTable) applySalesFromSheet(salesTable);
-
-    DRIVE_SYNC.lastSync = Date.now();
-    DRIVE_SYNC.lastStatus = 'ok';
-    saveJSON('ars_drive_sync', DRIVE_SYNC);
-    if(manual) showAdminNotification('✓ Synced from Google Sheet');
-  } catch(e){
-    DRIVE_SYNC.lastStatus = 'error';
-    saveJSON('ars_drive_sync', DRIVE_SYNC);
-    if(manual) alert('Could not sync from Google Sheet. Make sure it\'s shared as "Anyone with the link — Viewer". ' + (e && e.message ? e.message : ''));
-  } finally {
-    if(badge) badge.classList.remove('syncing');
-    updateSyncBadge();
-  }
+  updateSyncBadge();
+  try{ await fbFullSync(); }catch(e){}
+  _fbManualSyncBusy = false;
+  if(badge) badge.classList.remove('syncing');
+  updateSyncBadge();
 }
-
-/* Matches rows to items by the hidden "ItemKey" column (ci_ii), found by
-   column LABEL (not position), so re-ordering/adding columns in the Sheet
-   never scrambles prices. `table` is the gviz DataTable: table.cols[] each
-   have a .label; table.rows[] each have a .c[] array of {v, f} cells. */
-function applyGvizTable(table){
-  if(!table || !table.cols || !table.rows) return;
-  const labels = table.cols.map(c => String((c && c.label) || '').trim());
-  const colKey = labels.indexOf('ItemKey');
-  let colPrice = labels.indexOf('Price (₹)');
-  if(colPrice === -1) colPrice = labels.indexOf('Price (Rs)');
-  const colUnit = labels.indexOf('Unit');
-  const colName = labels.indexOf('Item Name (English)');
-  if(colKey === -1 || colPrice === -1) return; // not our expected sheet format
-  const normName = v => String(v == null ? '' : v).trim().toLowerCase();
-
-  let applied = 0;
-  table.rows.forEach(row => {
-    if(!row || !row.c) return;
-    const kCell = row.c[colKey];
-    const k = kCell ? String(kCell.v != null ? kCell.v : (kCell.f || '')).trim() : '';
-    if(!k || !/^\d+_\d+$/.test(k)) return;
-    // ItemKey is only a POSITION in the list. A row is applied only if that position exists
-    // and (when the sheet has the name column) still holds the same item - otherwise a sheet
-    // made for a different item list would put its prices on the wrong items.
-    const kp = k.split('_'), kci = +kp[0], kii = +kp[1];
-    if(!CATEGORIES[kci] || !CATEGORIES[kci].items[kii]) return;
-    if(colName !== -1){
-      const rowName = normName(row.c[colName] && row.c[colName].v);
-      if(rowName !== normName(getItemName(kci, kii).en) && rowName !== normName(CATEGORIES[kci].items[kii].en)) return;
-    }
-    const priceCell = row.c[colPrice];
-    if(!priceCell || priceCell.v == null) return;
-    const price = Math.max(0, parseFloat(priceCell.v) || 0);
-    if(!INV[k]) INV[k] = {};
-    INV[k].price = price;
-    if(colUnit !== -1 && row.c[colUnit] && row.c[colUnit].v){
-      INV[k].unit = String(row.c[colUnit].v).trim();
-    }
-    applied++;
-  });
-  if(applied > 0){
-    _priceChangeSource = 'Google Sheet sync';
-    try{ saveJSON('ars_inventory', INV); } finally { _priceChangeSource = null; }
-    buildCatNav();
-    render();
-  }
-}
-
-/* Reads a simple "Setting | Value" tab and updates UPI payment settings.
-   Expected rows:
-     UPI ID   | shopname@bank
-     UPI Name | Display name shown to customer
-     Enabled  | TRUE/FALSE */
-function applyUpiTable(table){
-  if(!table || !table.cols || !table.rows) return;
-  const labels = table.cols.map(c => String((c && c.label) || '').trim().toLowerCase());
-  const colSetting = labels.indexOf('setting');
-  const colValue = labels.indexOf('value');
-  if(colSetting === -1 || colValue === -1) return;
-
-  const map = {};
-  table.rows.forEach(row => {
-    if(!row || !row.c) return;
-    const setting = row.c[colSetting] ? String(row.c[colSetting].v || '').trim().toLowerCase() : '';
-    const valCell = row.c[colValue];
-    if(!setting) return;
-    map[setting] = valCell && valCell.v != null ? valCell.v : '';
-  });
-
-  if(!UPI.slot1) UPI.slot1 = { id:'', name:'', enabled:false };
-  let changed = false;
-  if('upi id' in map){ UPI.slot1.id = String(map['upi id']).trim(); changed = true; }
-  if('upi name' in map){ UPI.slot1.name = String(map['upi name']).trim(); changed = true; }
-  if('enabled' in map){ UPI.slot1.enabled = (String(map.enabled).toUpperCase() === 'TRUE'); changed = true; }
-  if(changed) saveJSON('ars_upi', UPI);
-}
-
-/* Reads a "Username | PIN | Role | Name" tab and ADDS or UPDATES matching
-   local accounts. For safety this NEVER deletes an account that's missing
-   from the sheet — accidentally clearing a row (or the whole tab) could
-   otherwise lock every seller, or the admin themselves, out of the app
-   across every device at once. Removing an account stays a deliberate,
-   in-app action: Admin → Accounts → 🗑️ Delete. */
-function applyAccountsTable(table){
-  if(!table || !table.cols || !table.rows) return;
-  const labels = table.cols.map(c => String((c && c.label) || '').trim().toLowerCase());
-  const colUser = labels.indexOf('username');
-  const colPin = labels.indexOf('pin');
-  const colRole = labels.indexOf('role');
-  const colName = labels.indexOf('name');
-  if(colUser === -1 || colPin === -1) return;
-
-  let applied = 0;
-  table.rows.forEach(row => {
-    if(!row || !row.c) return;
-    const uCell = row.c[colUser];
-    const username = uCell ? String(uCell.v || '').trim() : '';
-    const pCell = row.c[colPin];
-    const pin = pCell && pCell.v != null ? String(pCell.v).trim() : '';
-    if(!username || !pin) return;
-    const roleCell = colRole !== -1 ? row.c[colRole] : null;
-    let role = roleCell && roleCell.v ? String(roleCell.v).trim().toLowerCase() : 'seller';
-    if(role !== 'admin' && role !== 'seller') role = 'seller';
-    const nameCell = colName !== -1 ? row.c[colName] : null;
-    const name = nameCell && nameCell.v ? String(nameCell.v).trim() : username;
-
-    USERS[username] = { pin, role, name };
-    applied++;
-  });
-  if(applied > 0) saveJSON('ars_users', USERS);
-}
-
-
-/* Admin downloads this once, uploads it to Google Drive, opens it with
-   Google Sheets ("Open with → Google Sheets"), and shares that Sheet as
-   "Anyone with the link — Viewer". From then on, edits made directly in the
-   Sheet sync automatically — this file itself is never touched again. */
-function downloadPricingDataFile(){
-  downloadPriceListSheetTemplateXlsx();
-}
-
-/* Builds a multi-tab spreadsheet mirroring the Admin panel's own sections:
-     • Price List — one row per item (ItemKey matches rows regardless of order)
-     • UPI        — UPI ID / name / enabled (tick box once opened in Sheets)
-     • Accounts   — seller & admin logins (username / PIN / role / name)
-   Upload this to Google Drive, open it with Google Sheets, share as "Anyone
-   with the link — Viewer", and paste that ONE link into Admin → Backup →
-   Google Sheet Sync. All tabs sync automatically from then on — add, edit,
-   or remove rows in Accounts to control who can log in and change PINs, or
-   update UPI details, all from this one sheet.
-   Note: for safety, deleting a row from the Accounts tab does NOT delete
-   that login from the app — accounts are only ever added/updated this way,
-   never removed automatically, to avoid ever locking everyone out at once. */
-/* Builds the 3-tab workbook (Price List / UPI / Accounts) as a Blob, reused by
-   both "Download to my device" and "Create/Update in Google Drive". */
-async function buildPricingWorkbookBlob(){
-  await ensureSheetJS();
-  const XLSX = window.XLSX;
-  const wb = XLSX.utils.book_new();
-
-  // ---- Price List tab ----
-  const priceAoa = [['No.', 'Category (EN)', 'Item Name (English)', 'Item Name (Tamil)', 'Price (₹)', 'Unit', 'ItemKey']];
-  let n = 1;
-  CATEGORIES.forEach((cat, ci) => {
-    const catName = getCategoryName(ci);
-    cat.items.forEach((item, ii) => {
-      const name = getItemName(ci, ii);
-      priceAoa.push([n++, catName.en, name.en, name.ta, getPrice(ci, ii), getUnit(ci, ii), ci + '_' + ii]);
-    });
-  });
-  const priceWs = XLSX.utils.aoa_to_sheet(priceAoa);
-  priceWs['!cols'] = [{wch:5},{wch:24},{wch:30},{wch:28},{wch:11},{wch:10},{wch:10}];
-  XLSX.utils.book_append_sheet(wb, priceWs, 'Price List');
-
-  // ---- UPI tab ----
-  const upiSlot = (UPI && UPI.slot1) || { id:'', name:'', enabled:false };
-  const upiAoa = [
-    ['Setting', 'Value'],
-    ['UPI ID', upiSlot.id || ''],
-    ['UPI Name', upiSlot.name || ''],
-    ['Enabled', !!upiSlot.enabled]
-  ];
-  const upiWs = XLSX.utils.aoa_to_sheet(upiAoa);
-  upiWs['!cols'] = [{wch:14},{wch:26}];
-  XLSX.utils.book_append_sheet(wb, upiWs, 'UPI');
-
-  // ---- Accounts tab ----
-  const acctAoa = [['Username', 'PIN', 'Role', 'Name']];
-  Object.keys(USERS).forEach(username => {
-    const u = USERS[username];
-    acctAoa.push([username, u.pin, u.role, u.name]);
-  });
-  const acctWs = XLSX.utils.aoa_to_sheet(acctAoa);
-  acctWs['!cols'] = [{wch:14},{wch:10},{wch:10},{wch:20}];
-  XLSX.utils.book_append_sheet(wb, acctWs, 'Accounts');
-
-  // ---- Sales tab: every bill from every seller on this device ----
-  const allSales = loadJSON('ars_sales', []) || [];
-  const salesAoa = [['Bill No','Date','Time','Seller','Status','Items','Subtotal (₹)',
-                     'Discount %','Discount (₹)','Total (₹)','Paid (₹)','Payment','Customer Phone','Item Details']];
-  // newest first, same order the admin sees on screen
-  [...allSales].reverse().forEach(s => {
-    const d = s.time ? new Date(s.time) : null;
-    const detail = (s.items || [])
-      .map(it => `${it.en} x${it.qty} @${it.price} = ${it.qty * it.price}`)
-      .join('; ');
-    salesAoa.push([
-      s.billNo || '',
-      d ? d.toLocaleDateString('en-IN') : '',
-      d ? d.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : '',
-      s.sellerName || s.sellerId || '',
-      (s.status || 'confirmed'),
-      (s.items || []).reduce((a, it) => a + (it.qty || 0), 0),
-      s.subtotal || 0,
-      s.discountPercent || 0,
-      s.discount || 0,
-      s.total || 0,
-      s.paidAmount || '',
-      paymentMethodLabel(s),
-      s.buyerPhone || '',
-      detail
-    ]);
-  });
-  const salesWs = XLSX.utils.aoa_to_sheet(salesAoa);
-  salesWs['!cols'] = [{wch:9},{wch:12},{wch:9},{wch:16},{wch:11},{wch:7},{wch:12},
-                      {wch:10},{wch:12},{wch:12},{wch:11},{wch:9},{wch:15},{wch:60}];
-  XLSX.utils.book_append_sheet(wb, salesWs, 'Sales');
-
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-  return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-}
-
-/* Always saves straight to the device's Downloads (never opens the share
-   sheet) — used for files the person needs to find in their file manager
-   afterward, like the sheet template they'll upload to Google Drive. */
-function forceDownloadBlob(blob, fileName){
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-}
-
-async function downloadPriceListSheetTemplateXlsx(){
-  try{
-    const blob = await buildPricingWorkbookBlob();
-    forceDownloadBlob(blob, 'ARS_Pricing_Sheet_Template.xlsx');
-    showAdminNotification('✓ Downloaded — check your Downloads folder');
-  } catch(e){
-    alert('Could not build the sheet template. ' + (e && e.message ? e.message : ''));
-  }
-}
+window.addEventListener('online', function(){ try{ updateSyncBadge(); }catch(e){} });
+window.addEventListener('offline', function(){ try{ updateSyncBadge(); }catch(e){} });
 
 /* ---------------- ADMIN NEW-SALES NOTIFICATION BADGE ----------------
    Real cross-device push notifications would need a backend server, which this
@@ -3417,16 +2936,15 @@ async function showPublicPriceList(){
   function paint(){
     document.getElementById('publicPriceBody').innerHTML = buildPriceListTableHTML();
   }
-  paint();   // show stored prices immediately, then refresh
-
-  try{ await syncFromGoogleDrive(false); }catch(e){}
-  paint();
-
-  // Only claim the prices are current if the PRICE fetch itself succeeded.
-  // The overall sync can report success while prices quietly failed, and
-  // telling a customer "updated today" when it never reached the sheet
-  // would be misleading.
-  document.getElementById('ppUpdated').textContent = DRIVE_SYNC.pricesOk
+  paint();   // stored prices now; the Firebase listener (read-only, started at INIT) repaints
+             // this page through fbRefreshUI('pricelist') when the server's list arrives
+  updatePublicPriceStamp();
+}
+/* Only claim the prices are current once the server's own list has actually arrived. */
+function updatePublicPriceStamp(){
+  var el = document.getElementById('ppUpdated');
+  if(!el) return;
+  el.textContent = _fbPricelistLive
     ? 'Updated ' + new Date().toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})
     : 'Showing last saved prices — please confirm at the counter';
 }
@@ -3577,7 +3095,6 @@ function completeSale(paymentMethod, splitDetails){
   saveJSON('ars_sales', SALES);
   lastCompletedSale = newSale;
   pushSaleToFirebase(newSale);   // live-sync this bill to every other device
-  pushSaleToSheet(newSale);      // back up this bill into the Google Sheet
   
   // Auto-send bill text to admin (controlled by admin panel toggle, hidden from sellers)
   sendBillToAdminSMS(newSale);
@@ -4739,10 +4256,9 @@ function setSaleStatus(saleId, status){
   if(!s) return;
   s.status = status;
   saveJSON('ars_sales', SALES);
-  s._sheetSynced = false;  // changed, so it must be re-uploaded
+  s._sheetSynced = false;  // changed, so the admin's next "Save to Google Sheet" re-sends this row
   saveJSON('ars_sales', SALES);
   pushSaleToFirebase(s);   // live-sync the status change to every other device
-  pushSaleToSheet(s);      // update this bill's row in the Google Sheet
   if(!document.getElementById('adminScreen').classList.contains('hidden')) renderAdmin();
   else { render(); }
   refreshNotifBadges();
@@ -5615,29 +5131,8 @@ function renderAdmin(){
     updateUpiPreview();
 
   } else if(adminTab === 'backup'){
-    main.innerHTML = `<div class="backup-card" style="background:#eaf2fb; border-color:#3b6fa8;">
-        <div class="section-title" style="margin-top:0; color:#1a4d8f;">☁️ Google Sheet Live Sync</div>
-        <label class="field-label">Google Sheet Link</label>
-        <input type="text" id="driveFileIdInput" placeholder="Paste the Google Sheet share link" value="${DRIVE_SYNC.sheetLink || ''}"
-          style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); margin-bottom:8px; font-size:13px;">
-        <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:#1a4d8f; margin-bottom:10px;">
-          <input type="checkbox" id="driveAutoSyncToggle" ${DRIVE_SYNC.autoSync ? 'checked' : ''} style="width:16px; height:16px;">
-          Auto-sync every 5 minutes
-        </label>
-        <div class="icon-square-col">
-          <button class="icon-square-btn" onclick="saveDriveSettingsFromUI()" style="background:#1a4d8f; color:#fff; width:100%; margin-bottom:8px;" title="Save Link">💾<span>Save Sheet Link</span></button>
-          <div class="icon-square-row">
-            <button class="icon-square-btn" onclick="downloadPricingDataFile()" style="background:#eadcc0; color:var(--ink);" title="Download workbook: Price List, UPI, Accounts and all Sales history">&#11015;<span>Download Excel (incl. Sales)</span></button>
-            <button class="icon-square-btn" onclick="syncFromGoogleDrive(true)" style="background:#3b6fa8; color:#fff;" title="Sync Now">🔄<span>Sync Now</span></button>
-          </div>
-        </div>
-        <div class="empty-admin" style="text-align:left; padding:6px 4px 0; font-size:11.5px;" id="driveSyncStatus">
-          ${DRIVE_SYNC.lastSync ? 'Last synced: ' + new Date(DRIVE_SYNC.lastSync).toLocaleString('en-IN') : 'Not synced yet'}
-          ${DRIVE_SYNC.lastStatus === 'error' ? ' — <span style="color:var(--danger); font-weight:700;">last attempt failed</span>' : ''}
-        </div>
-      </div>
-      <div class="backup-card" style="background:#eef7ee; border-color:#2e7d32;">
-        <div class="section-title" style="margin-top:0; color:#2e7d32;">&#128190; Auto Backup to Google Sheet</div>
+    main.innerHTML = `<div class="backup-card" style="background:#eef7ee; border-color:#2e7d32;">
+        <div class="section-title" style="margin-top:0; color:#2e7d32;">&#128190; Google Sheet Backup (manual)</div>
         <label class="field-label">Apps Script code</label>
         <textarea readonly onclick="this.select()" style="width:100%; height:96px; font-family:monospace; font-size:10px; padding:8px; border-radius:6px; border:1px solid #2e7d32; margin-bottom:10px;">${SHEET_BACKUP_SCRIPT}</textarea>
         <label class="field-label">Apps Script Web App URL</label>
@@ -5646,7 +5141,7 @@ function renderAdmin(){
         <label class="field-label">Secret word</label>
         <input type="text" id="sheetBackupSecretInput" placeholder="CHANGE_THIS_SECRET" value="${SHEET_BACKUP.secret || ''}"
           style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); margin-bottom:10px; font-size:13px;">
-        <button onclick="saveSheetBackupFromUI()" style="width:100%; padding:11px; background:#2e7d32; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">&#128190; Save &amp; Back Up Now</button>
+        <button onclick="saveSheetBackupFromUI()" style="width:100%; padding:11px; background:#2e7d32; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">&#128190; Save to Google Sheet Now</button>
         <div class="empty-admin" style="text-align:left; padding:8px 4px 0; font-size:11.5px;" id="sheetBackupStatus">${backupStatusText()}</div>
       </div>
       <div class="backup-card" style="background:#fff3e0; border-color:#e8710a;">
@@ -5678,9 +5173,7 @@ async function saveSheetBackupFromUI(){
   }
   SHEET_BACKUP.secret = (document.getElementById('sheetBackupSecretInput').value || '').trim();
   saveSheetBackupUrl(url);
-  showAdminNotification('\u2713 Backup link saved');
-  await retryPendingSheetBackups();
-  renderAdmin();
+  await saveAllToGoogleSheet();
 }
 
 function saveFirebaseConfigFromUI(){
@@ -5697,14 +5190,6 @@ function saveFirebaseConfigFromUI(){
   // started with; a reload is the only clean way to point it somewhere else.
   setTimeout(function(){ location.reload(); }, 600);
   showAdminNotification('\u2713 Firebase config saved — reconnecting…');
-}
-
-function saveDriveSettingsFromUI(){
-  const link = document.getElementById('driveFileIdInput').value;
-  const autoSync = document.getElementById('driveAutoSyncToggle').checked;
-  saveDriveSyncSettings(link, autoSync);
-  renderAdmin();
-  syncFromGoogleDrive(true);
 }
 
 function updatePrice(k, val){
