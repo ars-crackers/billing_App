@@ -1753,6 +1753,7 @@ function initFirebase(opts){
     // Connection state, so the admin can see at a glance whether it's live.
     _fbDb.ref('.info/connected').on('value', function(snap){
       _fbReady = snap.val() === true;
+      if(_fbReady) fbSyncBillCounter();
       updateFbStatusEl();
     });
 
@@ -2235,10 +2236,27 @@ let BILL_COUNTER = loadJSON('ars_bill_counter', 0);
   saveJSON('ars_bill_counter', BILL_COUNTER);
 })();
 function getNextBillNo(){
+  // Local fallback: max of all known bills + 1 (same as before)
   var maxNo = 0;
   (loadJSON('ars_sales', []) || []).forEach(function(x){ if(x.billNo > maxNo) maxNo = x.billNo; });
   if(maxNo > BILL_COUNTER) BILL_COUNTER = maxNo;
-  BILL_COUNTER++; saveJSON('ars_bill_counter', BILL_COUNTER); return BILL_COUNTER; }
+  BILL_COUNTER++; saveJSON('ars_bill_counter', BILL_COUNTER);
+  // Bug 8 fix: async bump the shared Firebase counter so other phones see our claim.
+  // completeSale already has the local number; this just keeps the server counter ahead.
+  if(_fbDb && !_fbReadOnly){
+    _fbDb.ref('meta/billCounter').transaction(function(cur){ return Math.max(cur||0, BILL_COUNTER); }).catch(function(){});
+  }
+  return BILL_COUNTER;
+}
+/* On connect, pull the server's bill counter so this phone starts above every
+   bill any other device has issued, even bills not yet synced to this device. */
+function fbSyncBillCounter(){
+  if(!_fbDb || _fbReadOnly) return;
+  _fbDb.ref('meta/billCounter').once('value').then(function(snap){
+    var srv = snap.val() || 0;
+    if(srv > BILL_COUNTER){ BILL_COUNTER = srv; _rawSaveJSON('ars_bill_counter', BILL_COUNTER); }
+  }).catch(function(){});
+}
 let LOGIN_HISTORY = loadJSON('ars_login_history', []);
 let session = loadJSON('ars_session', null);
 let cart = {}; // Current cart reference
@@ -2613,7 +2631,9 @@ function setCat(ci){
   if(el && el.scrollIntoView) el.scrollIntoView({ inline:'center', block:'nearest', behavior:'smooth' });
 }
 
+function _saleSaved(){ return lastCompletedSale && !document.getElementById('saleSavedMsg').classList.contains('hidden'); }
 function changeQty(ci, ii, delta){
+  if(_saleSaved()) return;   // Bug 4: block stepper taps after sale is saved
   const k = key(ci, ii);
   const cur = cart[k] || 0;
   let next = cur + delta;
@@ -2624,6 +2644,7 @@ function changeQty(ci, ii, delta){
   render();
 }
 function setQty(ci, ii, val){
+  if(_saleSaved()) return;   // Bug 4: block input changes after sale is saved
   const k = key(ci, ii);
   let next = parseInt(val) || 0;
   if(next < 0) next = 0;
@@ -2811,19 +2832,29 @@ function renderBillTotals(){
 
   let percent, discount, grand, paidAmount;
 
+  const MAX_DISC_PCT = 80;  // shop rule: max 80% discount
   if(paidManuallyEdited){
     const paidRaw = parseFloat(paidInput.value);
-    paidAmount = (!isNaN(paidRaw) && paidRaw > 0) ? paidRaw : 0;
-    discount = subtotal - paidAmount;
-    if(discount < 0) discount = 0;
-    if(discount > subtotal) discount = subtotal;
-    percent = subtotal > 0 ? (discount / subtotal * 100) : 0;
-    grand = subtotal - discount;
-    percentInput.value = Math.round(percent * 100) / 100;
+    // Empty / zero box → treat as full payment (no discount), not ₹0
+    if(isNaN(paidRaw) || paidInput.value.trim() === ''){
+      paidAmount = subtotal;
+      discount = 0; percent = 0; grand = subtotal;
+      percentInput.value = 0;
+    } else {
+      paidAmount = Math.max(0, paidRaw);
+      // Cap: paid cannot exceed subtotal; discount cannot exceed 80 %
+      const minPaid = Math.ceil(subtotal * (1 - MAX_DISC_PCT / 100));
+      paidAmount = Math.max(minPaid, Math.min(subtotal, paidAmount));
+      discount = subtotal - paidAmount;
+      if(discount < 0) discount = 0;
+      percent = subtotal > 0 ? (discount / subtotal * 100) : 0;
+      grand = subtotal - discount;
+      percentInput.value = Math.round(percent * 100) / 100;
+    }
   } else {
     percent = parseFloat(percentInput.value);
     if(isNaN(percent)) percent = 0;
-    percent = Math.max(0, Math.min(100, percent));
+    percent = Math.max(0, Math.min(MAX_DISC_PCT, percent));  // cap at 80 %
     discount = Math.round(subtotal * percent / 100);
     grand = subtotal - discount;
     paidInput.value = grand;
@@ -3077,8 +3108,10 @@ function completeSale(paymentMethod, splitDetails){
   }));
   const buyerPhone = document.getElementById('billCustomerPhone').value.trim();
   const finalMethod = paymentMethod || 'cash';
-  const cashAmount = splitDetails ? splitDetails.cashAmount : (finalMethod === 'upi' ? 0 : (paidAmount || grand));
-  const upiAmount = splitDetails ? splitDetails.upiAmount : (finalMethod === 'upi' ? (paidAmount || grand) : 0);
+  // Never record more cash/UPI than the bill total (paid > total = change given back)
+  const _effectivePaid = Math.min(paidAmount || grand, grand);
+  const cashAmount = splitDetails ? Math.min(splitDetails.cashAmount, grand) : (finalMethod === 'upi' ? 0 : _effectivePaid);
+  const upiAmount  = splitDetails ? Math.min(splitDetails.upiAmount,  grand) : (finalMethod === 'upi' ? _effectivePaid : 0);
   const newSale = {
     id: 'S' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
     billNo: getNextBillNo(),
@@ -5312,13 +5345,21 @@ function deleteItemCore(k){
   CATEGORIES[ci].items.splice(ii, 1);
   delete INV[k];
 
-  // Re-key inventory entries for items that shifted index after the deletion
+  // Re-key inventory AND cart entries for items that shifted index after the deletion
   const remaining = CATEGORIES[ci].items.length;
   for(let i = ii; i < remaining; i++){
     const fromKey = key(ci, i + 1);
     const toKey = key(ci, i);
     if(INV[fromKey]){ INV[toKey] = INV[fromKey]; delete INV[fromKey]; }
+    // Bug 5 fix: keep cart quantities correct when items above the deleted one shift down
+    [cart1, cart2].forEach(function(c){
+      if(c[fromKey] != null){ c[toKey] = c[fromKey]; delete c[fromKey]; }
+      else { delete c[toKey]; }
+    });
   }
+  // Also drop the deleted key from both carts
+  [cart1, cart2].forEach(function(c){ delete c[k]; });
+  saveCart();
 }
 async function deleteItem(k){
   const [ci, ii] = k.split('_').map(Number);
