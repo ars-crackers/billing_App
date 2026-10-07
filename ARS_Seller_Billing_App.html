@@ -4411,6 +4411,14 @@ function onReportFilterChange(){
   reportFilters.date = document.getElementById('reportFilterDate').value;
   renderAdmin();
 }
+/* Bug 1 fix: convert a sale timestamp to IST (UTC+5:30) date string YYYY-MM-DD
+   so date filter matches the clock the seller actually sees. */
+function saleLocalDate(timeVal){
+  var d = new Date(timeVal);
+  // Shift to IST: add 5h30m = 19800 seconds
+  var ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+  return ist.toISOString().slice(0, 10);
+}
 function clearReportFilters(){
   reportFilters = { date:'' };
   renderAdmin();
@@ -4437,7 +4445,7 @@ function buildReportPDFHTML(totalPaid, totalDiscount, label){
 async function shareReportPDF(){
   SALES = loadJSON('ars_sales', []);
   const dateFilteredSales = reportFilters.date
-    ? SALES.filter(s => new Date(s.time).toISOString().slice(0,10) === reportFilters.date)
+    ? SALES.filter(s => saleLocalDate(s.time) === reportFilters.date)
     : SALES;
   const confirmedSales = dateFilteredSales.filter(s => isCountedSale(s));
   const totalPaid = confirmedSales.reduce((a,s)=>a+s.total,0);
@@ -4504,7 +4512,7 @@ function buildBankReportHTML(type, periodKey){
   // Breakdown rows: per day (monthly) or per month (quarterly / yearly)
   const bucket = new Map();
   inPeriod.forEach(s => {
-    const d = new Date(s.time);
+    const d = new Date(new Date(s.time).getTime() + 5.5 * 60 * 60 * 1000); // IST
     const k = type === 'monthly'
       ? d.toISOString().slice(0,10)
       : d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
@@ -5058,7 +5066,7 @@ function renderAdmin(){
 
   } else if(adminTab === 'reports'){
     const dateFilteredSales = reportFilters.date
-      ? SALES.filter(s => new Date(s.time).toISOString().slice(0,10) === reportFilters.date)
+      ? SALES.filter(s => saleLocalDate(s.time) === reportFilters.date)
       : SALES;
     const confirmedSales = dateFilteredSales.filter(s => isCountedSale(s));
     const totalPaid = confirmedSales.reduce((a,s)=>a+s.total,0);
@@ -5334,6 +5342,12 @@ function updateName(k, field, val){
   const v = (val || '').trim();
   if(!INV[k]) INV[k] = {price:0};
   INV[k][field] = v;
+  // Bug 7 fix: also update CATEGORIES so buildPriceListTableHTML() shows the new name
+  const [ci, ii] = k.split('_').map(Number);
+  if(CATEGORIES[ci] && CATEGORIES[ci].items[ii]){
+    if(field === 'name_ta') CATEGORIES[ci].items[ii].ta = v;
+    if(field === 'name_en') CATEGORIES[ci].items[ii].en = v;
+  }
   saveJSON('ars_inventory', INV);
   flashSaved(k);
 }
