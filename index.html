@@ -13,16 +13,30 @@
     .logo { font-size: 48px; margin: 20px 0; }
     h1 { font-size: 32px; color: #7a1414; margin-bottom: 10px; }
     .description { font-size: 16px; color: #666; margin-bottom: 30px; line-height: 1.6; }
-    .cta { display: inline-block; padding: 16px 40px; background: #7a1414; color: #fff8e6; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 10px; transition: all 0.3s; }
-    .cta:hover { background: #5a0f0f; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(122, 20, 20, 0.3); }
+    .cta { display: inline-block; padding: 16px 40px; background: #7a1414; color: #fff8e6; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 10px; transition: all 0.3s; cursor: pointer; border: none; }
+    .cta:hover { background: #5a0f0f; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(122,20,20,0.3); }
     .cta.secondary { background: #1e7a3c; }
     .cta.secondary:hover { background: #145a2b; }
+    .cta.installed { background: #555; cursor: default; }
+    .cta.installed:hover { background: #555; transform: none; box-shadow: none; }
+    .cta.running { background: #1a5276; cursor: default; }
+    .cta.running:hover { background: #1a5276; transform: none; box-shadow: none; }
+    .install-note { font-size: 13px; color: #888; margin: 6px 10px 0; line-height: 1.5; }
     .features { text-align: left; max-width: 500px; margin: 40px auto; }
     .features h2 { font-size: 20px; color: #7a1414; margin-bottom: 20px; }
     .features ul { list-style: none; }
     .features li { padding: 10px 0; border-bottom: 1px solid #e0d5c8; font-size: 15px; }
     .features li:before { content: "✓ "; color: #1e7a3c; font-weight: 700; margin-right: 10px; }
     .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #e0d5c8; font-size: 14px; color: #999; }
+
+    /* iOS install guide popup */
+    #iosGuide { display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.55); align-items:flex-end; justify-content:center; }
+    #iosGuide.show { display:flex; }
+    #iosGuideCard { background:#fff; border-radius:18px 18px 0 0; padding:28px 24px 36px; width:100%; max-width:500px; }
+    #iosGuideCard h3 { font-size:17px; color:#7a1414; margin-bottom:14px; }
+    #iosGuideCard ol { padding-left:20px; margin-bottom:20px; }
+    #iosGuideCard li { font-size:14px; line-height:1.7; color:#333; }
+    #iosGuideCard button { width:100%; padding:14px; background:#7a1414; color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
   </style>
   <link rel="manifest" href="manifest.webmanifest">
 </head>
@@ -35,15 +49,16 @@
     </div>
 
     <div>
-      <a href="ARS_Seller_Billing_App.html" class="cta">📱 Open Billing App</a>
-      <a href="ARS_Seller_Billing_App.html?install" class="cta secondary">📲 Install App</a>
+      <a href="ARS_Seller_Billing_App.html" class="cta">📱 Open Billing App</a><br>
+      <button id="installBtn" class="cta secondary" onclick="handleInstall()">📲 Install App</button>
+      <div id="installNote" class="install-note"></div>
     </div>
 
     <div class="features">
       <h2>Features</h2>
       <ul>
         <li>Offline-first PWA - works without internet</li>
-        <li>Admin & Seller roles with price management</li>
+        <li>Admin &amp; Seller roles with price management</li>
         <li>Real-time Firebase sync</li>
         <li>WhatsApp bill sharing with images</li>
         <li>Bilingual (Tamil/English) interface</li>
@@ -57,10 +72,103 @@
     </div>
   </div>
 
+  <!-- iOS install guide -->
+  <div id="iosGuide" onclick="if(event.target===this)document.getElementById('iosGuide').classList.remove('show')">
+    <div id="iosGuideCard">
+      <h3>📲 Add to Home Screen (iPhone)</h3>
+      <ol>
+        <li>Tap the <b>Share</b> button (□↑) at the bottom of Safari</li>
+        <li>Scroll down and tap <b>"Add to Home Screen"</b></li>
+        <li>Tap <b>Add</b> in the top-right corner</li>
+      </ol>
+      <button onclick="document.getElementById('iosGuide').classList.remove('show')">Got it</button>
+    </div>
+  </div>
+
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
+    var _installPrompt = null;
+    var _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    var _isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                        || window.navigator.standalone === true;
+
+    var btn  = document.getElementById('installBtn');
+    var note = document.getElementById('installNote');
+
+    function setInstallState(){
+      if(_isStandalone){
+        // Running as installed PWA already
+        btn.textContent = '✅ Running as App';
+        btn.className = 'cta running';
+        note.textContent = 'You are already using the installed app.';
+
+      } else if(_installPrompt){
+        // Browser is ready to install
+        btn.textContent = '📲 Install App';
+        btn.className = 'cta secondary';
+        note.textContent = 'Tap to add A.R.S Billing to your home screen.';
+
+      } else if(_isIOS){
+        // iOS — beforeinstallprompt never fires; show manual steps
+        btn.textContent = '📲 Install on iPhone';
+        btn.className = 'cta secondary';
+        note.textContent = 'Tap for step-by-step guide to add to Home Screen.';
+
+      } else {
+        // Android/desktop — prompt not available (already installed or cooldown)
+        btn.textContent = '✓ Already Installed';
+        btn.className = 'cta installed';
+        note.innerHTML = 'App is installed on your device.<br>Find <b>A.R.S Billing</b> in your app drawer.';
+      }
+    }
+
+    async function handleInstall(){
+      if(_isStandalone) return; // already running as app, do nothing
+
+      if(_installPrompt){
+        try{
+          _installPrompt.prompt();
+          var choice = await _installPrompt.userChoice;
+          if(choice && choice.outcome === 'accepted'){
+            _installPrompt = null;
+            btn.textContent = '✅ Installing…';
+            btn.className = 'cta installed';
+            note.textContent = 'App is being added to your home screen.';
+          }
+        }catch(e){}
+        return;
+      }
+
+      if(_isIOS){
+        document.getElementById('iosGuide').classList.add('show');
+        return;
+      }
+
+      // Android — prompt not available
+      note.innerHTML = 'Already installed — open <b>A.R.S Billing</b> from your app drawer.<br>'
+                     + 'Or tap browser menu <b>(⋮)</b> → <b>Install app</b>.';
+    }
+
+    // Capture the install prompt when browser offers it
+    window.addEventListener('beforeinstallprompt', function(e){
+      e.preventDefault();
+      _installPrompt = e;
+      setInstallState();
+    });
+
+    // App was just installed
+    window.addEventListener('appinstalled', function(){
+      _installPrompt = null;
+      btn.textContent = '✅ App Installed!';
+      btn.className = 'cta installed';
+      note.textContent = 'A.R.S Billing has been added to your home screen.';
+    });
+
+    // Set initial state on load
+    setInstallState();
+
+    if('serviceWorker' in navigator){
+      window.addEventListener('load', function(){
+        navigator.serviceWorker.register('sw.js').catch(function(){});
       });
     }
   </script>
