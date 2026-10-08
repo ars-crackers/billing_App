@@ -90,16 +90,33 @@
     var _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     var _isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
                         || window.navigator.standalone === true;
+    var _ua = navigator.userAgent;
+    var _isBrave = !!navigator.brave;
+    var _isEdgeAndroid = /EdgA/i.test(_ua);
+    var _needsChrome = (_isBrave || _isEdgeAndroid) && !_isIOS;
+    var APP_URL = 'https://ars-crackers.github.io/billing_App/ARS_Seller_Billing_App.html';
+    var CHROME_INTENT = 'intent://ars-crackers.github.io/billing_App/ARS_Seller_Billing_App.html#Intent;scheme=https;package=com.android.chrome;end';
+
+    // If already installed PWA and somehow landed here, go straight to the app
+    if(_isStandalone){
+      window.location.replace('ARS_Seller_Billing_App.html');
+    }
 
     var btn  = document.getElementById('installBtn');
     var note = document.getElementById('installNote');
 
     function setInstallState(){
       if(_isStandalone){
-        // Running as installed PWA already
+        // Standalone — redirect handled above; fallback label
         btn.textContent = '✅ Running as App';
         btn.className = 'cta running';
         note.textContent = 'You are already using the installed app.';
+
+      } else if(_needsChrome){
+        // Brave / Edge Android — can't do real PWA install; open Chrome instead
+        btn.textContent = '🌐 Open in Chrome to Install';
+        btn.className = 'cta secondary';
+        note.innerHTML = 'Brave &amp; Edge can\'t install PWAs properly.<br>Tap to open in <b>Chrome</b> for full app install.';
 
       } else if(_installPrompt){
         // Browser is ready to install
@@ -122,7 +139,14 @@
     }
 
     async function handleInstall(){
-      if(_isStandalone) return; // already running as app, do nothing
+      if(_isStandalone) return;
+
+      if(_needsChrome){
+        // Try Android intent to open Chrome; fallback to regular URL
+        try{ window.location.href = CHROME_INTENT; }
+        catch(e){ window.open(APP_URL, '_blank'); }
+        return;
+      }
 
       if(_installPrompt){
         try{
@@ -143,7 +167,7 @@
         return;
       }
 
-      // Android — prompt not available
+      // Android — prompt not available (already installed or cooldown)
       note.innerHTML = 'Already installed — open <b>A.R.S Billing</b> from your app drawer.<br>'
                      + 'Or tap browser menu <b>(⋮)</b> → <b>Install app</b>.';
     }
