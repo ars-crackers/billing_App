@@ -3020,6 +3020,26 @@ async function publicSharePrices(btn){
 }
 
 /* Shows the QR the shop prints and leaves on the counter. */
+async function shareWebLink(btn){
+  var url = 'https://ars-crackers.github.io/billing_App/';
+  var title = 'A.R.S Crackers – Price List';
+  var text = 'A.R.S Crackers Shop – View our latest price list online:';
+  if(navigator.share){
+    try{
+      await navigator.share({ title, text, url });
+    } catch(e){ /* user cancelled or not supported */ }
+  } else {
+    try{
+      await navigator.clipboard.writeText(url);
+      var orig = btn ? btn.innerHTML : '';
+      if(btn){ btn.innerHTML = '<span style="font-size:28px;line-height:1;">&#10003;</span><span style="font-size:10px;font-weight:700;text-align:center;line-height:1.2;">Copied!</span>'; }
+      setTimeout(function(){ if(btn) btn.innerHTML = orig; }, 1800);
+    } catch(e){
+      alert('Copy this link:\n' + url);
+    }
+  }
+}
+
 var _qrMode = 'price';
 /* mode 'price' = customer price list page; mode 'app' = the live billing app (admin gives this to sellers). */
 async function openPriceQr(mode){
@@ -3490,9 +3510,10 @@ function renderHistoryList(){
   // Add Price List PDF preview (with zoom) option at the very top of History
   html += `<div style="margin:10px 0; padding:10px; background:#f5ede2; border-radius:8px; border-left:4px solid #7a1414;">
     <div style="font-size:12px; font-weight:700; color:#7a1414; margin-bottom:8px;">&#128196; Price List</div>
-    <div style="display:flex; gap:10px;">
-      ${isAdmin ? `<button onclick="openPriceListPDFPreview()" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:14px 6px; background:#7a1414; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:38px; line-height:1;">&#128269;</span><span style="font-size:10.5px; font-weight:700;">Preview &amp; Share</span></button>` : ''}
-      <button onclick="openPriceQr()" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:14px 6px; background:#1e7a3c; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:38px; line-height:1;">&#128290;</span><span style="font-size:10.5px; font-weight:700;">Customer QR</span></button>
+    <div style="display:flex; gap:8px;">
+      ${isAdmin ? `<button onclick="openPriceListPDFPreview()" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:12px 4px; min-height:80px; background:#7a1414; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:28px; line-height:1;">&#128269;</span><span style="font-size:10px; font-weight:700; text-align:center; line-height:1.2;">Preview &amp;<br>Share</span></button>` : ''}
+      <button onclick="shareWebLink(this)" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:12px 4px; min-height:80px; background:#1a5276; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:28px; line-height:1;">&#128279;</span><span style="font-size:10px; font-weight:700; text-align:center; line-height:1.2;">Web<br>Link</span></button>
+      <button onclick="openPriceQr()" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:12px 4px; min-height:80px; background:#1e7a3c; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:28px; line-height:1;">&#128290;</span><span style="font-size:10px; font-weight:700; text-align:center; line-height:1.2;">Customer<br>QR</span></button>
     </div>
   </div>`;
   
