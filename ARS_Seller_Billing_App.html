@@ -3021,7 +3021,8 @@ async function publicSharePrices(btn){
 
 /* Shows the QR the shop prints and leaves on the counter. */
 async function shareWebLink(btn){
-  var url = 'https://ars-crackers.github.io/billing_App/';
+  // Share ONLY the public price list page (#price hash) — never the app root
+  var url = location.origin + location.pathname + '#price';
   var title = 'A.R.S Crackers – Price List';
   var text = 'A.R.S Crackers Shop – View our latest price list online:';
   if(navigator.share){
