@@ -3013,15 +3013,34 @@ function computeTotals(cartObj){
 
 /* ---------------- RENDER MAIN LIST ---------------- */
 /* ---- Bill 1 / Bill 2 item filter: In cart, price bands, sort, reset ---- */
-var billFilters = { incart:false, band:'', sort:'' };
+var billFilters = { incart:false, recent:false, band:'', sort:'' };
 var billFilterOpen = false;
 var BILL_BANDS = { b1:[0,50,'Up to \u20B950'], b2:[51,150,'\u20B951-150'], b3:[151,500,'\u20B9151-500'], b4:[501,1e9,'Above \u20B9500'] };
-function billFilterActive(){ return billFilters.incart || billFilters.band || billFilters.sort; }
+function billFilterActive(){ return billFilters.incart || billFilters.recent || billFilters.band || billFilters.sort; }
+/* Recently billed items: from this account's bills of the last 30 days (admin: all bills) in the active branch,
+   ranked by how often they were billed, then by how recently. Matched by the item's English name. */
+var _recentMap = null;
+function recentBilledMap(){
+  var map = {}, since = Date.now() - 30 * 86400000, all = [];
+  try{ all = loadJSON('ars_sales', []) || []; }catch(e){}
+  all.forEach(function(sl){
+    if(!sl || !sl.items || !isCountedSale(sl)) return;
+    var t = Date.parse(sl.time) || 0; if(t < since) return;
+    if(session && session.role !== 'admin' && sl.sellerId !== session.id) return;
+    var bid = sl.branchId || 'main'; if(activeBranchId && bid !== activeBranchId) return;
+    sl.items.forEach(function(it){
+      var k = String(it.en || it.ta || '').toLowerCase(); if(!k) return;
+      var m = map[k] || (map[k] = { n: 0, last: 0 }); m.n++; if(t > m.last) m.last = t;
+    });
+  });
+  return map;
+}
 function toggleBillFilters(){ billFilterOpen = !billFilterOpen; render(); }
-function setBillFilter(k, v){ billFilters[k] = (k === 'incart') ? !billFilters.incart : (billFilters[k] === v && k === 'band' ? '' : v); render(); }
-function resetBillFilters(){ billFilters = { incart:false, band:'', sort:'' }; var el = document.getElementById('search'); if(el) el.value = ''; activeCat = 'ALL'; try{ buildCatNav(); }catch(e){} render(); }
-function billFilterPass(price, qty){
+function setBillFilter(k, v){ billFilters[k] = (k === 'incart' || k === 'recent') ? !billFilters.incart : (billFilters[k] === v && k === 'band' ? '' : v); render(); }
+function resetBillFilters(){ billFilters = { incart:false, recent:false, band:'', sort:'' }; var el = document.getElementById('search'); if(el) el.value = ''; activeCat = 'ALL'; try{ buildCatNav(); }catch(e){} render(); }
+function billFilterPass(price, qty, rk){
   var f = billFilters;
+  if(f.recent && !(rk && _recentMap && _recentMap[rk])) return false;
   if(f.incart && !(qty > 0)) return false;
   if(f.band){ var b = BILL_BANDS[f.band]; if(!(price >= b[0] && price <= b[1])) return false; }
   return true;
@@ -3037,7 +3056,7 @@ function renderBillFilterBar(shown){
   btn.style.color = (billFilterOpen || on) ? '#fff8e6' : 'var(--maroon)';
   if(!billing || !billFilterOpen){ bar.classList.add('hidden'); bar.innerHTML = ''; return; }
   var chip = function(label, active, js){ return '<button type="button" onclick="' + js + '" style="padding:6px 11px; border-radius:16px; border:1.5px solid var(--maroon); font-weight:800; font-size:11.5px; cursor:pointer; background:' + (active ? 'var(--maroon)' : '#fff8ea') + '; color:' + (active ? '#fff8e6' : 'var(--maroon)') + ';">' + label + '</button>'; };
-  var h = '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + chip('&#128722; In cart', billFilters.incart, "setBillFilter('incart')");
+  var h = '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + chip('&#128344; Recent billed', billFilters.recent, "setBillFilter('recent')") + chip('&#128722; In cart', billFilters.incart, "setBillFilter('incart')");
   Object.keys(BILL_BANDS).forEach(function(k){ h += chip(BILL_BANDS[k][2], billFilters.band === k, "setBillFilter('band','" + k + "')"); });
   h += '</div><div style="display:flex; gap:6px; align-items:center;"><select onchange="setBillFilter(\'sort\', this.value)" style="flex:1; min-width:0; padding:7px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; background:#fff;">' +
     ['', 'low', 'high'].map(function(v, i){ return '<option value="' + v + '"' + (billFilters.sort === v ? ' selected' : '') + '>' + ['Sort: S.No / category', 'Price low \u2192 high', 'Price high \u2192 low'][i] + '</option>'; }).join('') + '</select>' +
@@ -3064,6 +3083,7 @@ function render(){
 
   let html = '';
   const _flat = []; let _shown = 0;
+  _recentMap = billFilters.recent ? recentBilledMap() : null;
 
   CATEGORIES.forEach((cat, ci) => {
     if(activeCat !== 'ALL' && activeCat !== String(ci)) return;
@@ -3079,7 +3099,8 @@ function render(){
       const unit = getUnit(ci, ii);
       if(activeTab === 'billing1' || activeTab === 'billing2'){
         const k = key(ci, ii); const qty = cart[k]||0;
-        if(!billFilterPass(price, qty)) return;
+        const _rk = String(name.en || name.ta || '').toLowerCase();
+        if(!billFilterPass(price, qty, _rk)) return;
         _shown++;
         const addControl = qty > 0
           ? `<div class="qty-stepper3">
@@ -3096,7 +3117,7 @@ function render(){
               <div class="item-price3">&#8377;${price} <span class="item-unit3">/ ${unit}</span></div>
               ${addControl}
             </div>`;
-        rows += _card; _flat.push({ price: Number(price) || 0, serial: serial, h: _card });
+        rows += _card; _flat.push({ price: Number(price) || 0, serial: serial, h: _card, n: (_recentMap && _recentMap[_rk]) ? _recentMap[_rk].n : 0, last: (_recentMap && _recentMap[_rk]) ? _recentMap[_rk].last : 0 });
       } else {
         rows += `<div class="price-row2">
             <div class="pr-serial-badge" title="Item #${serial}">${serial}</div>
@@ -3114,8 +3135,9 @@ function render(){
     }
   });
   
-  if((activeTab === 'billing1' || activeTab === 'billing2') && billFilters.sort && _flat.length){
-    _flat.sort((a, b) => billFilters.sort === 'low' ? (a.price - b.price || a.serial - b.serial) : (b.price - a.price || a.serial - b.serial));
+  if((activeTab === 'billing1' || activeTab === 'billing2') && (billFilters.sort || billFilters.recent) && _flat.length){
+    if(!billFilters.sort) _flat.sort((a, b) => b.n - a.n || b.last - a.last || a.serial - b.serial);
+    else _flat.sort((a, b) => billFilters.sort === 'low' ? (a.price - b.price || a.serial - b.serial) : (b.price - a.price || a.serial - b.serial));
     html = `<div class="item-grid2">${_flat.map(x => x.h).join('')}</div>`;
   }
   renderBillFilterBar(_shown);
