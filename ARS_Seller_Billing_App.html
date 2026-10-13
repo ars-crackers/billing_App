@@ -44,7 +44,18 @@
   if(location.protocol === 'https:' || location.hostname === 'localhost'){
     fetch('manifest.webmanifest', {cache:'no-cache'}).then(function(r){
       if(!r.ok) throw new Error('no manifest');
-      if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+      if('serviceWorker' in navigator){
+        var hadController = !!navigator.serviceWorker.controller;
+        // A new published version takes over at once and the page reloads one time to show it.
+        navigator.serviceWorker.addEventListener('controllerchange', function(){
+          if(!hadController) return;
+          try{ if(sessionStorage.getItem('ars_sw_reloaded')) return; sessionStorage.setItem('ars_sw_reloaded', '1'); }catch(e){}
+          var bill = document.getElementById('billOverlay');
+          if(bill && bill.classList && bill.classList.contains('show')) return;   // never interrupt a bill being made
+          location.reload();
+        });
+        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg){ try{ reg.update(); }catch(e){} }).catch(function(){});
+      }
     }).catch(useFallback);
   }
 })();
