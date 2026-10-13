@@ -2911,7 +2911,7 @@ function setTab(t){
   document.getElementById('cartBar').classList.toggle('hidden', t!=='billing1' && t!=='billing2');
   // the category strip only makes sense while billing
   const catNavEl = document.getElementById('catNav');
-  if(catNavEl) catNavEl.classList.toggle('hidden', t!=='billing1' && t!=='billing2');
+  if(catNavEl) catNavEl.classList.add('hidden');   // categories now live in the filter panel
   // website QR icon: header, History tab only, admin only
   const appQr = document.getElementById('appQrBtn');
   if(appQr) appQr.classList.toggle('hidden', !(t === 'history' && session && session.role === 'admin'));
@@ -3013,10 +3013,9 @@ function computeTotals(cartObj){
 
 /* ---------------- RENDER MAIN LIST ---------------- */
 /* ---- Bill 1 / Bill 2 item filter: In cart, price bands, sort, reset ---- */
-var billFilters = { incart:false, recent:false, band:'', sort:'' };
+var billFilters = { incart:false, recent:false, sort:'' };
 var billFilterOpen = false;
-var BILL_BANDS = { b1:[0,50,'Up to \u20B950'], b2:[51,150,'\u20B951-150'], b3:[151,500,'\u20B9151-500'], b4:[501,1e9,'Above \u20B9500'] };
-function billFilterActive(){ return billFilters.incart || billFilters.recent || billFilters.band || billFilters.sort; }
+function billFilterActive(){ return billFilters.incart || billFilters.recent || billFilters.sort || activeCat !== 'ALL'; }
 /* Recently billed items: from this account's bills of the last 30 days (admin: all bills) in the active branch,
    ranked by how often they were billed, then by how recently. Matched by the item's English name. */
 var _recentMap = null;
@@ -3036,13 +3035,12 @@ function recentBilledMap(){
   return map;
 }
 function toggleBillFilters(){ billFilterOpen = !billFilterOpen; render(); }
-function setBillFilter(k, v){ billFilters[k] = (k === 'incart' || k === 'recent') ? !billFilters.incart : (billFilters[k] === v && k === 'band' ? '' : v); render(); }
-function resetBillFilters(){ billFilters = { incart:false, recent:false, band:'', sort:'' }; var el = document.getElementById('search'); if(el) el.value = ''; activeCat = 'ALL'; try{ buildCatNav(); }catch(e){} render(); }
+function setBillFilter(k, v){ billFilters[k] = (k === 'incart' || k === 'recent') ? !billFilters[k] : v; render(); }
+function resetBillFilters(){ billFilters = { incart:false, recent:false, sort:'' }; var el = document.getElementById('search'); if(el) el.value = ''; activeCat = 'ALL'; try{ buildCatNav(); }catch(e){} render(); }
 function billFilterPass(price, qty, rk){
   var f = billFilters;
   if(f.recent && !(rk && _recentMap && _recentMap[rk])) return false;
   if(f.incart && !(qty > 0)) return false;
-  if(f.band){ var b = BILL_BANDS[f.band]; if(!(price >= b[0] && price <= b[1])) return false; }
   return true;
 }
 function renderBillFilterBar(shown){
@@ -3057,8 +3055,9 @@ function renderBillFilterBar(shown){
   if(!billing || !billFilterOpen){ bar.classList.add('hidden'); bar.innerHTML = ''; return; }
   var chip = function(label, active, js){ return '<button type="button" onclick="' + js + '" style="padding:6px 11px; border-radius:16px; border:1.5px solid var(--maroon); font-weight:800; font-size:11.5px; cursor:pointer; background:' + (active ? 'var(--maroon)' : '#fff8ea') + '; color:' + (active ? '#fff8e6' : 'var(--maroon)') + ';">' + label + '</button>'; };
   var h = '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + chip('&#128344; Recent billed', billFilters.recent, "setBillFilter('recent')") + chip('&#128722; In cart', billFilters.incart, "setBillFilter('incart')");
-  Object.keys(BILL_BANDS).forEach(function(k){ h += chip(BILL_BANDS[k][2], billFilters.band === k, "setBillFilter('band','" + k + "')"); });
-  h += '</div><div style="display:flex; gap:6px; align-items:center;"><select onchange="setBillFilter(\'sort\', this.value)" style="flex:1; min-width:0; padding:7px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; background:#fff;">' +
+  h += '</div><select onchange="setCat(this.value)" style="width:100%; margin-bottom:6px; padding:7px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; background:#fff;"><option value="ALL"' + (activeCat === 'ALL' ? ' selected' : '') + '>All categories</option>' +
+    CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci), cnt = c.items.filter(function(x, ii){ return isItemInBranch(ci, ii, activeBranchId); }).length; return cnt ? '<option value="' + ci + '"' + (activeCat === String(ci) ? ' selected' : '') + '>' + (ci + 1) + '. ' + (n.ta || n.en) + ' (' + n.en + ') - ' + cnt + '</option>' : ''; }).join('') +
+    '</select><div style="display:flex; gap:6px; align-items:center;"><select onchange="setBillFilter(\'sort\', this.value)" style="flex:1; min-width:0; padding:7px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; background:#fff;">' +
     ['', 'low', 'high'].map(function(v, i){ return '<option value="' + v + '"' + (billFilters.sort === v ? ' selected' : '') + '>' + ['Sort: S.No / category', 'Price low \u2192 high', 'Price high \u2192 low'][i] + '</option>'; }).join('') + '</select>' +
     '<span style="font-size:11.5px; font-weight:800; color:#7a1414; white-space:nowrap;">' + shown + ' items</span>' +
     (on || activeCat !== 'ALL' || (document.getElementById('search').value || '') ? '<button type="button" onclick="resetBillFilters()" style="padding:7px 10px; border:none; border-radius:8px; background:#7a1414; color:#fff8e6; font-weight:800; font-size:12px; cursor:pointer;">&#8635; Reset</button>' : '') + '</div>';
