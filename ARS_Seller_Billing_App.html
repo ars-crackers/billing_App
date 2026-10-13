@@ -2540,6 +2540,92 @@ let historyPhoneFilter = '';
 let historyBranchFilter = '';
 let adminItemsBranch = '';
 let branchTabSel = '';
+/* ---- Price Changes: chart view (changes per day, price history of one item, biggest movers) ---- */
+var changesView = 'list', changesDays = 30, changesItem = '';
+function setChangesView(v){ changesView = v; renderAdmin(); }
+function setChangesDays(d){ changesDays = d; renderAdmin(); }
+function setChangesItem(v){ changesItem = v; renderAdmin(); }
+function changesChartHtml(logDesc){
+  var esc = function(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[ch]; }); };
+  var inr = function(v){ return '\u20B9' + Number(v).toLocaleString('en-IN'); };
+  var log = logDesc.slice().reverse();                       // oldest first
+  var now = new Date(); var start0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var from = changesDays ? start0.getTime() - (changesDays - 1) * 86400000 : 0;
+  var inRange = log.filter(function(c){ return (Date.parse(c.time) || 0) >= from; });
+  var chip = function(d, label){ var on = changesDays === d; return '<button onclick="setChangesDays(' + d + ')" style="padding:6px 12px; border-radius:16px; border:1.5px solid var(--maroon); font-weight:800; font-size:11.5px; cursor:pointer; background:' + (on ? 'var(--maroon)' : '#fff8ea') + '; color:' + (on ? '#fff8e6' : 'var(--maroon)') + ';">' + label + '</button>'; };
+  var up = 0, down = 0, added = 0, removed = 0, other = 0;
+  inRange.forEach(function(c){
+    if(c.type === 'price'){ if(Number(c.new) > Number(c.old)) up++; else down++; }
+    else if(c.type === 'added') added++; else if(c.type === 'removed') removed++; else other++;
+  });
+  var tile = function(n, l, col){ return '<div style="flex:1; min-width:70px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 6px; text-align:center;"><div style="font-size:20px; font-weight:800; color:' + col + ';">' + n + '</div><div style="font-size:10.5px; color:#8a6a44;">' + l + '</div></div>'; };
+  var h = '<div style="display:flex; gap:7px; flex-wrap:wrap; margin:4px 0 10px;">' + chip(7, '7 days') + chip(30, '30 days') + chip(0, 'All') + '</div>' +
+    '<div style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px;">' + tile(up, 'Price up', '#b3261e') + tile(down, 'Price down', '#1e7a3c') + tile(added, 'Added', '#0b5fd8') + tile(removed, 'Removed', '#6b4b2a') + '</div>';
+  if(!inRange.length) return h + '<div class="empty-admin">No changes in this period.</div>';
+  // ---- 1. changes per day (stacked bars) ----
+  var days = changesDays || Math.max(1, Math.ceil((start0.getTime() - Date.parse(inRange[0].time)) / 86400000) + 1);
+  if(days > 60) days = 60;
+  var s0 = start0.getTime() - (days - 1) * 86400000, buckets = [];
+  for(var i = 0; i < days; i++) buckets.push({ up:0, down:0, add:0, rem:0, oth:0 });
+  inRange.forEach(function(c){
+    var idx = Math.floor(((Date.parse(c.time) || 0) - s0) / 86400000); if(idx < 0 || idx >= days) return;
+    var b = buckets[idx];
+    if(c.type === 'price'){ if(Number(c.new) > Number(c.old)) b.up++; else b.down++; } else if(c.type === 'added') b.add++; else if(c.type === 'removed') b.rem++; else b.oth++;
+  });
+  var maxV = 1; buckets.forEach(function(b){ var t = b.up + b.down + b.add + b.rem + b.oth; if(t > maxV) maxV = t; });
+  maxV = Math.max(4, Math.ceil(maxV / 4) * 4);   // whole-number gridlines
+  var W = 340, H = 150, L = 26, B = 22, T = 8, pw = W - L - 6, ph = H - B - T, bw = pw / days;
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;" role="img" aria-label="Changes per day">';
+  for(var g = 0; g <= 4; g++){ var gv = Math.round(maxV * g / 4), gy = T + ph - ph * g / 4; svg += '<line x1="' + L + '" x2="' + (W - 6) + '" y1="' + gy + '" y2="' + gy + '" stroke="#eadfc9" stroke-width="1"/><text x="' + (L - 4) + '" y="' + (gy + 3) + '" font-size="9" text-anchor="end" fill="#8a6a44">' + gv + '</text>'; }
+  buckets.forEach(function(b, i){
+    var y = T + ph, x = L + i * bw + bw * 0.15, w = Math.max(1.5, bw * 0.7);
+    [['up', '#b3261e'], ['down', '#1e7a3c'], ['add', '#0b5fd8'], ['rem', '#6b4b2a'], ['oth', '#c9a227']].forEach(function(p){
+      var v = b[p[0]]; if(!v) return; var hh = ph * v / maxV; y -= hh; svg += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + hh.toFixed(1) + '" fill="' + p[1] + '"/>';
+    });
+  });
+  var step = Math.max(1, Math.ceil(days / 6));
+  for(var d = 0; d < days; d += step){ var dd = new Date(s0 + d * 86400000); svg += '<text x="' + (L + d * bw + bw / 2).toFixed(1) + '" y="' + (H - 6) + '" font-size="9" text-anchor="middle" fill="#8a6a44">' + dd.getDate() + '/' + (dd.getMonth() + 1) + '</text>'; }
+  svg += '</svg>';
+  var key = function(col, t){ return '<span style="display:inline-flex; align-items:center; gap:4px; margin-right:10px; font-size:10.5px; color:#6b4b2a;"><i style="width:9px; height:9px; background:' + col + '; display:inline-block; border-radius:2px;"></i>' + t + '</span>'; };
+  h += '<div style="background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:12px;"><div style="font-size:12px; font-weight:800; color:var(--maroon); margin-bottom:4px;">Changes per day</div>' + svg + '<div style="margin-top:4px;">' + key('#b3261e', 'Price up') + key('#1e7a3c', 'Price down') + key('#0b5fd8', 'Added') + key('#6b4b2a', 'Removed') + key('#c9a227', 'Other') + '</div></div>';
+  // ---- 2. biggest movers (first old price -> latest new price, in range) ----
+  var per = {};
+  inRange.forEach(function(c){ if(c.type !== 'price' || !c.serial) return; var p = per[c.serial] || (per[c.serial] = { serial: c.serial, ta: c.ta, en: c.en, first: Number(c.old), last: Number(c.new), n: 0 }); p.last = Number(c.new); p.n++; });
+  var movers = Object.keys(per).map(function(k){ var p = per[k]; p.diff = p.last - p.first; return p; }).filter(function(p){ return p.diff !== 0; }).sort(function(a, b){ return Math.abs(b.diff) - Math.abs(a.diff); }).slice(0, 8);
+  if(movers.length){
+    var mx = Math.max.apply(null, movers.map(function(p){ return Math.abs(p.diff); }));
+    h += '<div style="background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:12px;"><div style="font-size:12px; font-weight:800; color:var(--maroon); margin-bottom:6px;">Biggest price movers</div>' +
+      movers.map(function(p){ var col = p.diff > 0 ? '#b3261e' : '#1e7a3c', wpc = Math.max(4, Math.round(Math.abs(p.diff) / mx * 100));
+        return '<div style="margin-bottom:7px;"><div style="display:flex; justify-content:space-between; gap:8px; font-size:12px;"><span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">#' + esc(p.serial) + ' ' + esc(p.ta) + '</span><b style="color:' + col + '; white-space:nowrap;">' + inr(p.first) + ' &rarr; ' + inr(p.last) + '</b></div><div style="height:7px; background:#f1e7d3; border-radius:4px; margin-top:3px;"><div style="width:' + wpc + '%; height:100%; background:' + col + '; border-radius:4px;"></div></div></div>'; }).join('') + '</div>';
+  }
+  // ---- 3. price history of one item ----
+  var items = {};
+  log.forEach(function(c){ if(c.type === 'price' && c.serial){ var it = items[c.serial] || (items[c.serial] = { serial: c.serial, ta: c.ta, en: c.en, n: 0 }); it.n++; } });
+  var list = Object.keys(items).map(function(k){ return items[k]; }).sort(function(a, b){ return b.n - a.n || a.serial - b.serial; });
+  if(list.length){
+    if(!items[changesItem]) changesItem = String(list[0].serial);
+    var pts = []; log.filter(function(c){ return c.type === 'price' && String(c.serial) === String(changesItem); }).forEach(function(c, i){
+      if(i === 0) pts.push({ t: (Date.parse(c.time) || 0) - 1, v: Number(c.old), start: true });
+      pts.push({ t: Date.parse(c.time) || 0, v: Number(c.new) });
+    });
+    var sel = '<select onchange="setChangesItem(this.value)" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; background:#fff; margin-bottom:6px;">' + list.map(function(it){ return '<option value="' + it.serial + '"' + (String(it.serial) === String(changesItem) ? ' selected' : '') + '>#' + esc(it.serial) + ' ' + esc(it.ta) + ' (' + esc(it.en) + ') - ' + it.n + ' change' + (it.n > 1 ? 's' : '') + '</option>'; }).join('') + '</select>';
+    var t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = Math.max(1, t1 - t0);
+    var vmin = Math.min.apply(null, pts.map(function(p){ return p.v; })), vmax = Math.max.apply(null, pts.map(function(p){ return p.v; }));
+    if(vmax === vmin){ vmax += 1; vmin -= 1; } var pad = (vmax - vmin) * 0.15; vmax += pad; vmin = Math.max(0, vmin - pad);
+    var W2 = 340, H2 = 150, L2 = 40, R2 = 12, T2 = 14, B2 = 22, pw2 = W2 - L2 - R2, ph2 = H2 - T2 - B2;
+    var X = function(t){ return L2 + (pts.length === 1 ? pw2 : (t - t0) / span * pw2); }, Y = function(v){ return T2 + ph2 - (v - vmin) / (vmax - vmin) * ph2; };
+    var sv = '<svg viewBox="0 0 ' + W2 + ' ' + H2 + '" width="100%" style="display:block;" role="img" aria-label="Price history">';
+    for(var q = 0; q <= 3; q++){ var qv = vmin + (vmax - vmin) * q / 3, qy = Y(qv); sv += '<line x1="' + L2 + '" x2="' + (W2 - R2) + '" y1="' + qy.toFixed(1) + '" y2="' + qy.toFixed(1) + '" stroke="#eadfc9"/><text x="' + (L2 - 4) + '" y="' + (qy + 3).toFixed(1) + '" font-size="9" text-anchor="end" fill="#8a6a44">' + Math.round(qv) + '</text>'; }
+    // step line: horizontal to the new time, then vertical to the new price
+    var d2 = ''; pts.forEach(function(p, i){ if(i === 0) d2 = 'M' + X(p.t).toFixed(1) + ' ' + Y(p.v).toFixed(1); else d2 += ' H' + X(p.t).toFixed(1) + ' V' + Y(p.v).toFixed(1); });
+    sv += '<path d="' + d2 + '" fill="none" stroke="#7a1414" stroke-width="2"/>';
+    pts.forEach(function(p, i){ var col = i === 0 ? '#8a6a44' : (p.v > pts[i - 1].v ? '#b3261e' : '#1e7a3c'); sv += '<circle cx="' + X(p.t).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="3.5" fill="' + col + '"/><text x="' + X(p.t).toFixed(1) + '" y="' + (Y(p.v) - 7).toFixed(1) + '" font-size="9.5" font-weight="700" text-anchor="' + (i === pts.length - 1 && pts.length > 1 ? 'end' : (i === 0 ? 'start' : 'middle')) + '" fill="#2a1408">' + inr(p.v) + '</text>'; });
+    var fmt = function(t){ var dd = new Date(t); return dd.getDate() + '/' + (dd.getMonth() + 1); };
+    sv += '<text x="' + L2 + '" y="' + (H2 - 6) + '" font-size="9" fill="#8a6a44">' + fmt(t0) + '</text><text x="' + (W2 - R2) + '" y="' + (H2 - 6) + '" font-size="9" text-anchor="end" fill="#8a6a44">' + fmt(t1) + '</text></svg>';
+    h += '<div style="background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:12px;"><div style="font-size:12px; font-weight:800; color:var(--maroon); margin-bottom:6px;">Price history of one item</div>' + sel + sv + '</div>';
+  }
+  return h;
+}
 function setAdminItemsBranch(id){ adminItemsBranch = id; renderAdmin(); }
 /* A branch admin is an admin account tied to one branch: it sees and edits only that branch.
    adminScope() = that branch id, or '' for a full admin (and for sellers). */
@@ -5529,15 +5615,15 @@ function renderAdmin(){
     const log = (loadJSON('ars_price_changes', []) || []).slice().reverse();
     const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
     const rupee = v => (v == null || v === '') ? '—' : '&#8377;' + Number(v).toLocaleString('en-IN');
+    const _vbtn = (v, ico, t) => `<button onclick="setChangesView('${v}')" title="${t}" style="width:38px; height:34px; border-radius:8px; font-size:17px; cursor:pointer; border:1.5px solid var(--maroon); background:${changesView === v ? 'var(--maroon)' : '#fff8ea'}; color:${changesView === v ? '#fff8e6' : 'var(--maroon)'};">${ico}</button>`;
     let html = `<div class="history-head-row">
-        <div class="section-title" style="margin:0;">Price List Changes (latest first)</div>
-      </div>
-      <div class="empty-admin" style="text-align:left; padding:0 4px 10px; font-size:11.5px;">
-        Every price, unit or name change, and every item added, removed or moved — with who did it and when.
-        Recorded on this phone and stored on the Firebase server. ${log.length} record(s).
+        <div class="section-title" style="margin:0;">Price Changes</div>
+        <span style="display:flex; gap:6px;">${_vbtn('chart', '&#128200;', 'Chart view')}${_vbtn('list', '&#128203;', 'List view')}</span>
       </div>`;
     if(log.length === 0){
       html += `<div class="empty-admin">No changes recorded yet.</div>`;
+    } else if(changesView === 'chart'){
+      html += changesChartHtml(log);
     } else {
       log.slice(0, 300).forEach(c => {
         const dt = new Date(c.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
