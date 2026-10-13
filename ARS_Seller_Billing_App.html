@@ -769,8 +769,10 @@
     <div class="sticky-controls">
       <div class="search-wrap">
         <span class="ico">&#128269;</span>
-        <input id="search" type="text" placeholder="Search item... / பொருள் தேடு..." oninput="render()">
+        <input id="search" type="text" placeholder="Search item... / பொருள் தேடு..." oninput="render()" style="padding-right:46px;">
+        <button id="billFilterBtn" type="button" title="Filter items" onclick="toggleBillFilters()" style="position:absolute; right:20px; top:50%; transform:translateY(-50%); width:34px; height:32px; border:none; border-radius:8px; background:transparent; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
       </div>
+      <div id="billFilterBar" class="hidden" style="padding:0 14px 8px;"></div>
       <div class="tabbar">
         <button id="tabBilling1Btn" class="active" onclick="setTab('billing1')">&#128722; Bill 1</button>
         <button id="tabBilling2Btn" onclick="setTab('billing2')">💵 Bill 2</button>
@@ -2940,7 +2942,7 @@ function buildCatNav(){
   let html = `<div class="cat-chip${activeCat === 'ALL' ? ' active' : ''}" onclick="setCat('ALL')">All</div>`;
   CATEGORIES.forEach((cat, ci) => {
     const n = getCategoryName(ci);
-    html += `<div class="cat-chip${activeCat === String(ci) ? ' active' : ''}" onclick="setCat('${ci}')" title="${n.en}">${n.ta || n.en}</div>`;
+    html += `<div class="cat-chip${activeCat === String(ci) ? ' active' : ''}" onclick="setCat('${ci}')" title="${n.en}">${ci + 1}. ${n.ta || n.en}</div>`;
   });
   nav.innerHTML = html;
 }
@@ -3010,11 +3012,45 @@ function computeTotals(cartObj){
 }
 
 /* ---------------- RENDER MAIN LIST ---------------- */
+/* ---- Bill 1 / Bill 2 item filter: In cart, price bands, sort, reset ---- */
+var billFilters = { incart:false, band:'', sort:'' };
+var billFilterOpen = false;
+var BILL_BANDS = { b1:[0,50,'Up to \u20B950'], b2:[51,150,'\u20B951-150'], b3:[151,500,'\u20B9151-500'], b4:[501,1e9,'Above \u20B9500'] };
+function billFilterActive(){ return billFilters.incart || billFilters.band || billFilters.sort; }
+function toggleBillFilters(){ billFilterOpen = !billFilterOpen; render(); }
+function setBillFilter(k, v){ billFilters[k] = (k === 'incart') ? !billFilters.incart : (billFilters[k] === v && k === 'band' ? '' : v); render(); }
+function resetBillFilters(){ billFilters = { incart:false, band:'', sort:'' }; var el = document.getElementById('search'); if(el) el.value = ''; activeCat = 'ALL'; try{ buildCatNav(); }catch(e){} render(); }
+function billFilterPass(price, qty){
+  var f = billFilters;
+  if(f.incart && !(qty > 0)) return false;
+  if(f.band){ var b = BILL_BANDS[f.band]; if(!(price >= b[0] && price <= b[1])) return false; }
+  return true;
+}
+function renderBillFilterBar(shown){
+  var btn = document.getElementById('billFilterBtn'), bar = document.getElementById('billFilterBar');
+  if(!btn || !bar) return;
+  var billing = (activeTab === 'billing1' || activeTab === 'billing2');
+  btn.classList.toggle('hidden', !billing);
+  btn.innerHTML = billFilterOpen ? '&#9650;' : '&#9660;';
+  var on = billFilterActive();
+  btn.style.background = (billFilterOpen || on) ? 'var(--maroon)' : 'transparent';
+  btn.style.color = (billFilterOpen || on) ? '#fff8e6' : 'var(--maroon)';
+  if(!billing || !billFilterOpen){ bar.classList.add('hidden'); bar.innerHTML = ''; return; }
+  var chip = function(label, active, js){ return '<button type="button" onclick="' + js + '" style="padding:6px 11px; border-radius:16px; border:1.5px solid var(--maroon); font-weight:800; font-size:11.5px; cursor:pointer; background:' + (active ? 'var(--maroon)' : '#fff8ea') + '; color:' + (active ? '#fff8e6' : 'var(--maroon)') + ';">' + label + '</button>'; };
+  var h = '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + chip('&#128722; In cart', billFilters.incart, "setBillFilter('incart')");
+  Object.keys(BILL_BANDS).forEach(function(k){ h += chip(BILL_BANDS[k][2], billFilters.band === k, "setBillFilter('band','" + k + "')"); });
+  h += '</div><div style="display:flex; gap:6px; align-items:center;"><select onchange="setBillFilter(\'sort\', this.value)" style="flex:1; min-width:0; padding:7px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; background:#fff;">' +
+    ['', 'low', 'high'].map(function(v, i){ return '<option value="' + v + '"' + (billFilters.sort === v ? ' selected' : '') + '>' + ['Sort: S.No / category', 'Price low \u2192 high', 'Price high \u2192 low'][i] + '</option>'; }).join('') + '</select>' +
+    '<span style="font-size:11.5px; font-weight:800; color:#7a1414; white-space:nowrap;">' + shown + ' items</span>' +
+    (on || activeCat !== 'ALL' || (document.getElementById('search').value || '') ? '<button type="button" onclick="resetBillFilters()" style="padding:7px 10px; border:none; border-radius:8px; background:#7a1414; color:#fff8e6; font-weight:800; font-size:12px; cursor:pointer;">&#8635; Reset</button>' : '') + '</div>';
+  bar.innerHTML = h; bar.classList.remove('hidden');
+}
 function render(){
   const q = document.getElementById('search').value.trim().toLowerCase();
   const list = document.getElementById('list');
 
   if(activeTab === 'history'){
+    renderBillFilterBar(0);
     list.innerHTML = renderHistoryList();
     const {count, subtotal, discount, grand} = computeTotals(cart);
     document.getElementById('cbCount').textContent = count;
@@ -3027,7 +3063,7 @@ function render(){
   }
 
   let html = '';
-
+  const _flat = []; let _shown = 0;
 
   CATEGORIES.forEach((cat, ci) => {
     if(activeCat !== 'ALL' && activeCat !== String(ci)) return;
@@ -3043,6 +3079,8 @@ function render(){
       const unit = getUnit(ci, ii);
       if(activeTab === 'billing1' || activeTab === 'billing2'){
         const k = key(ci, ii); const qty = cart[k]||0;
+        if(!billFilterPass(price, qty)) return;
+        _shown++;
         const addControl = qty > 0
           ? `<div class="qty-stepper3">
               <button onclick="changeQty(${ci},${ii},-1)">&minus;</button>
@@ -3050,7 +3088,7 @@ function render(){
               <button class="plus" onclick="changeQty(${ci},${ii},1)">&plus;</button>
             </div>`
           : `<button class="add-cta2" onclick="changeQty(${ci},${ii},1)">&plus; Add</button>`;
-        rows += `<div class="item-card2 ${qty>0?'in-cart':''}">
+        const _card = `<div class="item-card2 ${qty>0?'in-cart':''}">
               <div class="item-serial-badge" title="Item #${serial}">${serial}</div>
               <div class="item-cat-badge2">${cn.en}</div>
               <div class="item-ta3">${name.ta}</div>
@@ -3058,6 +3096,7 @@ function render(){
               <div class="item-price3">&#8377;${price} <span class="item-unit3">/ ${unit}</span></div>
               ${addControl}
             </div>`;
+        rows += _card; _flat.push({ price: Number(price) || 0, serial: serial, h: _card });
       } else {
         rows += `<div class="price-row2">
             <div class="pr-serial-badge" title="Item #${serial}">${serial}</div>
@@ -3075,6 +3114,11 @@ function render(){
     }
   });
   
+  if((activeTab === 'billing1' || activeTab === 'billing2') && billFilters.sort && _flat.length){
+    _flat.sort((a, b) => billFilters.sort === 'low' ? (a.price - b.price || a.serial - b.serial) : (b.price - a.price || a.serial - b.serial));
+    html = `<div class="item-grid2">${_flat.map(x => x.h).join('')}</div>`;
+  }
+  renderBillFilterBar(_shown);
   list.innerHTML = html || `<div class="empty-state">No items found.<br/>பொருள் இல்லை.</div>`;
 
   const {count, subtotal, discount, grand} = computeTotals(cart);
