@@ -778,18 +778,18 @@
     </header>
 
     <div class="sticky-controls">
-      <div class="search-wrap">
-        <span class="ico">&#128269;</span>
-        <input id="search" type="text" placeholder="Search item... / பொருள் தேடு..." oninput="render()" style="padding-right:46px;">
-        <button id="billFilterBtn" type="button" title="Filter items" onclick="toggleBillFilters()" style="position:absolute; right:20px; top:50%; transform:translateY(-50%); width:34px; height:32px; border:none; border-radius:8px; background:transparent; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
-      </div>
-      <div id="billFilterBar" class="hidden" style="padding:0 14px 8px;"></div>
       <div class="tabbar">
         <button id="tabBilling1Btn" class="active" onclick="setTab('billing1')">&#128722; Bill 1</button>
         <button id="tabBilling2Btn" onclick="setTab('billing2')">💵 Bill 2</button>
         <button id="tabHistoryBtn" onclick="setTab('history')">&#129534; History</button>
         <button id="adminPanelBtn" class="hidden" onclick="showAdmin()"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px; margin-right:3px;"><path d="M19.14,12.94a7.43,7.43,0,0,0,0-1.88l2.03-1.58a.5.5,0,0,0,.12-.64l-1.92-3.32a.5.5,0,0,0-.6-.22l-2.39,.96a7.34,7.34,0,0,0-1.62-.94L14.4,2.18A.5.5,0,0,0,13.9,1.8H10.1a.5.5,0,0,0-.5,.38L9.24,4.92a7.34,7.34,0,0,0-1.62,.94l-2.39-.96a.5.5,0,0,0-.6,.22L2.71,8.44a.5.5,0,0,0,.12,.64L4.86,10.66a7.43,7.43,0,0,0,0,1.88L2.83,14.12a.5.5,0,0,0-.12,.64l1.92,3.32a.5.5,0,0,0,.6,.22l2.39-.96a7.34,7.34,0,0,0,1.62,.94l.36,2.74a.5.5,0,0,0,.5,.38h3.8a.5.5,0,0,0,.5-.38l.36-2.74a7.34,7.34,0,0,0,1.62-.94l2.39,.96a.5.5,0,0,0,.6-.22l1.92-3.32a.5.5,0,0,0-.12-.64ZM12,15.5A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/></svg>Admin<span class="notif-badge hidden" id="adminPanelBadge">0</span></button>
       </div>
+      <div class="search-wrap">
+        <span class="ico">&#128269;</span>
+        <input id="search" type="text" placeholder="Search item... / பொருள் தேடு..." oninput="render()" style="padding-right:46px;">
+        <button id="billFilterBtn" type="button" title="Filter items" onclick="toggleBillFilters()" style="position:absolute; right:20px; top:50%; transform:translateY(-50%); width:34px; height:32px; border:none; border-radius:8px; background:transparent; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
+      </div>
+      <div id="billFilterBar" class="hidden" style="padding:0 14px 8px;"></div>
       <nav class="cats" id="catNav"></nav>
     </div>
 
@@ -1140,15 +1140,11 @@ const CATEGORIES = (function(){
   const saved = loadJSON('ars_catalog', null);
   return (saved && Array.isArray(saved.categories) && saved.categories.length) ? saved.categories : DATA.categories;
 })();
-/* Every item keeps its own serial number (item.sn) for life: editing, deleting or undoing
-   other items never renumbers it. A new item gets the next free number. */
+/* Serial numbers always run 1..N in category order, exactly as the price list PDF prints them.
+   Adding, removing or moving an item re-sequences everything (called on load and on every catalog save). */
 function ensureSerials(){
-  var max = 0, seen = {}, need = [];
-  CATEGORIES.forEach(function(c){ (c.items || []).forEach(function(it){
-    var n = Number(it.sn);
-    if(n > 0 && !seen[n]){ seen[n] = 1; if(n > max) max = n; } else need.push(it);
-  }); });
-  need.forEach(function(it){ it.sn = ++max; });
+  var n = 0;
+  CATEGORIES.forEach(function(c){ (c.items || []).forEach(function(it){ it.sn = ++n; }); });
 }
 function nextSerial(){
   var m = 0;
@@ -1156,7 +1152,7 @@ function nextSerial(){
   return m + 1;
 }
 ensureSerials();
-function saveCatalog(){ saveJSON('ars_catalog', {categories: CATEGORIES}); }
+function saveCatalog(){ ensureSerials(); saveJSON('ars_catalog', {categories: CATEGORIES}); }
 
 document.getElementById('billShopTitle').textContent = SHOP.name_ta;
 document.getElementById('billPhone').textContent = 'Branch: Thanneerpandhal  •  Ph: ' + SHOP.phones.join(' / ');
@@ -2541,10 +2537,14 @@ let historyBranchFilter = '';
 let adminItemsBranch = '';
 let branchTabSel = '';
 /* ---- Price Changes: chart view (changes per day, price history of one item, biggest movers) ---- */
-var changesView = 'list', changesDays = 30, changesItem = '';
+var changesView = 'chart', changesDays = 30, changesItem = '';
 function setChangesView(v){ changesView = v; renderAdmin(); }
 function setChangesDays(d){ changesDays = d; renderAdmin(); }
 function setChangesItem(v){ changesItem = v; renderAdmin(); }
+function changesChipsHtml(){
+  var chip = function(d, label){ var on = changesDays === d; return '<button onclick="setChangesDays(' + d + ')" style="padding:6px 12px; border-radius:16px; border:1.5px solid var(--maroon); font-weight:800; font-size:11.5px; cursor:pointer; background:' + (on ? 'var(--maroon)' : '#fff8ea') + '; color:' + (on ? '#fff8e6' : 'var(--maroon)') + ';">' + label + '</button>'; };
+  return '<div style="display:flex; gap:7px; flex-wrap:wrap; margin:4px 0 10px;">' + chip(1, 'Today') + chip(7, '7 days') + chip(30, '30 days') + chip(0, 'All') + '</div>';
+}
 function changesChartHtml(logDesc){
   var esc = function(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[ch]; }); };
   var inr = function(v){ return '\u20B9' + Number(v).toLocaleString('en-IN'); };
@@ -2552,15 +2552,13 @@ function changesChartHtml(logDesc){
   var now = new Date(); var start0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   var from = changesDays ? start0.getTime() - (changesDays - 1) * 86400000 : 0;
   var inRange = log.filter(function(c){ return (Date.parse(c.time) || 0) >= from; });
-  var chip = function(d, label){ var on = changesDays === d; return '<button onclick="setChangesDays(' + d + ')" style="padding:6px 12px; border-radius:16px; border:1.5px solid var(--maroon); font-weight:800; font-size:11.5px; cursor:pointer; background:' + (on ? 'var(--maroon)' : '#fff8ea') + '; color:' + (on ? '#fff8e6' : 'var(--maroon)') + ';">' + label + '</button>'; };
   var up = 0, down = 0, added = 0, removed = 0, other = 0;
   inRange.forEach(function(c){
     if(c.type === 'price'){ if(Number(c.new) > Number(c.old)) up++; else down++; }
     else if(c.type === 'added') added++; else if(c.type === 'removed') removed++; else other++;
   });
   var tile = function(n, l, col){ return '<div style="flex:1; min-width:70px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 6px; text-align:center;"><div style="font-size:20px; font-weight:800; color:' + col + ';">' + n + '</div><div style="font-size:10.5px; color:#8a6a44;">' + l + '</div></div>'; };
-  var h = '<div style="display:flex; gap:7px; flex-wrap:wrap; margin:4px 0 10px;">' + chip(7, '7 days') + chip(30, '30 days') + chip(0, 'All') + '</div>' +
-    '<div style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px;">' + tile(up, 'Price up', '#b3261e') + tile(down, 'Price down', '#1e7a3c') + tile(added, 'Added', '#0b5fd8') + tile(removed, 'Removed', '#6b4b2a') + '</div>';
+  var h = '<div style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px;">' + tile(up, 'Price up', '#b3261e') + tile(down, 'Price down', '#1e7a3c') + tile(added, 'Added', '#0b5fd8') + tile(removed, 'Removed', '#6b4b2a') + '</div>';
   if(!inRange.length) return h + '<div class="empty-admin">No changes in this period.</div>';
   // ---- 1. changes per day (stacked bars) ----
   var days = changesDays || Math.max(1, Math.ceil((start0.getTime() - Date.parse(inRange[0].time)) / 86400000) + 1);
@@ -2597,32 +2595,6 @@ function changesChartHtml(logDesc){
     h += '<div style="background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:12px;"><div style="font-size:12px; font-weight:800; color:var(--maroon); margin-bottom:6px;">Biggest price movers</div>' +
       movers.map(function(p){ var col = p.diff > 0 ? '#b3261e' : '#1e7a3c', wpc = Math.max(4, Math.round(Math.abs(p.diff) / mx * 100));
         return '<div style="margin-bottom:7px;"><div style="display:flex; justify-content:space-between; gap:8px; font-size:12px;"><span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">#' + esc(p.serial) + ' ' + esc(p.ta) + '</span><b style="color:' + col + '; white-space:nowrap;">' + inr(p.first) + ' &rarr; ' + inr(p.last) + '</b></div><div style="height:7px; background:#f1e7d3; border-radius:4px; margin-top:3px;"><div style="width:' + wpc + '%; height:100%; background:' + col + '; border-radius:4px;"></div></div></div>'; }).join('') + '</div>';
-  }
-  // ---- 3. price history of one item ----
-  var items = {};
-  log.forEach(function(c){ if(c.type === 'price' && c.serial){ var it = items[c.serial] || (items[c.serial] = { serial: c.serial, ta: c.ta, en: c.en, n: 0 }); it.n++; } });
-  var list = Object.keys(items).map(function(k){ return items[k]; }).sort(function(a, b){ return b.n - a.n || a.serial - b.serial; });
-  if(list.length){
-    if(!items[changesItem]) changesItem = String(list[0].serial);
-    var pts = []; log.filter(function(c){ return c.type === 'price' && String(c.serial) === String(changesItem); }).forEach(function(c, i){
-      if(i === 0) pts.push({ t: (Date.parse(c.time) || 0) - 1, v: Number(c.old), start: true });
-      pts.push({ t: Date.parse(c.time) || 0, v: Number(c.new) });
-    });
-    var sel = '<select onchange="setChangesItem(this.value)" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; background:#fff; margin-bottom:6px;">' + list.map(function(it){ return '<option value="' + it.serial + '"' + (String(it.serial) === String(changesItem) ? ' selected' : '') + '>#' + esc(it.serial) + ' ' + esc(it.ta) + ' (' + esc(it.en) + ') - ' + it.n + ' change' + (it.n > 1 ? 's' : '') + '</option>'; }).join('') + '</select>';
-    var t0 = pts[0].t, t1 = pts[pts.length - 1].t, span = Math.max(1, t1 - t0);
-    var vmin = Math.min.apply(null, pts.map(function(p){ return p.v; })), vmax = Math.max.apply(null, pts.map(function(p){ return p.v; }));
-    if(vmax === vmin){ vmax += 1; vmin -= 1; } var pad = (vmax - vmin) * 0.15; vmax += pad; vmin = Math.max(0, vmin - pad);
-    var W2 = 340, H2 = 150, L2 = 40, R2 = 12, T2 = 14, B2 = 22, pw2 = W2 - L2 - R2, ph2 = H2 - T2 - B2;
-    var X = function(t){ return L2 + (pts.length === 1 ? pw2 : (t - t0) / span * pw2); }, Y = function(v){ return T2 + ph2 - (v - vmin) / (vmax - vmin) * ph2; };
-    var sv = '<svg viewBox="0 0 ' + W2 + ' ' + H2 + '" width="100%" style="display:block;" role="img" aria-label="Price history">';
-    for(var q = 0; q <= 3; q++){ var qv = vmin + (vmax - vmin) * q / 3, qy = Y(qv); sv += '<line x1="' + L2 + '" x2="' + (W2 - R2) + '" y1="' + qy.toFixed(1) + '" y2="' + qy.toFixed(1) + '" stroke="#eadfc9"/><text x="' + (L2 - 4) + '" y="' + (qy + 3).toFixed(1) + '" font-size="9" text-anchor="end" fill="#8a6a44">' + Math.round(qv) + '</text>'; }
-    // step line: horizontal to the new time, then vertical to the new price
-    var d2 = ''; pts.forEach(function(p, i){ if(i === 0) d2 = 'M' + X(p.t).toFixed(1) + ' ' + Y(p.v).toFixed(1); else d2 += ' H' + X(p.t).toFixed(1) + ' V' + Y(p.v).toFixed(1); });
-    sv += '<path d="' + d2 + '" fill="none" stroke="#7a1414" stroke-width="2"/>';
-    pts.forEach(function(p, i){ var col = i === 0 ? '#8a6a44' : (p.v > pts[i - 1].v ? '#b3261e' : '#1e7a3c'); sv += '<circle cx="' + X(p.t).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="3.5" fill="' + col + '"/><text x="' + X(p.t).toFixed(1) + '" y="' + (Y(p.v) - 7).toFixed(1) + '" font-size="9.5" font-weight="700" text-anchor="' + (i === pts.length - 1 && pts.length > 1 ? 'end' : (i === 0 ? 'start' : 'middle')) + '" fill="#2a1408">' + inr(p.v) + '</text>'; });
-    var fmt = function(t){ var dd = new Date(t); return dd.getDate() + '/' + (dd.getMonth() + 1); };
-    sv += '<text x="' + L2 + '" y="' + (H2 - 6) + '" font-size="9" fill="#8a6a44">' + fmt(t0) + '</text><text x="' + (W2 - R2) + '" y="' + (H2 - 6) + '" font-size="9" text-anchor="end" fill="#8a6a44">' + fmt(t1) + '</text></svg>';
-    h += '<div style="background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:12px;"><div style="font-size:12px; font-weight:800; color:var(--maroon); margin-bottom:6px;">Price history of one item</div>' + sel + sv + '</div>';
   }
   return h;
 }
@@ -3111,7 +3083,9 @@ function computeTotals(cartObj){
 /* ---------------- RENDER MAIN LIST ---------------- */
 /* ---- Bill 1 / Bill 2 item filter: In cart, price bands, sort, reset ---- */
 var billFilters = { incart:false, recent:false, sort:'' };
-var billFilterOpen = false;
+var billFilterOpen = false, billCatOpen = false;
+function toggleBillCat(){ billCatOpen = !billCatOpen; render(); }
+function pickBillCat(v){ billCatOpen = false; setCat(v); }
 function billFilterActive(){ return billFilters.incart || billFilters.recent || billFilters.sort || activeCat !== 'ALL'; }
 /* Recently billed items: from this account's bills of the last 30 days (admin: all bills) in the active branch,
    ranked by how often they were billed, then by how recently. Matched by the item's English name. */
@@ -3150,14 +3124,22 @@ function renderBillFilterBar(shown){
   btn.style.background = (billFilterOpen || on) ? 'var(--maroon)' : 'transparent';
   btn.style.color = (billFilterOpen || on) ? '#fff8e6' : 'var(--maroon)';
   if(!billing || !billFilterOpen){ bar.classList.add('hidden'); bar.innerHTML = ''; return; }
-  var chip = function(label, active, js){ return '<button type="button" onclick="' + js + '" style="padding:6px 11px; border-radius:16px; border:1.5px solid var(--maroon); font-weight:800; font-size:11.5px; cursor:pointer; background:' + (active ? 'var(--maroon)' : '#fff8ea') + '; color:' + (active ? '#fff8e6' : 'var(--maroon)') + ';">' + label + '</button>'; };
-  var h = '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + chip('&#128344; Recent billed', billFilters.recent, "setBillFilter('recent')") + chip('&#128722; In cart', billFilters.incart, "setBillFilter('incart')");
-  h += '</div><select onchange="setCat(this.value)" style="width:100%; margin-bottom:6px; padding:7px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; background:#fff;"><option value="ALL"' + (activeCat === 'ALL' ? ' selected' : '') + '>All categories</option>' +
-    CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci), cnt = c.items.filter(function(x, ii){ return isItemInBranch(ci, ii, activeBranchId); }).length; return cnt ? '<option value="' + ci + '"' + (activeCat === String(ci) ? ' selected' : '') + '>' + (ci + 1) + '. ' + (n.ta || n.en) + ' (' + n.en + ') - ' + cnt + '</option>' : ''; }).join('') +
-    '</select><div style="display:flex; gap:6px; align-items:center;"><select onchange="setBillFilter(\'sort\', this.value)" style="flex:1; min-width:0; padding:7px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; background:#fff;">' +
-    ['', 'low', 'high'].map(function(v, i){ return '<option value="' + v + '"' + (billFilters.sort === v ? ' selected' : '') + '>' + ['Sort: S.No / category', 'Price low \u2192 high', 'Price high \u2192 low'][i] + '</option>'; }).join('') + '</select>' +
+  var ib = function(ico, tip, active, js, extra){ return '<button type="button" title="' + tip + '" aria-label="' + tip + '" onclick="' + js + '" style="min-width:46px; height:42px; padding:0 6px; border-radius:12px; border:1.5px solid var(--maroon); font-weight:800; font-size:' + (extra ? '13px' : '20px') + '; line-height:1; cursor:pointer; background:' + (active ? 'var(--maroon)' : '#fff8ea') + '; color:' + (active ? '#fff8e6' : 'var(--maroon)') + ';">' + ico + '</button>'; };
+  var catOn = activeCat !== 'ALL';
+  var h = '<div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center;">' +
+    ib('&#128344;', 'Recent billed', billFilters.recent, "setBillFilter('recent')") +
+    ib('&#128722;', 'In cart', billFilters.incart, "setBillFilter('incart')") +
+    ib('&#128193;', 'Category', billCatOpen || catOn, 'toggleBillCat()') +
+    ib('&#8645;', 'S.No / category order', !billFilters.sort, "setBillFilter('sort','')") +
+    ib('&#8377;&#9650;', 'Price low to high', billFilters.sort === 'low', "setBillFilter('sort','low')", 1) +
+    ib('&#8377;&#9660;', 'Price high to low', billFilters.sort === 'high', "setBillFilter('sort','high')", 1) +
     '<span style="font-size:11.5px; font-weight:800; color:#7a1414; white-space:nowrap;">' + shown + ' items</span>' +
-    (on || activeCat !== 'ALL' || (document.getElementById('search').value || '') ? '<button type="button" onclick="resetBillFilters()" style="padding:7px 10px; border:none; border-radius:8px; background:#7a1414; color:#fff8e6; font-weight:800; font-size:12px; cursor:pointer;">&#8635; Reset</button>' : '') + '</div>';
+    (on || (document.getElementById('search').value || '') ? '<button type="button" title="Reset" aria-label="Reset" onclick="resetBillFilters()" style="width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>' : '') + '</div>';
+  if(billCatOpen){
+    var row = function(val, label, cnt){ var sel = activeCat === val; return '<button type="button" onclick="pickBillCat(\'' + val + '\')" style="display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; padding:9px 11px; border:none; border-bottom:1px solid var(--line); background:' + (sel ? 'var(--maroon)' : '#fff') + '; color:' + (sel ? '#fff8e6' : 'var(--maroon)') + '; font-weight:700; font-size:12.5px; cursor:pointer;"><span>' + label + '</span><span>' + cnt + '</span></button>'; };
+    h += '<div style="margin-top:8px; max-height:240px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('ALL', 'All categories', shown) +
+      CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci), cnt = c.items.filter(function(x, ii){ return isItemInBranch(ci, ii, activeBranchId); }).length; return cnt ? row(String(ci), (ci + 1) + '. ' + (n.ta || n.en) + ' (' + n.en + ')', cnt) : ''; }).join('') + '</div>';
+  }
   bar.innerHTML = h; bar.classList.remove('hidden');
 }
 function render(){
@@ -3613,10 +3595,15 @@ async function openPriceListPDFPreview(){
     const vp = document.querySelector('meta[name="viewport"]');
     if(vp) vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=5, minimum-scale=1, user-scalable=yes, viewport-fit=cover');
 
+    // Show the price list itself (no image rendering step) - appears instantly, scaled to fit the screen.
     const html = buildPriceListTableHTML();
-    const blob = await renderOffscreenToImageBlob(html);
-    const url = URL.createObjectURL(blob);
-    body.innerHTML = `<img src="${url}" style="width:100%; height:auto; display:block; touch-action:pinch-zoom;" alt="Price List Preview">`;
+    body.innerHTML = '<div id="plPrevScale" style="width:210mm; margin:0 auto; text-align:left; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.25);">' + html + '</div>';
+    const sc = document.getElementById('plPrevScale');
+    const avail = Math.max(240, (body.clientWidth || window.innerWidth) - 20);
+    const z = Math.min(1, avail / (sc.offsetWidth || 794));
+    sc.style.zoom = z; sc.style.margin = '0';
+    // warm up the PDF/image libraries in the background so Share / Download start at once
+    try{ ensureHtml2Canvas().catch(function(){}); ensureJsPDF().catch(function(){}); }catch(_e){}
   } catch(e){
     body.innerHTML = '<div style="padding:40px; color:#b3261e;">Could not generate preview. ' + (e && e.message ? e.message : 'Please try again.') + '</div>';
   }
@@ -4492,6 +4479,7 @@ function ensureHtml2Canvas(){
   return _html2canvasLoadPromise;
 }
 
+setTimeout(function(){ try{ if(navigator.onLine){ ensureHtml2Canvas().catch(function(){}); ensureJsPDF().catch(function(){}); } }catch(e){} }, 4000);
 let _qrLibLoadPromise = null;
 /* Several mirrors of the same QR library. One CDN being down, blocked by the
    browser's shields, or unreachable on the shop's connection should not stop
@@ -5619,13 +5607,19 @@ function renderAdmin(){
     let html = `<div class="history-head-row">
         <div class="section-title" style="margin:0;">Price Changes</div>
         <span style="display:flex; gap:6px;">${_vbtn('chart', '&#128200;', 'Chart view')}${_vbtn('list', '&#128203;', 'List view')}</span>
-      </div>`;
+      </div>` + changesChipsHtml();
+    const _from = changesDays ? (new Date().setHours(0,0,0,0) - (changesDays - 1) * 86400000) : 0;
+    const flog = log.filter(c => (Date.parse(c.time) || 0) >= _from);
     if(log.length === 0){
       html += `<div class="empty-admin">No changes recorded yet.</div>`;
-    } else if(changesView === 'chart'){
-      html += changesChartHtml(log);
+    } else if(changesView === 'chart' && !flog.length){
+      html += `<div class="empty-admin">No changes in this period.</div>`;
+    } else if(!flog.length){
+      html += `<div class="empty-admin">No changes in this period.</div>`;
     } else {
-      log.slice(0, 300).forEach(c => {
+      if(changesView === 'chart') html += changesChartHtml(log) + '<div class="section-title" style="margin:14px 0 8px;">All changes in this period (' + flog.length + ')</div>';
+      const _badge = (t, bg) => `<span style="display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:#fff; background:${bg}; border-radius:6px; padding:2px 6px; margin-left:6px;">${t}</span>`;
+      flog.slice(0, 300).forEach(c => {
         const dt = new Date(c.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
         let what, color = 'var(--maroon)';
         if(c.type === 'price'){ what = 'Price ' + rupee(c.old) + ' &rarr; <b>' + rupee(c.new) + '</b>'; color = (Number(c.new) > Number(c.old)) ? '#b3261e' : '#1e7a3c'; }
@@ -5638,7 +5632,7 @@ function renderAdmin(){
         const canUndo = (c.type === 'price' && c.old != null && c.new != null) || c.type === 'unit' || c.type === 'name' || c.type === 'moved' || c.type === 'added' || c.type === 'removed';
         html += `<div class="sale-card" style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
             <div style="flex:1; min-width:0;">
-              <div style="font-weight:800; font-size:13px;">${c.serial ? '#' + esc(c.serial) + ' &middot; ' : ''}${esc(c.ta)} <span style="font-size:10.5px; font-weight:600; color:#8a6a44;">${esc(c.en)}</span></div>
+              <div style="font-weight:800; font-size:13px;">${c.serial ? '#' + esc(c.serial) + ' &middot; ' : ''}${esc(c.ta)} <span style="font-size:10.5px; font-weight:600; color:#8a6a44;">${esc(c.en)}</span>${c.type === 'added' ? _badge('New', '#0b5fd8') : c.type === 'removed' ? _badge('Removed', '#6b4b2a') : c.type === 'price' ? (Number(c.new) > Number(c.old) ? _badge('Price up', '#b3261e') : _badge('Price down', '#1e7a3c')) : _badge('Updated', '#c98a00')}</div>
               <div style="font-size:9px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; color:var(--ember); margin-top:2px;">${esc(c.cat)}</div>
               <div style="margin-top:5px; font-size:13px; color:${color};">${what}</div>
               <div class="sc-time" style="margin-top:4px;">${dt} &middot; ${esc(c.by || 'System')}${c.source ? ' &middot; ' + esc(c.source) : ''}</div>
@@ -5646,7 +5640,7 @@ function renderAdmin(){
             ${canUndo ? `<button onclick="undoChange('${esc(c.id)}')" title="Undo this change" style="flex-shrink:0; background:#fff3e0; border:1.5px solid #e8710a; color:#b45309; border-radius:8px; padding:7px 10px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap;">&#8617; Undo</button>` : ''}
           </div>`;
       });
-      if(log.length > 300) html += `<div class="empty-admin">Showing the latest 300 of ${log.length}.</div>`;
+      if(flog.length > 300) html += `<div class="empty-admin">Showing the latest 300 of ${flog.length}.</div>`;
     }
     main.innerHTML = html;
 
