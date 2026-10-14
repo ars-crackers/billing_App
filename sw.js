@@ -1,6 +1,6 @@
 /* A.R.S Billing service worker - makes the app installable (shows in the app drawer)
    and lets it open with no signal. Pages: network first, falls back to the saved copy. */
-var CACHE = 'ars-billing-v12';
+var CACHE = 'ars-billing-v13';
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){
     return c.addAll(['./', 'ARS_Seller_Billing_App.html', 'icon-192.png', 'icon-512.png']).catch(function(){});

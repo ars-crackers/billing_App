@@ -3542,6 +3542,38 @@ async function openPriceQr(mode){
     box.innerHTML = '<div style="color:var(--danger); font-size:13px;">' + (e && e.message ? e.message : 'Could not create the QR.') + '</div>';
   }
 }
+var _upiShow = null;
+/* Shows (and lets the admin print) the shop's own UPI QR for a customer to scan and pay — one QR per UPI account. */
+async function openUpiShowQr(n){
+  normalizeUpi();
+  var sl = (n === 2) ? UPI.slot2 : UPI.slot1;
+  var idEl = document.getElementById('upiId' + n);
+  if(idEl && idEl.value.trim() !== (sl.id || '')){
+    // The ID was just edited: save it (uploads to the server like the Save button), then make the new QR.
+    await saveUpiSettings();
+    sl = (n === 2) ? UPI.slot2 : UPI.slot1;
+    idEl = document.getElementById('upiId' + n);
+    if(idEl && idEl.value.trim() !== (sl.id || '')) return;   // saving was cancelled
+  }
+  if(!sl.id){ alert('Enter a UPI ID for Account ' + n + ' and save it first.'); return; }
+  _qrMode = 'upi';
+  var brName = (sl.branch && BRANCHES[sl.branch]) ? BRANCHES[sl.branch].name : 'All branches';
+  _upiShow = { n: n, id: sl.id, name: sl.name || SHOP.name_en, branch: brName };
+  var overlay = document.getElementById('priceQrOverlay'), box = document.getElementById('priceQrBox');
+  document.getElementById('priceQrTitle').textContent = 'UPI QR \u2022 Account ' + n;
+  document.getElementById('priceQrNote').innerHTML = 'Customers scan this with any UPI app (GPay, PhonePe, Paytm) and type the amount.<br><b>' + _upiShow.name + '</b> \u2022 ' + brName;
+  document.getElementById('priceQrUrl').textContent = sl.id;
+  overlay.classList.add('show');
+  box.innerHTML = '<div style="color:#8a6a44; font-size:13px;">Generating\u2026</div>';
+  try{
+    await ensureQRCodeLib();
+    box.innerHTML = '';
+    var uri = 'upi://pay?pa=' + encodeURIComponent(sl.id) + '&pn=' + encodeURIComponent(_upiShow.name) + '&cu=INR';
+    new window.QRCode(box, { text: uri, width: 220, height: 220, colorDark: '#2a1408', colorLight: '#ffffff' });
+  }catch(e){
+    box.innerHTML = '<div style="color:var(--danger); font-size:13px;">' + (e && e.message ? e.message : 'Could not create the QR.') + '</div>';
+  }
+}
 function closePriceQr(){ document.getElementById('priceQrOverlay').classList.remove('show'); }
 
 /* Prints any receipt-style HTML on the 80mm thermal paper size (the print rules
@@ -3571,8 +3603,8 @@ async function printPriceQr(){
   try{ if(cv && cv.width > 0) src = cv.toDataURL('image/png'); }catch(e){}
   if(!src){ var im = box.querySelector('img'); if(im && im.src) src = im.src; }
   if(!src){ alert('The QR is not ready yet. Please wait a moment and try again.'); return; }
-  var title = _qrMode === 'price' ? 'SCAN FOR PRICE LIST' : 'SCAN TO OPEN BILLING APP';
-  var note = _qrMode === 'price' ? "Scan to see today's prices" : 'Scan with your phone camera';
+  var title = _qrMode === 'price' ? 'SCAN FOR PRICE LIST' : (_qrMode === 'upi' ? 'SCAN &amp; PAY (UPI)' : 'SCAN TO OPEN BILLING APP');
+  var note = _qrMode === 'price' ? "Scan to see today's prices" : (_qrMode === 'upi' && _upiShow ? ('<b>' + _upiShow.name + '</b><br>' + _upiShow.id + '<br>GPay \u2022 PhonePe \u2022 Paytm') : 'Scan with your phone camera');
   var img = new Image();
   img.src = src;
   try{ await img.decode(); }catch(e){}
@@ -5855,7 +5887,8 @@ function renderAdmin(){
   } else if(adminTab === 'upi'){
     normalizeUpi();
     const brOpts = sel => `<option value="" ${!sel?'selected':''}>All branches</option>` + liveBranches().map(b => `<option value="${b.id}" ${sel===b.id?'selected':''}>${b.name} (${b.short})</option>`).join('');
-    const upiCard = (n, sl) => `<div class="discount-card">
+    const upiCard = (n, sl) => `<div class="discount-card" style="position:relative;">
+        <button type="button" onclick="openUpiShowQr(${n})" title="Show &amp; print this UPI QR" aria-label="Print UPI QR ${n}" style="position:absolute; top:8px; right:10px; width:auto; padding:2px 4px; background:none; border:none; box-shadow:none; font-size:22px; line-height:1; color:var(--maroon); cursor:pointer;">&#128424;</button>
         <div class="section-title" style="margin-top:0;">UPI Account ${n}</div>
         <div class="check-row">
           <label class="toggle-switch">
