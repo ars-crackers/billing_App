@@ -593,6 +593,7 @@
     margin:0 -12px 14px; padding:12px 12px 2px; box-shadow:0 3px 8px rgba(0,0,0,0.08);
     border-bottom:1px solid var(--line);
   }
+  .pl-sticky-head{position:sticky; top:-12px; z-index:9; background:var(--cream); margin:0 -12px 10px !important; padding:10px 12px !important; box-shadow:0 3px 8px rgba(0,0,0,0.08); border-bottom:1px solid var(--line);}
   .stat-card .sv{font-size:17px; font-weight:800; color:var(--maroon);}
   .stat-card .sl{font-size:9.5px; color:var(--ink-soft); margin-top:3px;}
   .section-title{font-size:13px; font-weight:800; color:var(--maroon); margin:14px 4px 8px;}
@@ -5503,9 +5504,10 @@ function renderAdmin(){
         <div class="stat-card"><div class="sv">${CATEGORIES.length}</div><div class="sl">Categories</div></div>
       </div>
 
-      <div class="history-head-row">
+      <div class="history-head-row pl-sticky-head">
         <div class="section-title" style="margin:0;">Price List</div>
         <span style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button onclick="openPriceListPDFPreview()" title="Preview latest Price List" class="icon-btn-sm" style="background:#fff8e6; border:1.5px solid var(--maroon);">&#128065;&#65039;</button>
           <button onclick="sharePriceListPDF(this)" title="Share Price List PDF" class="icon-btn-sm" style="background:#7a1414; color:#fff;">&#128228;</button>
           <button onclick="exportPriceListExcel()" title="Export Price List as Excel" class="icon-btn-sm">&#128202;</button>
           <button onclick="triggerPriceListImport()" title="Import Price List from Excel" class="icon-btn-sm">&#128193;</button>
