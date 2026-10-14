@@ -16,7 +16,6 @@
 <title>A.R.S Crackers — Seller Billing</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
 <script>
@@ -1826,34 +1825,6 @@ function initFirebase(opts){
   try{ if(window.firebase.analytics && FB_CONFIG.measurementId) firebase.analytics(); }catch(e){}
   try{
     _fbDb = firebase.database();
-    // Silent anonymous sign-in first (no email / password). Listeners start once it is done.
-    fbEnsureAuth().then(_fbStartListeners);
-  }catch(e){
-    _fbDb = null;
-    fbNoteError(e);
-  }
-}
-/* Anonymous Firebase sign-in, done once per page load. If it fails (e.g. Anonymous sign-in
-   not switched on yet in the Firebase console) the app carries on exactly as before. */
-let _fbAuthP = null;
-function fbEnsureAuth(){
-  if(_fbAuthP) return _fbAuthP;
-  try{
-    if(!window.firebase || !firebase.auth) return (_fbAuthP = Promise.resolve());
-    var a = firebase.auth();
-    _fbAuthP = new Promise(function(resolve){
-      var un = a.onAuthStateChanged(function(u){
-        un();
-        if(u){ resolve(); return; }
-        a.signInAnonymously().then(function(){ resolve(); }).catch(function(e){ _fbAuthP = null; fbNoteError(e); resolve(); });
-      });
-    });
-  }catch(e){ _fbAuthP = Promise.resolve(); }
-  return _fbAuthP;
-}
-function _fbStartListeners(){
-  if(!_fbDb) return;
-  try{
 
     // Connection state, so the admin can see at a glance whether it's live.
     _fbDb.ref('.info/connected').on('value', function(snap){
@@ -1892,6 +1863,7 @@ function _fbStartListeners(){
       Object.keys(_fbDirty).forEach(function(name){ if(FB_DOCS[name]) fbPushDoc(name); });
     }, fbNoteError);
   }catch(e){
+    _fbDb = null;
     fbNoteError(e);
   }
 }
@@ -1911,7 +1883,6 @@ function ensureFirebaseLib(){
   }
   _fbLibPromise = load('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js')
     .then(function(){ return load('https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js'); })
-    .then(function(){ return load('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js'); })
     .catch(function(e){ _fbLibPromise = null; throw e; });
   return _fbLibPromise;
 }
@@ -1935,7 +1906,6 @@ async function fbFullSync(){
     await fbTimeout(ensureFirebaseLib(), 10000, 'Loading');
     initFirebase();
     if(!_fbDb) return;
-    await fbEnsureAuth();
     var names = Object.keys(FB_DOCS);
     for(var i = 0; i < names.length; i++){
       var snap = await fbTimeout(_fbDb.ref(FB_DOCS[names[i]].path).once('value'), 15000, 'Sync');
@@ -1979,7 +1949,6 @@ async function testFirebaseConnection(){
   catch(e){ bad((e && e.message) || 'Could not load the Firebase library'); return; }
 
   initFirebase();
-  await fbEnsureAuth();
   if(!_fbDb){ bad('Could not start Firebase with this config' + (_fbLastError ? ' — ' + _fbLastError : '')); return; }
   ok('Project: ' + (FB_CONFIG.projectId || FB_CONFIG.databaseURL));
 
@@ -2605,7 +2574,7 @@ function changesChartHtml(logDesc){
   var maxV = 1; buckets.forEach(function(b){ var t = b.up + b.down + b.add + b.rem + b.oth; if(t > maxV) maxV = t; });
   maxV = Math.max(4, Math.ceil(maxV / 4) * 4);   // whole-number gridlines
   var W = 340, H = 150, L = 26, B = 22, T = 8, pw = W - L - 6, ph = H - B - T, bw = pw / days;
-  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;" role="img" aria-label="Changes per day">';
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block; width:100%; max-width:560px; margin:0 auto;" role="img" aria-label="Changes per day">';
   for(var g = 0; g <= 4; g++){ var gv = Math.round(maxV * g / 4), gy = T + ph - ph * g / 4; svg += '<line x1="' + L + '" x2="' + (W - 6) + '" y1="' + gy + '" y2="' + gy + '" stroke="#eadfc9" stroke-width="1"/><text x="' + (L - 4) + '" y="' + (gy + 3) + '" font-size="9" text-anchor="end" fill="#8a6a44">' + gv + '</text>'; }
   buckets.forEach(function(b, i){
     var y = T + ph, x = L + i * bw + bw * 0.15, w = Math.max(1.5, bw * 0.7);
@@ -2617,14 +2586,14 @@ function changesChartHtml(logDesc){
   for(var d = 0; d < days; d += step){ var dd = new Date(s0 + d * 86400000); svg += '<text x="' + (L + d * bw + bw / 2).toFixed(1) + '" y="' + (H - 6) + '" font-size="9" text-anchor="middle" fill="#8a6a44">' + dd.getDate() + '/' + (dd.getMonth() + 1) + '</text>'; }
   svg += '</svg>';
   var key = function(col, t){ return '<span style="display:inline-flex; align-items:center; gap:4px; margin-right:10px; font-size:10.5px; color:#6b4b2a;"><i style="width:9px; height:9px; background:' + col + '; display:inline-block; border-radius:2px;"></i>' + t + '</span>'; };
-  h += '<div style="background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:12px;"><div style="font-size:12px; font-weight:800; color:var(--maroon); margin-bottom:4px;">Changes per day</div>' + svg + '<div style="margin-top:4px;">' + key('#b3261e', 'Price up') + key('#1e7a3c', 'Price down') + key('#0b5fd8', 'Added') + key('#6b4b2a', 'Removed') + key('#c9a227', 'Other') + '</div></div>';
+  h += '<div style="background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px; margin:0 auto 12px; max-width:620px;"><div style="font-size:12px; font-weight:800; color:var(--maroon); margin-bottom:4px;">Changes per day</div>' + svg + '<div style="margin-top:4px;">' + key('#b3261e', 'Price up') + key('#1e7a3c', 'Price down') + key('#0b5fd8', 'Added') + key('#6b4b2a', 'Removed') + key('#c9a227', 'Other') + '</div></div>';
   // ---- 2. biggest movers (first old price -> latest new price, in range) ----
   var per = {};
   inRange.forEach(function(c){ if(c.type !== 'price' || !c.serial) return; var p = per[c.serial] || (per[c.serial] = { serial: c.serial, ta: c.ta, en: c.en, first: Number(c.old), last: Number(c.new), n: 0 }); p.last = Number(c.new); p.n++; });
   var movers = Object.keys(per).map(function(k){ var p = per[k]; p.diff = p.last - p.first; return p; }).filter(function(p){ return p.diff !== 0; }).sort(function(a, b){ return Math.abs(b.diff) - Math.abs(a.diff); }).slice(0, 8);
   if(movers.length){
     var mx = Math.max.apply(null, movers.map(function(p){ return Math.abs(p.diff); }));
-    h += '<div style="background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:12px;"><div style="font-size:12px; font-weight:800; color:var(--maroon); margin-bottom:6px;">Biggest price movers</div>' +
+    h += '<div style="background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px; margin:0 auto 12px; max-width:620px;"><div style="font-size:12px; font-weight:800; color:var(--maroon); margin-bottom:6px;">Biggest price movers</div>' +
       movers.map(function(p){ var col = p.diff > 0 ? '#b3261e' : '#1e7a3c', wpc = Math.max(4, Math.round(Math.abs(p.diff) / mx * 100));
         return '<div style="margin-bottom:7px;"><div style="display:flex; justify-content:space-between; gap:8px; font-size:12px;"><span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">#' + esc(p.serial) + ' ' + esc(p.ta) + '</span><b style="color:' + col + '; white-space:nowrap;">' + inr(p.first) + ' &rarr; ' + inr(p.last) + '</b></div><div style="height:7px; background:#f1e7d3; border-radius:4px; margin-top:3px;"><div style="width:' + wpc + '%; height:100%; background:' + col + '; border-radius:4px;"></div></div></div>'; }).join('') + '</div>';
   }
@@ -2782,7 +2751,6 @@ async function fetchLatestUsers(){
   await fbTimeout(ensureFirebaseLib(), 10000, 'Loading');
   initFirebase();
   if(!_fbDb) throw new Error('no db');
-  await fbEnsureAuth();
   // a local, not-yet-uploaded account change must win over the server copy
   if(_fbDirty.users){ fbPushDoc('users'); return 'local'; }
   const snap = await fbTimeout(_fbDb.ref('users').once('value'), 10000, 'Users');
