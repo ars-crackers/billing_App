@@ -16,6 +16,7 @@
 <title>A.R.S Crackers — Seller Billing</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
 <script>
@@ -1825,6 +1826,34 @@ function initFirebase(opts){
   try{ if(window.firebase.analytics && FB_CONFIG.measurementId) firebase.analytics(); }catch(e){}
   try{
     _fbDb = firebase.database();
+    // Silent anonymous sign-in first (no email / password). Listeners start once it is done.
+    fbEnsureAuth().then(_fbStartListeners);
+  }catch(e){
+    _fbDb = null;
+    fbNoteError(e);
+  }
+}
+/* Anonymous Firebase sign-in, done once per page load. If it fails (e.g. Anonymous sign-in
+   not switched on yet in the Firebase console) the app carries on exactly as before. */
+let _fbAuthP = null;
+function fbEnsureAuth(){
+  if(_fbAuthP) return _fbAuthP;
+  try{
+    if(!window.firebase || !firebase.auth) return (_fbAuthP = Promise.resolve());
+    var a = firebase.auth();
+    _fbAuthP = new Promise(function(resolve){
+      var un = a.onAuthStateChanged(function(u){
+        un();
+        if(u){ resolve(); return; }
+        a.signInAnonymously().then(function(){ resolve(); }).catch(function(e){ _fbAuthP = null; fbNoteError(e); resolve(); });
+      });
+    });
+  }catch(e){ _fbAuthP = Promise.resolve(); }
+  return _fbAuthP;
+}
+function _fbStartListeners(){
+  if(!_fbDb) return;
+  try{
 
     // Connection state, so the admin can see at a glance whether it's live.
     _fbDb.ref('.info/connected').on('value', function(snap){
@@ -1863,7 +1892,6 @@ function initFirebase(opts){
       Object.keys(_fbDirty).forEach(function(name){ if(FB_DOCS[name]) fbPushDoc(name); });
     }, fbNoteError);
   }catch(e){
-    _fbDb = null;
     fbNoteError(e);
   }
 }
@@ -1883,6 +1911,7 @@ function ensureFirebaseLib(){
   }
   _fbLibPromise = load('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js')
     .then(function(){ return load('https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js'); })
+    .then(function(){ return load('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js'); })
     .catch(function(e){ _fbLibPromise = null; throw e; });
   return _fbLibPromise;
 }
@@ -1906,6 +1935,7 @@ async function fbFullSync(){
     await fbTimeout(ensureFirebaseLib(), 10000, 'Loading');
     initFirebase();
     if(!_fbDb) return;
+    await fbEnsureAuth();
     var names = Object.keys(FB_DOCS);
     for(var i = 0; i < names.length; i++){
       var snap = await fbTimeout(_fbDb.ref(FB_DOCS[names[i]].path).once('value'), 15000, 'Sync');
@@ -1949,6 +1979,7 @@ async function testFirebaseConnection(){
   catch(e){ bad((e && e.message) || 'Could not load the Firebase library'); return; }
 
   initFirebase();
+  await fbEnsureAuth();
   if(!_fbDb){ bad('Could not start Firebase with this config' + (_fbLastError ? ' — ' + _fbLastError : '')); return; }
   ok('Project: ' + (FB_CONFIG.projectId || FB_CONFIG.databaseURL));
 
@@ -2751,6 +2782,7 @@ async function fetchLatestUsers(){
   await fbTimeout(ensureFirebaseLib(), 10000, 'Loading');
   initFirebase();
   if(!_fbDb) throw new Error('no db');
+  await fbEnsureAuth();
   // a local, not-yet-uploaded account change must win over the server copy
   if(_fbDirty.users){ fbPushDoc('users'); return 'local'; }
   const snap = await fbTimeout(_fbDb.ref('users').once('value'), 10000, 'Users');
