@@ -1038,7 +1038,14 @@
   </div>
   <div class="pubTabs" style="padding:8px 10px; background:var(--paper); border-bottom:1px solid var(--line);"></div>
   <div style="background:#fff7e0; color:#7a4a00; font-size:11.5px; font-weight:700; text-align:center; padding:5px 8px;">Tap any item to add quantity &bull; பொருளை தொட்டு எண்ணிக்கை சேர்க்கவும்</div>
-  <div id="publicPrevBody" style="flex:1; overflow:auto; padding:8px 0 90px;"></div>
+  <div style="flex:1; min-height:0; position:relative; display:flex;">
+    <div id="publicPrevBody" style="flex:1; overflow:auto; padding:8px 0 210px; touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch;"></div>
+    <div style="position:absolute; right:8px; top:8px; display:flex; flex-direction:column; gap:6px; z-index:3;">
+      <button onclick="ppvZoom(1.3)" aria-label="Zoom in" style="width:40px; height:40px; border:none; border-radius:10px; background:rgba(122,20,20,.92); color:#fff; font-size:22px; font-weight:800; cursor:pointer;">+</button>
+      <button onclick="ppvZoom(1/1.3)" aria-label="Zoom out" style="width:40px; height:40px; border:none; border-radius:10px; background:rgba(122,20,20,.92); color:#fff; font-size:22px; font-weight:800; cursor:pointer;">&minus;</button>
+      <button onclick="ppvZoom(0)" aria-label="Fit" style="width:40px; height:40px; border:none; border-radius:10px; background:rgba(122,20,20,.92); color:#fff; font-size:13px; font-weight:800; cursor:pointer;">Fit</button>
+    </div>
+  </div>
   <div id="pubQtySheet" style="display:none; position:absolute; left:0; right:0; bottom:0; background:#fff; border-top:3px solid #1e7a3c; padding:12px 14px calc(12px + env(safe-area-inset-bottom)); box-shadow:0 -4px 14px rgba(0,0,0,.25);"></div>
 </div>
 
@@ -3945,7 +3952,7 @@ var _pubTab = 'add';
 function _pubShow(which){
   ['publicChoiceScreen','publicPriceScreen','publicPrevScreen','publicEstScreen'].forEach(function(id){ document.getElementById(id).style.display = 'none'; });
   _pubTab = which;
-  if(which === 'list'){ document.getElementById('publicPrevScreen').style.display = 'flex'; _pubViewport(true); paintPublicPreview(); }
+  if(which === 'list'){ document.getElementById('publicPrevScreen').style.display = 'flex'; _pubViewport(false); paintPublicPreview(); }
   else if(which === 'est'){ document.getElementById('publicEstScreen').style.display = 'flex'; _pubViewport(false); paintPublicEst(); }
   else { document.getElementById('publicPriceScreen').style.display = 'block'; _pubViewport(false); paintPublicPrices(); updatePublicPriceStamp(); }
   pubTabsPaint();
@@ -3999,6 +4006,32 @@ function paintPublicEst(){
   var vb = document.getElementById('estViewBtn2'); vb.disabled = !t.lines; vb.style.opacity = t.lines ? '1' : '0.45';
 }
 /* ---- Price List tab: tap an item to set its quantity ---- */
+/* Zoom for the price list only (the tabs and the quantity panel stay fixed). Pinch with two fingers, or use + / - / Fit. */
+var _ppvBase = 1, _ppvMul = 1, _ppvPinch = null;
+function ppvApply(mul, fx, fy){
+  var body = document.getElementById('publicPrevBody'), sc = document.getElementById('ppvScale'); if(!body || !sc) return;
+  mul = Math.max(1, Math.min(5, mul));
+  var oz = _ppvBase * _ppvMul, nz = _ppvBase * mul;
+  if(fx == null){ fx = body.clientWidth / 2; fy = body.clientHeight / 2; }
+  var cx = (body.scrollLeft + fx) / oz, cy = (body.scrollTop + fy) / oz;
+  _ppvMul = mul; sc.style.zoom = nz;
+  body.scrollLeft = cx * nz - fx; body.scrollTop = cy * nz - fy;
+}
+function ppvZoom(f){ if(f === 0){ _ppvMul = 1; var b = document.getElementById('publicPrevBody'); ppvApply(1); if(b){ b.scrollLeft = 0; } } else ppvApply(_ppvMul * f); }
+function ppvBindPinch(body){
+  if(body._pinchBound) return; body._pinchBound = true;
+  var dist = function(t){ var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); };
+  body.addEventListener('touchstart', function(e){ if(e.touches.length === 2){ _ppvPinch = { d: dist(e.touches), m: _ppvMul }; } }, { passive: true });
+  body.addEventListener('touchmove', function(e){
+    if(e.touches.length === 2 && _ppvPinch){
+      e.preventDefault();
+      var r = body.getBoundingClientRect();
+      var fx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, fy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      ppvApply(_ppvPinch.m * (dist(e.touches) / _ppvPinch.d), fx, fy);
+    }
+  }, { passive: false });
+  body.addEventListener('touchend', function(e){ if(e.touches.length < 2) _ppvPinch = null; }, { passive: true });
+}
 var _pubSheetSn = null;
 function pubQtyOpen(sn){
   _pubSheetSn = sn; pubQtyPaint();
@@ -4025,7 +4058,7 @@ function pubQtyPaint(){
 }
 function paintPublicPreview(){
   var scr = document.getElementById('publicPrevScreen'); if(!scr || scr.style.display !== 'flex') return;
-  var body = document.getElementById('publicPrevBody'), keepTop = body.scrollTop;
+  var body = document.getElementById('publicPrevBody'), keepTop = body.scrollTop, keepLeft = body.scrollLeft;
   body.innerHTML = '<div id="ppvScale" style="width:210mm; text-align:left; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.25);">' + buildPriceListTableHTML() + '</div>';
   var sc = document.getElementById('ppvScale');
   var bySn = {}; estItems().forEach(function(it){ bySn[it.s] = it; });
@@ -4038,8 +4071,9 @@ function paintPublicPreview(){
     }
   });
   sc.onclick = function(e){ var tr = e.target.closest && e.target.closest('tr[data-sn]'); if(tr) pubQtyOpen(Number(tr.getAttribute('data-sn'))); };
-  var z = Math.min(1, Math.max(240, (body.clientWidth || window.innerWidth) - 16) / (sc.offsetWidth || 794));
-  sc.style.zoom = z; sc.style.margin = '0 auto'; body.scrollTop = keepTop;
+  var bz = Math.min(1, Math.max(240, (body.clientWidth || window.innerWidth) - 16) / (sc.offsetWidth || 794));
+  _ppvBase = bz; sc.style.zoom = bz * _ppvMul; sc.style.margin = '0 auto'; body.scrollTop = keepTop; body.scrollLeft = keepLeft;
+  ppvBindPinch(body);
   var st = document.getElementById('ppvStamp');
   pubQtyPaint();
   if(st) st.textContent = _fbPricelistLive ? 'Updated ' + new Date().toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : 'Showing last saved prices';
