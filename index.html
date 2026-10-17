@@ -1016,7 +1016,11 @@
     <div style="font-size:11px; margin-top:4px;" id="ppUpdated">Loading latest prices…</div>
   </div>
   <div style="position:sticky; top:0; z-index:5; background:var(--paper); padding:8px 10px; border-bottom:1px solid var(--line);">
-    <input type="search" id="estSearch" placeholder="Search item / பொருள் தேடு…" oninput="estSearchInput(this.value)" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); font-size:14px; background:#fff;">
+    <div style="display:flex; gap:7px; align-items:center;">
+      <input type="search" id="estSearch" placeholder="Search item / பொருள் தேடு…" oninput="estSearchInput(this.value)" style="flex:1; min-width:0; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); font-size:14px; background:#fff;">
+      <button id="estFilterBtn" type="button" onclick="estToggleFilters()" aria-label="Filters" style="flex:0 0 auto; width:42px; height:42px; border-radius:10px; border:1.5px solid var(--maroon); background:#fff; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
+    </div>
+    <div id="estFilterBar" style="display:none; margin-top:7px;"></div>
     <div style="display:flex; gap:6px; margin-top:7px; align-items:center;">
       <div style="flex:1; font-size:11px; color:#8a6a44; line-height:1.3;">Add items with <b>+</b> to make your own <b>estimate voucher</b>.</div>
     </div>
@@ -3139,11 +3143,10 @@ var billFilters = { incart:false, recent:false, sort:'' };
 var billFilterOpen = false, billCatOpen = false;
 /* Bill 1 / Bill 2 item layout: 'list' (default, row with S.No + - qty +) or 'grid' (2-column cards). Seller can switch from the filter bar. */
 var billLayout = 'list';
-try{ var _bl = localStorage.getItem('ars_bill_layout'); if(_bl === 'grid' || _bl === 'list') billLayout = _bl; }catch(e){}
 function toggleBillLayout(){ billLayout = (billLayout === 'list') ? 'grid' : 'list'; try{ localStorage.setItem('ars_bill_layout', billLayout); }catch(e){} render(); }
 function toggleBillCat(){ billCatOpen = !billCatOpen; render(); }
 function pickBillCat(v){ billCatOpen = false; setCat(v); }
-function billFilterActive(){ return billFilters.incart || billFilters.recent || billFilters.sort || activeCat !== 'ALL'; }
+function billFilterActive(){ return billFilters.incart || billFilters.sort || activeCat !== 'ALL'; }
 /* Recently billed items: from this account's bills of the last 30 days (admin: all bills) in the active branch,
    ranked by how often they were billed, then by how recently. Matched by the item's English name. */
 var _recentMap = null;
@@ -3184,10 +3187,8 @@ function renderBillFilterBar(shown){
   var ib = function(ico, tip, active, js, extra){ return '<button type="button" title="' + tip + '" aria-label="' + tip + '" onclick="' + js + '" style="min-width:46px; height:42px; padding:0 6px; border-radius:12px; border:1.5px solid var(--maroon); font-weight:800; font-size:' + (extra ? '13px' : '20px') + '; line-height:1; cursor:pointer; background:' + (active ? 'var(--maroon)' : '#fff8ea') + '; color:' + (active ? '#fff8e6' : 'var(--maroon)') + ';">' + ico + '</button>'; };
   var catOn = activeCat !== 'ALL';
   var h = '<div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center;">' +
-    ib('&#128344;', 'Recent billed', billFilters.recent, "setBillFilter('recent')") +
     ib('&#128722;', 'In cart', billFilters.incart, "setBillFilter('incart')") +
     ib('&#128193;', 'Category', billCatOpen || catOn, 'toggleBillCat()') +
-    ib(billLayout === 'list' ? '&#9638;' : '&#9776;', billLayout === 'list' ? 'Switch to grid view' : 'Switch to list view', false, 'toggleBillLayout()') +
     ib('&#8645;', 'S.No / category order', !billFilters.sort, "setBillFilter('sort','')") +
     ib('&#8377;&#9650;', 'Price low to high', billFilters.sort === 'low', "setBillFilter('sort','low')", 1) +
     ib('&#8377;&#9660;', 'Price high to low', billFilters.sort === 'high', "setBillFilter('sort','high')", 1) +
@@ -3546,15 +3547,52 @@ function estUpdateBar(items){
   document.getElementById('estViewBtn').style.opacity = t.lines ? '1' : '0.45';
   document.getElementById('estClearBtn').style.display = t.lines ? '' : 'none';
 }
+var _estF = { incart:false, sort:'', cat:'ALL' }, _estFOpen = false, _estCatOpen = false;
+function estToggleFilters(){ _estFOpen = !_estFOpen; if(!_estFOpen) _estCatOpen = false; paintPublicPrices(); }
+function estSetFilter(k, v){ if(k === 'incart') _estF.incart = !_estF.incart; else _estF[k] = v; if(k === 'cat') _estCatOpen = false; paintPublicPrices(); }
+function estToggleCat(){ _estCatOpen = !_estCatOpen; paintPublicPrices(); }
+function estResetFilters(){ _estF = { incart:false, sort:'', cat:'ALL' }; _estCatOpen = false; _estSearchText = ''; var el = document.getElementById('estSearch'); if(el) el.value = ''; paintPublicPrices(); }
+function estPaintFilterBar(shown){
+  var bar = document.getElementById('estFilterBar'), btn = document.getElementById('estFilterBtn'); if(!bar || !btn) return;
+  var on = _estF.incart || _estF.sort || _estF.cat !== 'ALL';
+  btn.innerHTML = _estFOpen ? '&#9650;' : '&#9660;';
+  btn.style.background = (_estFOpen || on) ? 'var(--maroon)' : '#fff'; btn.style.color = (_estFOpen || on) ? '#fff8e6' : 'var(--maroon)';
+  if(!_estFOpen){ bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  var ib = function(ico, tip, act, js, small){ return '<button type="button" title="' + tip + '" aria-label="' + tip + '" onclick="' + js + '" style="min-width:46px; height:42px; padding:0 6px; border-radius:12px; border:1.5px solid var(--maroon); font-weight:800; font-size:' + (small ? '13px' : '20px') + '; line-height:1; cursor:pointer; background:' + (act ? 'var(--maroon)' : '#fff8ea') + '; color:' + (act ? '#fff8e6' : 'var(--maroon)') + ';">' + ico + '</button>'; };
+  var h = '<div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center;">' +
+    ib('&#128722;', 'Added items', _estF.incart, "estSetFilter('incart')") +
+    ib('&#128193;', 'Category', _estCatOpen || _estF.cat !== 'ALL', 'estToggleCat()') +
+    ib('&#8645;', 'S.No / category order', !_estF.sort, "estSetFilter('sort','')") +
+    ib('&#8377;&#9650;', 'Price low to high', _estF.sort === 'low', "estSetFilter('sort','low')", 1) +
+    ib('&#8377;&#9660;', 'Price high to low', _estF.sort === 'high', "estSetFilter('sort','high')", 1) +
+    '<span style="font-size:11.5px; font-weight:800; color:#7a1414; white-space:nowrap;">' + shown + ' items</span>' +
+    ((on || _estSearchText) ? '<button type="button" title="Reset" aria-label="Reset" onclick="estResetFilters()" style="width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>' : '') + '</div>';
+  if(_estCatOpen){
+    var cats = [], seen = {};
+    _estList.forEach(function(it){ if(!seen[it.cno]){ seen[it.cno] = { no: it.cno, ta: it.catTa, en: it.catEn, n: 0 }; cats.push(seen[it.cno]); } seen[it.cno].n++; });
+    var row = function(val, label, cnt){ var sel = String(_estF.cat) === String(val); return '<button type="button" onclick="estSetFilter(\'cat\',\'' + val + '\')" style="display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; padding:9px 11px; border:none; border-bottom:1px solid var(--line); background:' + (sel ? 'var(--maroon)' : '#fff') + '; color:' + (sel ? '#fff8e6' : 'var(--maroon)') + '; font-weight:700; font-size:12.5px; cursor:pointer;"><span>' + label + '</span><span>' + cnt + '</span></button>'; };
+    h += '<div style="margin-top:8px; max-height:240px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('ALL', 'All categories', _estList.length) +
+      cats.map(function(c){ return row(c.no, c.no + '. ' + estEsc(c.ta) + ' (' + estEsc(c.en) + ')', c.n); }).join('') + '</div>';
+  }
+  bar.innerHTML = h; bar.style.display = 'block';
+}
 function paintPublicPrices(){
   var body = document.getElementById('publicPriceBody'); if(!body) return;
   var screen = document.getElementById('publicPriceScreen'), keep = screen ? screen.scrollTop : 0;
   _estList = estItems();
-  var q = _estSearchText.trim().toLowerCase(), h = '', lastCat = null, shown = 0;
+  var q = _estSearchText.trim().toLowerCase(), h = '', lastCat = null;
+  var ents = [];
   _estList.forEach(function(it, i){
     if(q && (it.en + ' ' + it.ta + ' ' + it.s).toLowerCase().indexOf(q) === -1) return;
-    shown++;
-    if(lastCat !== it.catEn){
+    if(_estF.cat !== 'ALL' && String(it.cno) !== String(_estF.cat)) return;
+    if(_estF.incart && !(_estQty[it.k] > 0)) return;
+    ents.push({ it: it, i: i });
+  });
+  var flat = !!_estF.sort;
+  if(flat) ents.sort(function(a, b){ return _estF.sort === 'low' ? (a.it.price - b.it.price || a.it.s - b.it.s) : (b.it.price - a.it.price || a.it.s - b.it.s); });
+  ents.forEach(function(en){
+    var it = en.it, i = en.i;
+    if(!flat && lastCat !== it.catEn){
       lastCat = it.catEn;
       h += '<div style="background:#f6d9d9; color:#7a1414; font-weight:800; font-size:12px; padding:6px 12px; border-top:1px solid #eac4c4;"><span style="display:inline-block; min-width:18px; margin-right:5px; padding:0 5px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:10.5px; text-align:center;">' + it.cno + '</span>' + estEsc(it.catTa) + ' <span style="font-weight:600; font-size:10.5px; color:#8a4a4a;">' + estEsc(it.catEn) + '</span></div>';
     }
@@ -3570,8 +3608,9 @@ function paintPublicPrices(){
       '<input type="number" inputmode="numeric" min="0" max="999" value="' + (on ? c : '') + '" placeholder="0" onchange="estSet(' + i + ',this.value)" style="width:42px; height:32px; box-sizing:border-box; text-align:center; border:1.5px solid var(--line); border-radius:8px; font-size:14px; font-weight:800;">' +
       '<button onclick="estStep(' + i + ',1)" style="width:32px; height:32px; border-radius:8px; border:none; background:var(--maroon); color:#fff8e6; font-size:18px; font-weight:800; line-height:1; cursor:pointer;">+</button></div></div>';
   });
-  if(!shown) h = '<div style="padding:30px 16px; text-align:center; color:#8a6a44; font-size:13px;">No items match your search.</div>';
+  if(!ents.length) h = '<div style="padding:30px 16px; text-align:center; color:#8a6a44; font-size:13px;">No items match.</div>';
   body.innerHTML = h;
+  estPaintFilterBar(ents.length);
   estUpdateBar(_estList);
   if(screen) screen.scrollTop = keep;
 }
