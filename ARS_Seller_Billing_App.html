@@ -799,11 +799,12 @@
       <div class="cb-total">&#8377;<span id="cbTotal">0</span></div>
     </div>
     <div style="display:flex; gap:6px;">
-      <button id="clearShareBtn" type="button" onclick="handleClearShareClick(this)" title="Clear cart" aria-label="Clear cart" style="background:transparent; color:#ffe1a8; border:1.5px solid #ffe1a8; padding:10px 12px; display:flex; align-items:center; gap:5px;">
+      <button id="scanOrderBtn" type="button" onclick="openScanOrder()" title="Scan customer estimate QR" aria-label="Scan customer estimate QR" style="background:transparent; color:#ffe1a8; border:1.5px solid #ffe1a8; padding:10px 11px; font-size:17px; line-height:1;">&#128247;</button>
+      <button id="clearShareBtn" type="button" onclick="handleClearShareClick(this)" title="Clear cart" aria-label="Clear cart" style="background:transparent; color:#ffe1a8; border:1.5px solid #ffe1a8; padding:10px 11px; display:flex; align-items:center;">
         <span id="clearShareIcon" style="display:flex;"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M6,19c0,1.1,0.9,2,2,2h8c1.1,0,2-0.9,2-2V7H6V19z M19,4h-3.5l-1-1h-5l-1,1H5v2h14V4z"/></svg></span>
-        <span id="clearShareLabel" style="font-size:12px;">Clear</span>
+        <span id="clearShareLabel" style="display:none;">Clear</span>
       </button>
-      <button id="billBtn" onclick="openBill()" disabled>View Bill &rarr;</button>
+      <button id="billBtn" onclick="openBill()" disabled style="white-space:nowrap;">View Bill &rarr;</button>
     </div>
   </div>
 </div>
@@ -1028,6 +1029,23 @@
     </div>
     <button onclick="estClear()" id="estClearBtn" style="padding:11px 12px; background:#fff; color:#b3261e; border:1.5px solid #b3261e; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer;">Clear</button>
     <button onclick="openEstVoucher()" id="estViewBtn" style="padding:12px 16px; background:var(--maroon); color:#fff8e6; border:none; border-radius:10px; font-weight:800; font-size:14px; cursor:pointer;">&#128196; Get Voucher</button>
+  </div>
+</div>
+
+<!-- ============ Seller: scan a customer's estimate QR ============ -->
+<div id="scanOverlay" style="display:none; position:fixed; inset:0; z-index:31000; background:#000; flex-direction:column;">
+  <div style="color:#fff; padding:calc(10px + env(safe-area-inset-top)) 14px 8px; display:flex; align-items:center; gap:10px;">
+    <div style="flex:1; font-weight:800; font-size:14px;">Scan customer estimate QR</div>
+    <button onclick="closeScanOrder()" aria-label="Close" style="width:40px; height:40px; border:none; border-radius:10px; background:#fff; color:#7a1414; font-size:18px; font-weight:800;">&#10005;</button>
+  </div>
+  <div style="flex:1; position:relative; min-height:0;">
+    <video id="scanVideo" playsinline muted autoplay style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;"></video>
+    <div style="position:absolute; left:50%; top:50%; width:62%; max-width:300px; aspect-ratio:1; transform:translate(-50%,-50%); border:3px solid #ffd34d; border-radius:16px; box-shadow:0 0 0 999px rgba(0,0,0,0.45); pointer-events:none;"></div>
+  </div>
+  <div style="padding:10px 14px calc(14px + env(safe-area-inset-bottom)); color:#fff; text-align:center;">
+    <div id="scanMsg" style="font-size:12.5px; min-height:18px; margin-bottom:9px;">Point the camera at the QR on the customer's voucher.</div>
+    <button onclick="document.getElementById('scanFile').click()" style="padding:11px 16px; border:2px solid #fff; border-radius:10px; background:transparent; color:#fff; font-weight:800; font-size:13px;">&#128444;&#65039; Read from photo / gallery</button>
+    <input type="file" id="scanFile" accept="image/*" style="display:none;" onchange="scanFromFile(this)">
   </div>
 </div>
 
@@ -2671,6 +2689,11 @@ function key(ci, ii){ return ci + '_' + ii; }
    tab, PDF/share) prints next to each item, so it's also shown as a small badge on the
    Bill 1 / Bill 2 item cards and matched by the item search box — "item #47" means the
    same item everywhere in the app. */
+/* Small circled item number, used the same way on bill list, bill preview, customer self bill, voucher and price list. */
+function snDot(n, d, f){
+  d = d || 20; f = f || 10.5;
+  return '<span style="display:inline-block; box-sizing:border-box; min-width:' + d + 'px; height:' + d + 'px; line-height:' + (d - 3) + 'px; padding:0 3px; border-radius:999px; border:1.3px solid #c9651a; background:#fff7e8; color:#a24c0e; font-weight:800; font-size:' + f + 'px; text-align:center; vertical-align:middle;">' + n + '</span>';
+}
 function itemSerialNo(ci, ii){
   const it = CATEGORIES[ci] && CATEGORIES[ci].items[ii];
   if(it && Number(it.sn) > 0) return Number(it.sn);
@@ -3233,7 +3256,7 @@ function render(){
         const _on = qty > 0;
         const _btn = 'width:36px; height:36px; border-radius:9px; font-size:20px; font-weight:800; line-height:1; cursor:pointer; padding:0;';
         const _lrow = `<div style="display:flex; align-items:center; gap:8px; padding:9px 10px 9px 12px; background:${_on ? '#fdf3dc' : '#fff'}; border-bottom:1px solid #f0e6d3;">
-              <div style="width:24px; flex:0 0 auto; font-weight:800; color:#c9651a; font-size:13px;">${serial}</div>
+              <div style="width:26px; flex:0 0 auto;">${snDot(serial, 22, 11)}</div>
               <div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:15px; color:#1a1a1a; line-height:1.25;">${name.ta}</div>
                 <div style="font-size:12px; color:#777;">${name.en}</div>
                 <div style="font-size:15px; font-weight:800; color:#7a1414; margin-top:1px;">&#8377;${price} <span style="font-weight:600; font-size:12px; color:#8a6a44;">/ ${unit}</span>${_on ? ` <span style="color:#1e7a3c; margin-left:8px;">= &#8377;${(qty * price).toLocaleString('en-IN')}</span>` : ''}</div></div>
@@ -3297,7 +3320,7 @@ function openBill(preserveEntries){
         const name = getItemName(ci, ii);
         const price = getPrice(ci,ii);
         const lt = qty*price;
-        rows += `<tr><td><div style="display:flex; align-items:baseline;"><span style="flex:0 0 auto; margin-right:4px;">${sno}.</span><div>${name.ta}<br><span style="color:#8a6a44;font-size:10px;">${name.en}</span></div></div></td>
+        rows += `<tr><td><div style="display:flex; align-items:baseline;"><span style="flex:0 0 auto; margin-right:5px;">${snDot(itemSerialNo(ci, ii), 18, 9.5)}</span><div>${name.ta}<br><span style="color:#8a6a44;font-size:10px;">${name.en}</span></div></div></td>
           <td class="num">&#8377;${price.toLocaleString('en-IN')}</td>
           <td class="num"><div class="stepper stepper-sm" style="justify-content:flex-end;">
             <button onclick="changeQtyInBill(${ci},${ii},-1)">&minus;</button>
@@ -3537,7 +3560,7 @@ function paintPublicPrices(){
     }
     var c = _estQty[it.k] || 0, on = c > 0;
     h += '<div style="display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; background:' + (on ? '#fff6e0' : '#fff') + '; border-bottom:1px solid #f0e6d3;">' +
-      '<div style="width:24px; font-weight:800; color:#c9651a; font-size:11.5px;">' + it.s + '</div>' +
+      '<div style="width:26px; flex:0 0 auto;">' + snDot(it.s, 22, 11) + '</div>' +
       '<div style="flex:1; min-width:0;"><div style="font-weight:700; font-size:13px; color:#1a1a1a;">' + estEsc(it.ta) + '</div>' +
       '<div style="font-size:10.5px; color:#777;">' + estEsc(it.en) + '</div>' +
       '<div style="font-size:12px; font-weight:800; color:#7a1414; margin-top:1px;">&#8377;' + it.price.toLocaleString('en-IN') + ' <span style="font-weight:600; font-size:10px; color:#8a6a44;">/ ' + estEsc(it.unit) + '</span>' +
@@ -3564,13 +3587,43 @@ function estClear(){
   if(!confirm('Remove all items from your estimate? / அனைத்தையும் நீக்கவா?')) return;
   _estQty = {}; estPersist(); paintPublicPrices();
 }
+/* ---- Estimate QR: "ARS1|<item no>x<qty>,..." using the same item numbers as Bill 1 / Bill 2 ---- */
+var _estQrFor = '', _estQrUrl = '';
+function estPayload(){
+  var parts = [], tot = 0;
+  estItems().forEach(function(it){ var c = _estQty[it.k] || 0; if(c > 0){ parts.push(it.s + 'x' + c); tot += c * it.price; } });
+  return parts.length ? 'ARS1|' + parts.join(',') + '|' + tot : '';
+}
+async function estEnsureQr(){
+  var txt = estPayload();
+  if(!txt){ _estQrFor = ''; _estQrUrl = ''; return false; }
+  if(txt === _estQrFor && _estQrUrl) return false;
+  try{
+    await ensureQRCodeLib();
+    var box = document.createElement('div');
+    box.style.cssText = 'position:fixed; left:-9999px; top:0;';
+    document.body.appendChild(box);
+    new window.QRCode(box, { text: txt, width: 220, height: 220, colorDark: '#000000', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M });
+    await new Promise(function(r){ setTimeout(r, 60); });
+    var cv = box.querySelector('canvas'), im = box.querySelector('img');
+    var url = (cv && cv.toDataURL) ? cv.toDataURL('image/png') : (im ? im.src : '');
+    box.remove();
+    _estQrFor = txt; _estQrUrl = url || '';
+    return !!_estQrUrl;
+  }catch(e){ _estQrFor = ''; _estQrUrl = ''; return false; }
+}
 function estVoucherHtml(){
   var items = estItems(), b = plBranchId(), br = BRANCHES[b] || {};
   var rows = '', n = 0, tq = 0, total = 0;
+  var vCat = null;
   items.forEach(function(it){
     var c = _estQty[it.k] || 0; if(!(c > 0)) return;
     n++; tq += c; total += c * it.price;
-    rows += '<tr><td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:10px; color:#5a6b8c; vertical-align:top;">' + n + '</td>' +
+    if(vCat !== it.catEn){
+      vCat = it.catEn;
+      rows += '<tr><td colspan="5" style="padding:4px 4px; background:#e8f0ff; border-bottom:1px solid #c9d3e6; font-size:10.5px; font-weight:800; color:#1b3a78;"><span style="display:inline-block; min-width:15px; padding:0 4px; margin-right:4px; border-radius:8px; background:#1b3a78; color:#fff; text-align:center; font-size:9.5px;">' + it.cno + '</span>' + estEsc(it.catTa) + ' <span style="font-weight:600; font-size:9px; color:#556;">' + estEsc(it.catEn) + '</span></td></tr>';
+    }
+    rows += '<tr><td style="padding:5px 2px; border-bottom:1px dashed #c9d3e6; vertical-align:top;">' + snDot(it.s, 17, 8.5) + '</td>' +
       '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; vertical-align:top;"><b>' + estEsc(it.ta) + '</b><br><span style="font-size:9.5px; color:#667;">' + estEsc(it.en) + '</span></td>' +
       '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; text-align:center; vertical-align:top;">' + c + '</td>' +
       '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; text-align:right; vertical-align:top; white-space:nowrap;">' + it.price.toLocaleString('en-IN') + '</td>' +
@@ -3580,6 +3633,7 @@ function estVoucherHtml(){
   var ref = 'EST-' + String(now.getFullYear()).slice(2) + pad(now.getMonth() + 1) + pad(now.getDate()) + '-' + pad(now.getHours()) + pad(now.getMinutes());
   var when = now.toLocaleString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
   var title = branchTitle(br) || SHOP.name_ta;
+  var qrBlock = (_estQrUrl && _estQrFor === estPayload()) ? '<div style="text-align:center; padding:8px 0 4px; border-top:1px dashed #c9d3e6;"><img src="' + _estQrUrl + '" style="width:120px; height:120px;" alt="QR"><div style="font-size:9.5px; color:#44557a; margin-top:2px;">Show this QR at the counter &bull; கடையில் QR காட்டவும்</div></div>' : '';
   return '<div style="width:360px; box-sizing:border-box; background:#f4f8ff; border:3px double #1b3a78; font-family:\'Segoe UI\',\'Noto Sans Tamil\',Arial,sans-serif; color:#10213f;">' +
     '<div style="background:#1b3a78; color:#fff; text-align:center; padding:9px 8px 7px;">' +
       '<div style="font-size:17px; font-weight:800;">' + estEsc(title) + '</div>' +
@@ -3590,13 +3644,127 @@ function estVoucherHtml(){
       '<div style="font-size:10.5px; font-weight:700; color:#b3261e; margin-top:5px;">மதிப்பீட்டு சீட்டு — முறையான பில் அல்ல &nbsp;|&nbsp; NOT A BILL</div>' +
     '</div>' +
     '<div style="display:flex; justify-content:space-between; padding:2px 10px 6px; font-size:10px; color:#44557a;"><span>Ref: <b>' + ref + '</b></span><span>' + when + '</span></div>' +
-    '<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><colgroup><col style="width:20px;"><col><col style="width:34px;"><col style="width:52px;"><col style="width:62px;"></colgroup>' +
+    '<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><colgroup><col style="width:28px;"><col><col style="width:34px;"><col style="width:52px;"><col style="width:62px;"></colgroup>' +
       '<thead><tr style="background:#dce7fb;"><th style="padding:5px 4px; font-size:9.5px; text-align:left;">#</th><th style="padding:5px 4px; font-size:9.5px; text-align:left;">Item</th><th style="padding:5px 4px; font-size:9.5px;">Qty</th><th style="padding:5px 4px; font-size:9.5px; text-align:right;">Rate &#8377;</th><th style="padding:5px 4px; font-size:9.5px; text-align:right;">Amount &#8377;</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>' +
     '<div style="display:flex; justify-content:space-between; align-items:center; padding:9px 10px 4px; border-top:2px solid #1b3a78; margin-top:2px;"><span style="font-size:11px; color:#44557a;">' + n + ' item' + (n > 1 ? 's' : '') + ' • qty ' + tq + '</span><span style="font-size:11px; font-weight:800;">ESTIMATED TOTAL</span></div>' +
-    '<div style="text-align:right; padding:0 10px 8px; font-size:24px; font-weight:800; color:#1b3a78;">&#8377;' + total.toLocaleString('en-IN') + '</div>' +
+    '<div style="text-align:right; padding:0 10px 8px; font-size:24px; font-weight:800; color:#1b3a78;">&#8377;' + total.toLocaleString('en-IN') + '</div>' + qrBlock +
     '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + estEsc(branchPhoneText(br)) + '</div>' +
   '</div>';
+}
+/* ---- Seller: read a customer's estimate QR (camera or photo) and add its items to the current bill ---- */
+var _lastScanTxt = '';
+function scanToast(msg, kind){
+  var col = kind === 'red' ? '#c62828' : (kind === 'blue' ? '#0b5fd8' : '#1e7a3c');
+  var t = document.getElementById('scanToast');
+  if(!t){ t = document.createElement('div'); t.id = 'scanToast'; t.style.cssText = 'position:fixed; left:50%; bottom:90px; transform:translateX(-50%); max-width:86%; z-index:40000; white-space:pre-line; color:#fff; padding:10px 16px; border-radius:12px; font-weight:800; font-size:13px; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,0.3); transition:opacity .3s;'; document.body.appendChild(t); }
+  t.style.background = col; t.style.pointerEvents = 'auto'; t.onclick = function(){ t.style.opacity = '0'; };
+  t.textContent = msg; t.style.opacity = '1'; clearTimeout(t._h); t._h = setTimeout(function(){ t.style.opacity = '0'; }, kind === 'red' ? 12000 : 4500);
+}
+var _scanStream = null, _scanTimer = null, _scanHist = false, _scanBusy = false, _jsQrLoad = null;
+function _scanSay(t){ var m = document.getElementById('scanMsg'); if(m) m.textContent = t; }
+async function openScanOrder(){
+  if(_saleSaved()){ alert('This sale is already saved. Start a new bill first.'); return; }
+  var ov = document.getElementById('scanOverlay'); ov.style.display = 'flex';
+  try{ if(!_scanHist){ history.pushState({ scanOrder: true }, ''); _scanHist = true; } }catch(e){}
+  _scanSay('Opening camera…');
+  try{
+    if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) throw new Error('nocam');
+    _scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    var v = document.getElementById('scanVideo'); v.srcObject = _scanStream; try{ await v.play(); }catch(e){}
+    _scanSay("Point the camera at the QR on the customer's voucher.");
+    scanLoop();
+  }catch(e){
+    _scanSay('Camera not available here. Use "Read from photo / gallery" below, or open the app from its GitHub Pages link.');
+  }
+}
+function _scanStop(){
+  if(_scanTimer){ clearInterval(_scanTimer); _scanTimer = null; }
+  if(_scanStream){ try{ _scanStream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} _scanStream = null; }
+  var v = document.getElementById('scanVideo'); if(v) v.srcObject = null;
+}
+function closeScanOrder(fromBack){
+  _scanStop();
+  document.getElementById('scanOverlay').style.display = 'none';
+  if(_scanHist){ _scanHist = false; if(fromBack !== true){ _estPopping = true; try{ history.back(); }catch(e){ _estPopping = false; } } }
+}
+function loadJsQr(){
+  if(window.jsQR) return Promise.resolve(true);
+  if(_jsQrLoad) return _jsQrLoad;
+  _jsQrLoad = new Promise(function(resolve){
+    var urls = ['https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js', 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'], i = 0;
+    (function next(){
+      if(i >= urls.length){ _jsQrLoad = null; resolve(false); return; }
+      var sc = document.createElement('script'); sc.src = urls[i++];
+      sc.onload = function(){ resolve(!!window.jsQR); }; sc.onerror = next; document.head.appendChild(sc);
+    })();
+  });
+  return _jsQrLoad;
+}
+/* Decode a QR from a video frame or an image: the phone's own QR reader when it has one, otherwise the jsQR library. */
+async function decodeQrFrom(src, w, h){
+  if('BarcodeDetector' in window){
+    try{
+      if(!decodeQrFrom._d) decodeQrFrom._d = new BarcodeDetector({ formats: ['qr_code'] });
+      var r = await decodeQrFrom._d.detect(src);
+      if(r && r.length) return r[0].rawValue || '';
+    }catch(e){}
+  }
+  if(!(await loadJsQr())) return '';
+  var cv = document.createElement('canvas'), mx = Math.min(1, 900 / Math.max(w, h));
+  cv.width = Math.round(w * mx); cv.height = Math.round(h * mx);
+  var cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(src, 0, 0, cv.width, cv.height);
+  var d = cx.getImageData(0, 0, cv.width, cv.height), q = window.jsQR(d.data, cv.width, cv.height);
+  return q ? q.data : '';
+}
+function scanLoop(){
+  var v = document.getElementById('scanVideo');
+  _scanTimer = setInterval(async function(){
+    if(_scanBusy || !v.videoWidth) return;
+    _scanBusy = true;
+    try{
+      var txt = await decodeQrFrom(v, v.videoWidth, v.videoHeight);
+      if(txt) await scanHandle(txt);
+    }catch(e){}
+    _scanBusy = false;
+  }, 350);
+}
+async function scanFromFile(inp){
+  var f = inp.files && inp.files[0]; inp.value = ''; if(!f) return;
+  _scanSay('Reading the photo…');
+  try{
+    var bmp = await createImageBitmap(f);
+    var txt = await decodeQrFrom(bmp, bmp.width, bmp.height);
+    if(!txt) _scanSay('No QR found in that photo. Try a clearer photo.'); else await scanHandle(txt);
+  }catch(e){ _scanSay('Could not read that photo.'); }
+}
+async function scanHandle(txt){
+  if(String(txt).indexOf('ARS1|') !== 0){ _scanSay('That QR is not an A.R.S estimate voucher.'); return; }
+  _scanStop(); _scanBusy = true;
+  var add = [], skipped = 0, subtotal = 0, qtySum = 0;
+  var _seg = String(txt).slice(5).split('|'), qrTotal = (_seg.length > 1 && /^\d+$/.test(_seg[1])) ? Number(_seg[1]) : null;
+  _seg[0].split(',').forEach(function(pr){
+    var m = /^(\d+)x(\d+)$/.exec(pr.trim()); if(!m){ return; }
+    var sn = Number(m[1]), q = Math.min(9999, Number(m[2]));
+    var hit = null;
+    CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(!hit && itemSerialNo(ci, ii) === sn && isItemInBranch(ci, ii, activeBranchId)) hit = { ci: ci, ii: ii }; }); });
+    if(!hit || !(q > 0)){ skipped++; return; }
+    add.push({ ci: hit.ci, ii: hit.ii, q: q }); subtotal += q * getPrice(hit.ci, hit.ii); qtySum += q;
+  });
+  if(!add.length){ closeScanOrder(); alert('No matching items found in this QR.'); _scanBusy = false; return; }
+  closeScanOrder();
+  var dupe = (txt === _lastScanTxt && Object.keys(cart).length > 0);
+  var ok = dupe ? await showConfirm('This customer estimate was already added to this bill.\n\nAdd it again?') : true;
+  _scanBusy = false;
+  if(!ok) return;
+  _lastScanTxt = txt;
+  add.forEach(function(a){ var k = key(a.ci, a.ii); cart[k] = Math.min(9999, (cart[k] || 0) + a.q); });
+  var inr = function(n){ return '\u20B9' + n.toLocaleString('en-IN'); };
+  var base = 'Added ' + add.length + ' items (qty ' + qtySum + ') to Bill ' + activeBillingTab;
+  if(qrTotal === null) scanToast(base + ' \u2022 ' + inr(subtotal), 'blue');
+  else if(qrTotal === subtotal && !skipped) scanToast('\u2705 MATCH \u2022 ' + inr(subtotal) + '\n' + base, 'green');
+  else scanToast('\u26A0\uFE0F MISMATCH \u2022 Customer ' + inr(qrTotal) + ' vs Shop ' + inr(subtotal) + ' (diff ' + inr(Math.abs(subtotal - qrTotal)) + ')' + (skipped ? '\n' + skipped + ' item(s) not found in this branch' : '') + '\nPrices changed since the customer made the estimate \u2014 please check.', 'red');
+  saveCart(); render();
 }
 var _estHistPushed = false, _estPopping = false;
 function openEstVoucher(){
@@ -3604,6 +3772,7 @@ function openEstVoucher(){
   if(!t.lines){ alert('Add at least one item first. / முதலில் பொருட்களை சேர்க்கவும்.'); return; }
   document.getElementById('estVoucherBody').innerHTML = estVoucherHtml();
   document.getElementById('estVoucherOverlay').style.display = 'block';
+  estEnsureQr().then(function(changed){ if(changed && document.getElementById('estVoucherOverlay').style.display === 'block') document.getElementById('estVoucherBody').innerHTML = estVoucherHtml(); });
   // one history step (made by this tap), so the phone's Back key closes the voucher instead of leaving the page
   try{ if(!_estHistPushed){ history.pushState({ estVoucher: true }, ''); _estHistPushed = true; } }catch(e){}
 }
@@ -3627,6 +3796,7 @@ async function estBusy(btn, fn){
 }
 function estSaveImage(btn){
   return estBusy(btn, async function(){
+    await estEnsureQr();
     var blob = await renderOffscreenToImageBlob(estVoucherHtml());
     estDownload(blob, 'Estimate_Voucher.png');
   });
@@ -4905,7 +5075,7 @@ function buildPriceListTableHTML(){
     const rows = rowsIn.map((item, idx) => item.kind === 'cat' ? `
       <tr><td colspan="3" style="padding:5px 5px 3px; border-bottom:1.5px solid #7a1414; color:#7a1414; font-weight:800; font-size:10px;">${item.no}. ${item.en}${item.cont ? ' <span style="font-weight:600; font-size:8.5px; color:#999;">&hellip;</span>' : ''}</td></tr>` : `
       <tr style="background:${idx % 2 === 1 ? '#fdf3f1' : '#ffffff'};">
-        <td style="padding:3px 4px; border-bottom:1px solid #eee; font-weight:800; color:#c9651a; font-size:9.5px; vertical-align:top;">${item.s}</td>
+        <td style="padding:3px 4px; border-bottom:1px solid #eee; vertical-align:top;">${snDot(item.s, 15, 8)}</td>
         <td style="padding:3px 4px; border-bottom:1px solid #eee; font-size:9.5px; color:#1a1a1a; vertical-align:top;">${item.ta} <span style="color:#777; font-size:8.5px;">(${item.en})</span></td>
         <td style="padding:3px 4px; border-bottom:1px solid #eee; font-weight:800; color:#7a1414; font-size:9.5px; text-align:right; white-space:nowrap; vertical-align:top;">₹${item.price.toLocaleString('en-IN')}</td>
       </tr>`).join('');
@@ -7568,6 +7738,8 @@ function openAddBranchModal(){
     // customer estimate voucher: Back closes it (and stays on the price list)
     var _ev = document.getElementById('estVoucherOverlay');
     if(_ev && _ev.style.display === 'block'){ closeEstVoucher(true); return; }
+    var _so = document.getElementById('scanOverlay');
+    if(_so && _so.style.display === 'flex'){ closeScanOrder(true); return; }
     if(_estPopping){ _estPopping = false; return; }
     var appEl = document.getElementById('app'), adminEl = document.getElementById('adminScreen');
     var loggedIn = (typeof session !== 'undefined') && session;
