@@ -760,6 +760,7 @@
         </div>
         <button id="appQrBtn" class="icon-btn-circle hidden" onclick="openPriceQr('app')" title="Seller App QR" aria-label="Seller app QR" style="flex:0 0 auto; background:rgba(255,255,255,0.12); border:1.3px solid var(--gold); color:var(--gold); cursor:pointer;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14h1M14 20h3M20 17v4"/></svg></button>
         <a id="cleanterBtn" class="icon-btn-circle hidden" href="https://play.google.com/store/apps/details?id=id.cleancode.cleanter" target="_blank" rel="noopener" title="Download Cleanter printer app" aria-label="Download Cleanter printer app" style="flex:0 0 auto; background:rgba(255,255,255,0.12); border:1.3px solid var(--gold); color:var(--gold); text-decoration:none; display:inline-flex; align-items:center; justify-content:center;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M12 14v7m-3-3 3 3 3-3"/></svg></a>
+        <button id="billLayoutBtn" class="icon-btn-circle hidden" onclick="toggleBillLayout()" title="List format" aria-label="List format" style="flex:0 0 auto; background:rgba(255,255,255,0.12); border:1.3px solid var(--gold); color:var(--gold); cursor:pointer; font-size:18px; line-height:1;">&#9776;</button>
       </div>
       <div class="user-bar">
         <div class="u-info"><span title="Logged in" aria-label="Logged in">&#128587;</span> <b id="userNameTag"></b></div>
@@ -1032,21 +1033,22 @@
 
 <!-- ============ Customer: full price list preview only ============ -->
 <div id="publicPrevScreen" style="display:none; position:fixed; inset:0; z-index:30000; background:#e9e4da; flex-direction:column;">
-  <div style="background:var(--maroon); color:#fff8e6; padding:calc(8px + env(safe-area-inset-top)) 10px 8px; display:flex; align-items:center; gap:10px;">
-    <button onclick="publicMenu()" style="padding:8px 12px; border:1.5px solid #fff8e6; border-radius:10px; background:transparent; color:#fff8e6; font-weight:800; font-size:13px; cursor:pointer;">&#8592; Menu</button>
-    <div style="flex:1; text-align:right; font-size:12px; font-weight:700;" id="ppvStamp"></div>
+  <div style="position:relative; background:var(--maroon); color:#fff8e6; padding:calc(10px + env(safe-area-inset-top)) 12px 9px; text-align:center;">
+    <button onclick="_pubShow('add')" style="position:absolute; right:10px; top:calc(10px + env(safe-area-inset-top)); padding:7px 10px; border:1.5px solid #fff8e6; border-radius:9px; background:transparent; color:#fff8e6; font-weight:800; font-size:12px; cursor:pointer;">&#9776; List</button>
+    <div style="font-size:19px; font-weight:800; line-height:1.2;" id="ppvTitle"></div>
+    <div style="font-size:11px; margin-top:2px; color:var(--gold);" id="ppvStamp"></div>
   </div>
-  <div class="pubTabs" style="padding:8px 10px; background:var(--paper); border-bottom:1px solid var(--line);"></div>
-  <div style="background:#fff7e0; color:#7a4a00; font-size:11.5px; font-weight:700; text-align:center; padding:5px 8px;">Tap any item to add quantity &bull; பொருளை தொட்டு எண்ணிக்கை சேர்க்கவும்</div>
   <div style="flex:1; min-height:0; position:relative; display:flex;">
-    <div id="publicPrevBody" style="flex:1; overflow:auto; padding:8px 0 210px; touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch;"></div>
-    <div style="position:absolute; right:8px; top:8px; display:flex; flex-direction:column; gap:6px; z-index:3;">
-      <button onclick="ppvZoom(1.3)" aria-label="Zoom in" style="width:40px; height:40px; border:none; border-radius:10px; background:rgba(122,20,20,.92); color:#fff; font-size:22px; font-weight:800; cursor:pointer;">+</button>
-      <button onclick="ppvZoom(1/1.3)" aria-label="Zoom out" style="width:40px; height:40px; border:none; border-radius:10px; background:rgba(122,20,20,.92); color:#fff; font-size:22px; font-weight:800; cursor:pointer;">&minus;</button>
-      <button onclick="ppvZoom(0)" aria-label="Fit" style="width:40px; height:40px; border:none; border-radius:10px; background:rgba(122,20,20,.92); color:#fff; font-size:13px; font-weight:800; cursor:pointer;">Fit</button>
+    <div id="publicPrevBody" style="flex:1; overflow:auto; padding:8px 0 230px; touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch;"></div>
+  </div>
+  <div id="pubBottom" style="position:absolute; left:0; right:0; bottom:0; background:#fff; box-shadow:0 -4px 14px rgba(0,0,0,.25);">
+    <div id="pubQtySheet" style="display:none; border-top:3px solid #1e7a3c; padding:12px 14px 8px;"></div>
+    <div id="pubVoucherBar" style="display:none; border-top:2px solid var(--maroon); padding:10px 12px calc(10px + env(safe-area-inset-bottom)); align-items:center; gap:8px;">
+      <div style="flex:1; min-width:0;"><div style="font-size:11px; color:#8a6a44;" id="pubBarCount"></div><div style="font-size:18px; font-weight:800; color:var(--maroon);" id="pubBarTotal"></div></div>
+      <button onclick="estClear()" style="padding:11px 12px; background:#fff; color:#b3261e; border:1.5px solid #b3261e; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer;">Clear</button>
+      <button onclick="openEstVoucher()" style="padding:12px 16px; background:var(--maroon); color:#fff8e6; border:none; border-radius:10px; font-weight:800; font-size:14px; cursor:pointer;">&#129534; Voucher</button>
     </div>
   </div>
-  <div id="pubQtySheet" style="display:none; position:absolute; left:0; right:0; bottom:0; background:#fff; border-top:3px solid #1e7a3c; padding:12px 14px calc(12px + env(safe-area-inset-bottom)); box-shadow:0 -4px 14px rgba(0,0,0,.25);"></div>
 </div>
 
 <!-- ============ Customer: My Estimate (selected items with quantity) ============ -->
@@ -1067,13 +1069,12 @@
 <!-- ============ PUBLIC PRICE LIST (what a customer sees after scanning) ============ -->
 <div id="publicPriceScreen" style="display:none; position:fixed; inset:0; z-index:30000; background:var(--paper); overflow-y:auto;">
   <div style="position:relative; background:var(--maroon); color:#fff8e6; padding:calc(12px + env(safe-area-inset-top)) 14px 10px; text-align:center;">
-    <button onclick="publicMenu()" aria-label="Menu" style="position:absolute; left:10px; top:calc(10px + env(safe-area-inset-top)); padding:6px 10px; border:1.5px solid #fff8e6; border-radius:9px; background:transparent; color:#fff8e6; font-weight:800; font-size:12px; cursor:pointer;">&#8592; Menu</button>
+    <button onclick="_pubShow('list')" aria-label="Table view" style="position:absolute; left:10px; top:calc(10px + env(safe-area-inset-top)); padding:6px 10px; border:1.5px solid #fff8e6; border-radius:9px; background:transparent; color:#fff8e6; font-weight:800; font-size:12px; cursor:pointer;">&#9638; Table</button>
     <div style="font-size:20px; font-weight:800;" id="ppShopTa"></div>
     <div style="font-size:11px; color:var(--gold); letter-spacing:1px;" id="ppShopEn"></div>
     <div style="font-size:11px; margin-top:4px;" id="ppUpdated">Loading latest prices…</div>
   </div>
   <div style="position:sticky; top:0; z-index:5; background:var(--paper); padding:8px 10px; border-bottom:1px solid var(--line);">
-    <div class="pubTabs" style="margin-bottom:8px;"></div>
     <div style="display:flex; gap:7px; align-items:center;">
       <input type="search" id="estSearch" placeholder="Search item / பொருள் தேடு…" oninput="estSearchInput(this.value)" style="flex:1; min-width:0; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); font-size:14px; background:#fff;">
       <button id="estFilterBtn" type="button" onclick="estToggleFilters()" aria-label="Filters" style="flex:0 0 auto; width:42px; height:42px; border-radius:10px; border:1.5px solid var(--maroon); background:#fff; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
@@ -3219,8 +3220,11 @@ function computeTotals(cartObj){
 var billFilters = { incart:false, recent:false, sort:'' };
 var billFilterOpen = false, billCatOpen = false;
 /* Bill 1 / Bill 2 item layout: 'list' (default, row with S.No + - qty +) or 'grid' (2-column cards). Seller can switch from the filter bar. */
-var billLayout = 'list';
-function toggleBillLayout(){ billLayout = (billLayout === 'list') ? 'grid' : 'list'; try{ localStorage.setItem('ars_bill_layout', billLayout); }catch(e){} render(); }
+var billLayout = 'table';
+try{ var _bl = localStorage.getItem('ars_bill_layout3'); if(_bl === 'table' || _bl === 'list') billLayout = _bl; }catch(e){}
+function toggleBillLayout(){
+  billLayout = (billLayout === 'list') ? 'table' : 'list';
+  if(billLayout === 'table'){ billFilters = { incart:false, recent:false, sort:'' }; billFilterOpen = false; billCatOpen = false; activeCat = 'ALL'; var _se = document.getElementById('search'); if(_se) _se.value = ''; try{ buildCatNav(); }catch(e){} } try{ localStorage.setItem('ars_bill_layout3', billLayout); }catch(e){} _billSheetSn = null; render(); }
 function toggleBillCat(){ billCatOpen = !billCatOpen; render(); }
 function pickBillCat(v){ billCatOpen = false; setCat(v); }
 function billFilterActive(){ return billFilters.incart || billFilters.sort || activeCat !== 'ALL'; }
@@ -3278,7 +3282,67 @@ function renderBillFilterBar(shown){
   }
   bar.innerHTML = h; bar.classList.remove('hidden');
 }
+var _billTableOn = false, _billSheetSn = null, _billSt = { base: 1, mul: 1, pinch: null };
+function _billSerialMap(){
+  var m = {};
+  CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(isItemInBranch(ci, ii, activeBillingTab ? activeBranchId : activeBranchId)) m[itemSerialNo(ci, ii)] = { ci: ci, ii: ii }; }); });
+  return m;
+}
+function _renderCartTotals(){
+  const {count, subtotal, discount, grand} = computeTotals(cart);
+  document.getElementById('cbCount').textContent = count;
+  document.getElementById('cbSub').textContent = subtotal.toLocaleString('en-IN');
+  document.getElementById('cbTotal').textContent = grand.toLocaleString('en-IN');
+  document.getElementById('cbDiscRow').classList.toggle('hidden', discount<=0);
+  document.getElementById('cbDisc').textContent = discount.toLocaleString('en-IN');
+  document.getElementById('billBtn').disabled = count === 0;
+}
+function paintBillTable(list){
+  var map = _billSerialMap(), n = Object.keys(map).length;
+  billFilterOpen = false; billCatOpen = false;
+  renderBillFilterBar(n);
+  var wrap = document.getElementById('billTableWrap');
+  if(!wrap || !list.contains(wrap)){
+    list.innerHTML = '<div id="billTableWrap" style="overflow:auto; touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch; background:#e9e4da; border-radius:8px;"></div>';
+    wrap = document.getElementById('billTableWrap');
+    try{ window.scrollTo(0, 0); var ap = document.getElementById('app'); if(ap) ap.scrollTop = 0; }catch(e){}
+  }
+  var bar = document.getElementById('cartBar');
+  var top = wrap.getBoundingClientRect().top, h = window.innerHeight - top - (bar ? bar.offsetHeight : 60) - 6;
+  wrap.style.height = Math.max(220, h) + 'px';
+  _billTableOn = true;
+  tzPaint(wrap, 'billScale', _billSt, function(sn){ var e = map[sn]; return e ? (cart[key(e.ci, e.ii)] || 0) : 0; }, function(sn){ _billSheetSn = sn; render(); }, function(){ return _billSheetSn; });
+  billSheetPaint();
+  _renderCartTotals();
+}
+function billSheetPaint(){
+  var sh = document.getElementById('billQtySheet');
+  if(!sh){ sh = document.createElement('div'); sh.id = 'billQtySheet'; sh.style.cssText = 'display:none; position:fixed; left:0; right:0; z-index:40; background:#fff; border-top:3px solid #1e7a3c; padding:10px 14px; box-shadow:0 -4px 14px rgba(0,0,0,.25);'; document.body.appendChild(sh); }
+  if(!_billTableOn || _billSheetSn == null || (activeTab !== 'billing1' && activeTab !== 'billing2')){ sh.style.display = 'none'; return; }
+  var e = _billSerialMap()[_billSheetSn];
+  if(!e){ sh.style.display = 'none'; return; }
+  var nm = getItemName(e.ci, e.ii), price = getPrice(e.ci, e.ii), c = cart[key(e.ci, e.ii)] || 0, unit = getUnit(e.ci, e.ii);
+  var bar = document.getElementById('cartBar'); sh.style.bottom = (bar ? bar.offsetHeight : 60) + 'px';
+  sh.innerHTML = '<div style="display:flex; align-items:center; gap:10px;"><div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:14px;">' + snDot(_billSheetSn, 20, 10) + ' ' + nm.ta + '</div><div style="font-size:11px; color:#777;">' + nm.en + '</div>' +
+    '<div style="font-size:13px; font-weight:800; color:#7a1414; margin-top:2px;">&#8377;' + price + ' / ' + unit + (c ? ' <span style="color:#1e7a3c;">= &#8377;' + (c * price).toLocaleString('en-IN') + '</span>' : '') + '</div></div>' +
+    '<div style="display:flex; align-items:center; gap:6px;"><button onclick="changeQty(' + e.ci + ',' + e.ii + ',-1)" style="width:42px; height:42px; border-radius:11px; border:2px solid #1e7a3c; background:#fff; color:#1e7a3c; font-size:22px; font-weight:800; line-height:1;">&minus;</button>' +
+    '<div style="min-width:34px; text-align:center; font-size:20px; font-weight:800;">' + c + '</div>' +
+    '<button onclick="changeQty(' + e.ci + ',' + e.ii + ',1)" style="width:42px; height:42px; border-radius:11px; border:none; background:#1e7a3c; color:#fff; font-size:22px; font-weight:800; line-height:1;">+</button></div>' +
+    '<button onclick="_billSheetSn=null; render();" style="padding:10px 14px; border:1.5px solid #7a1414; border-radius:10px; background:#fff; color:#7a1414; font-weight:800; font-size:13px;">Done</button></div>';
+  sh.style.display = 'block';
+}
+function _billChrome(){
+  var billing = (activeTab === 'billing1' || activeTab === 'billing2'), tbl = billing && billLayout === 'table';
+  var sw = document.querySelector('.search-wrap'); if(sw) sw.classList.toggle('hidden', tbl);
+  var lb = document.getElementById('billLayoutBtn');
+  if(lb){
+    lb.classList.toggle('hidden', !billing);
+    lb.innerHTML = tbl ? '&#9776;' : '&#9638;';
+    lb.title = lb.ariaLabel = tbl ? 'List format' : 'Table format';
+  }
+}
 function render(){
+  _billChrome();
   const q = document.getElementById('search').value.trim().toLowerCase();
   const list = document.getElementById('list');
 
@@ -3295,6 +3359,12 @@ function render(){
     return;
   }
 
+  /* Table view (default): only the A4 price list; tap an item to set its quantity. The search box and filters appear in the list format. */
+  if((activeTab === 'billing1' || activeTab === 'billing2') && billLayout === 'table'){
+    paintBillTable(list);
+    return;
+  }
+  _billTableOn = false; billSheetPaint();
   let html = '';
   const _flat = []; let _shown = 0;
   _recentMap = billFilters.recent ? recentBilledMap() : null;
@@ -3342,7 +3412,7 @@ function render(){
                 <button type="button" onclick="changeQty(${ci},${ii},-1)" ${_on ? '' : 'disabled'} style="${_btn} border:1.5px solid var(--maroon); background:#fff; color:var(--maroon);${_on ? '' : ' opacity:0.35;'}">&minus;</button>
                 <input type="number" inputmode="numeric" min="0" value="${qty}" onchange="setQty(${ci},${ii}, this.value)" style="width:46px; height:36px; box-sizing:border-box; text-align:center; border:1.5px solid var(--line); border-radius:9px; font-size:15px; font-weight:800; background:#fff;">
                 <button type="button" onclick="changeQty(${ci},${ii},1)" style="${_btn} border:none; background:var(--maroon); color:#fff8e6;">+</button></div></div>`;
-        const _use = billLayout === 'list' ? _lrow : _card;
+        const _use = _lrow;
         rows += _use; _flat.push({ price: Number(price) || 0, serial: serial, h: _use, n: (_recentMap && _recentMap[_rk]) ? _recentMap[_rk].n : 0, last: (_recentMap && _recentMap[_rk]) ? _recentMap[_rk].last : 0 });
       } else {
         rows += `<div class="price-row2">
@@ -3354,7 +3424,7 @@ function render(){
     });
     if(rows){
       if(activeTab === 'billing1' || activeTab === 'billing2'){
-        html += billLayout === 'list'
+        html += true
           ? `<div style="background:#f6d9d9; color:#7a1414; font-weight:800; font-size:13px; padding:7px 12px; border-top:1px solid #eac4c4;"><span style="display:inline-block; min-width:20px; margin-right:4px; padding:0 5px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px; text-align:center;">${ci+1}</span>${cn.ta} <span style="font-weight:600; font-size:11px; color:#8a4a4a;">${cn.en}</span></div>${rows}`
           : `<div class="cat-heading"><span style="padding:0 6px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px;">${ci+1}</span>${cn.ta} <span class="en">${cn.en}</span></div><div class="item-grid2">${rows}</div>`;
       } else {
@@ -3366,7 +3436,7 @@ function render(){
   if((activeTab === 'billing1' || activeTab === 'billing2') && (billFilters.sort || billFilters.recent) && _flat.length){
     if(!billFilters.sort) _flat.sort((a, b) => b.n - a.n || b.last - a.last || a.serial - b.serial);
     else _flat.sort((a, b) => billFilters.sort === 'low' ? (a.price - b.price || a.serial - b.serial) : (b.price - a.price || a.serial - b.serial));
-    html = billLayout === 'list' ? `<div>${_flat.map(x => x.h).join('')}</div>` : `<div class="item-grid2">${_flat.map(x => x.h).join('')}</div>`;
+    html = true ? `<div>${_flat.map(x => x.h).join('')}</div>` : `<div class="item-grid2">${_flat.map(x => x.h).join('')}</div>`;
   }
   renderBillFilterBar(_shown);
   list.innerHTML = html || `<div class="empty-state">No items found.<br/>பொருள் இல்லை.</div>`;
@@ -3952,7 +4022,7 @@ var _pubTab = 'add';
 function _pubShow(which){
   ['publicChoiceScreen','publicPriceScreen','publicPrevScreen','publicEstScreen'].forEach(function(id){ document.getElementById(id).style.display = 'none'; });
   _pubTab = which;
-  if(which === 'list'){ document.getElementById('publicPrevScreen').style.display = 'flex'; _pubViewport(false); paintPublicPreview(); }
+  if(which === 'list'){ document.getElementById('publicPrevScreen').style.display = 'flex'; _pubViewport(false); paintPublicPreview(); pubBarPaint(); }
   else if(which === 'est'){ document.getElementById('publicEstScreen').style.display = 'flex'; _pubViewport(false); paintPublicEst(); }
   else { document.getElementById('publicPriceScreen').style.display = 'block'; _pubViewport(false); paintPublicPrices(); updatePublicPriceStamp(); }
   pubTabsPaint();
@@ -3980,9 +4050,16 @@ function pubTabsPaint(){
   document.querySelectorAll('.pubTabs').forEach(function(el){ el.innerHTML = h; });
 }
 function estRepaintAll(){
-  paintPublicPrices(); paintPublicPreview(); paintPublicEst(); pubTabsPaint();
+  paintPublicPreview(); pubBarPaint();
 }
-function estVoucherAddMore(){ closeEstVoucher(); _pubShow('add'); }
+function pubBarPaint(){
+  var bar = document.getElementById('pubVoucherBar'); if(!bar) return;
+  var t = estTotals();
+  bar.style.display = t.lines ? 'flex' : 'none';
+  document.getElementById('pubBarCount').textContent = t.lines + ' item' + (t.lines > 1 ? 's' : '') + ' \u2022 qty ' + t.qty;
+  document.getElementById('pubBarTotal').textContent = '\u20B9' + t.amount.toLocaleString('en-IN');
+}
+function estVoucherAddMore(){ closeEstVoucher(); _pubShow(_pubTab === 'add' ? 'add' : 'list'); }
 function paintPublicEst(){
   var scr = document.getElementById('publicEstScreen'); if(!scr || scr.style.display !== 'flex') return;
   _estList = estItems();
@@ -4006,37 +4083,57 @@ function paintPublicEst(){
   var vb = document.getElementById('estViewBtn2'); vb.disabled = !t.lines; vb.style.opacity = t.lines ? '1' : '0.45';
 }
 /* ---- Price List tab: tap an item to set its quantity ---- */
-/* Zoom for the price list only (the tabs and the quantity panel stay fixed). Pinch with two fingers, or use + / - / Fit. */
-var _ppvBase = 1, _ppvMul = 1, _ppvPinch = null;
-function ppvApply(mul, fx, fy){
-  var body = document.getElementById('publicPrevBody'), sc = document.getElementById('ppvScale'); if(!body || !sc) return;
+/* ---- Price-list table picker, shared by Bill 1 / Bill 2 and the customer page ----
+   Shows the A4 price list; tap an item to set its quantity; pinch with two fingers to zoom the list only. */
+function tzApply(st, body, sc, mul, fx, fy){
   mul = Math.max(1, Math.min(5, mul));
-  var oz = _ppvBase * _ppvMul, nz = _ppvBase * mul;
+  var oz = st.base * st.mul, nz = st.base * mul;
   if(fx == null){ fx = body.clientWidth / 2; fy = body.clientHeight / 2; }
   var cx = (body.scrollLeft + fx) / oz, cy = (body.scrollTop + fy) / oz;
-  _ppvMul = mul; sc.style.zoom = nz;
+  st.mul = mul; sc.style.zoom = nz;
   body.scrollLeft = cx * nz - fx; body.scrollTop = cy * nz - fy;
 }
-function ppvZoom(f){ if(f === 0){ _ppvMul = 1; var b = document.getElementById('publicPrevBody'); ppvApply(1); if(b){ b.scrollLeft = 0; } } else ppvApply(_ppvMul * f); }
-function ppvBindPinch(body){
+function tzBind(st, body){
   if(body._pinchBound) return; body._pinchBound = true;
   var dist = function(t){ var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); };
-  body.addEventListener('touchstart', function(e){ if(e.touches.length === 2){ _ppvPinch = { d: dist(e.touches), m: _ppvMul }; } }, { passive: true });
+  body.addEventListener('touchstart', function(e){ if(e.touches.length === 2){ st.pinch = { d: dist(e.touches), m: st.mul }; } }, { passive: true });
   body.addEventListener('touchmove', function(e){
-    if(e.touches.length === 2 && _ppvPinch){
+    if(e.touches.length === 2 && st.pinch){
       e.preventDefault();
+      var sc = body.firstElementChild; if(!sc) return;
       var r = body.getBoundingClientRect();
       var fx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, fy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
-      ppvApply(_ppvPinch.m * (dist(e.touches) / _ppvPinch.d), fx, fy);
+      tzApply(st, body, sc, st.pinch.m * (dist(e.touches) / st.pinch.d), fx, fy);
     }
   }, { passive: false });
-  body.addEventListener('touchend', function(e){ if(e.touches.length < 2) _ppvPinch = null; }, { passive: true });
+  body.addEventListener('touchend', function(e){ if(e.touches.length < 2) st.pinch = null; }, { passive: true });
 }
+/* body = scroll container; st = zoom state; qtyOf(sn) -> quantity; onTap(sn) */
+function tzPaint(body, scaleId, st, qtyOf, onTap, curOf){
+  var keepT = body.scrollTop, keepL = body.scrollLeft;
+  body.innerHTML = '<div id="' + scaleId + '" style="width:210mm; text-align:left; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.25);">' + buildPriceListTableHTML(true) + '</div>';
+  var sc = body.firstElementChild;
+  sc.querySelectorAll('tr[data-sn]').forEach(function(tr){
+    var sn = Number(tr.getAttribute('data-sn')), c = qtyOf(sn) || 0, cur = curOf && curOf() === sn;
+    tr.style.cursor = 'pointer';
+    if(c > 0){
+      tr.style.background = '#a9e0bd'; tr.style.fontWeight = '800';
+      var pc = tr.lastElementChild; if(pc) pc.insertAdjacentHTML('afterbegin', '<span style="display:inline-block; margin-right:3px; padding:0 5px; border-radius:7px; background:#14632f; color:#fff; font-size:9px;">&times;' + c + '</span>');
+    }
+    if(cur){ tr.style.background = '#ffd966'; tr.style.outline = '2px solid #e08a00'; tr.style.outlineOffset = '-2px'; }
+  });
+  sc.onclick = function(e){ var tr = e.target.closest && e.target.closest('tr[data-sn]'); if(tr) onTap(Number(tr.getAttribute('data-sn'))); };
+  st.base = Math.min(1, Math.max(240, (body.clientWidth || window.innerWidth) - 16) / (sc.offsetWidth || 794));
+  sc.style.zoom = st.base * st.mul; sc.style.margin = '0 auto';
+  body.scrollTop = keepT; body.scrollLeft = keepL;
+  tzBind(st, body);
+}
+var _ppvSt = { base: 1, mul: 1, pinch: null };
 var _pubSheetSn = null;
 function pubQtyOpen(sn){
-  _pubSheetSn = sn; pubQtyPaint();
+  _pubSheetSn = sn; paintPublicPreview();
 }
-function pubQtyClose(){ _pubSheetSn = null; var sh = document.getElementById('pubQtySheet'); if(sh) sh.style.display = 'none'; }
+function pubQtyClose(){ _pubSheetSn = null; var sh = document.getElementById('pubQtySheet'); if(sh) sh.style.display = 'none'; paintPublicPreview(); }
 function pubQtyPaint(){
   var sh = document.getElementById('pubQtySheet'); if(!sh) return;
   if(_pubSheetSn == null){ sh.style.display = 'none'; return; }
@@ -4053,27 +4150,14 @@ function pubQtyPaint(){
     '<div style="min-width:34px; text-align:center; font-size:20px; font-weight:800;">' + c + '</div>' +
     '<button onclick="estStep(' + idx + ',1)" style="width:42px; height:42px; border-radius:11px; border:none; background:#1e7a3c; color:#fff; font-size:22px; font-weight:800; line-height:1; cursor:pointer;">+</button></div></div>' +
     '<div style="display:flex; gap:8px; margin-top:10px;"><button onclick="pubQtyClose()" style="flex:1; padding:10px; border:1.5px solid #7a1414; border-radius:10px; background:#fff; color:#7a1414; font-weight:800; font-size:13px; cursor:pointer;">Done</button>' +
-    '<button onclick="pubQtyClose(); publicTab(\'est\')" style="flex:1; padding:10px; border:none; border-radius:10px; background:#0b5fd8; color:#fff; font-weight:800; font-size:13px; cursor:pointer;">&#129534; View Estimate</button></div>';
+    '</div>';
   sh.style.display = 'block';
 }
 function paintPublicPreview(){
   var scr = document.getElementById('publicPrevScreen'); if(!scr || scr.style.display !== 'flex') return;
-  var body = document.getElementById('publicPrevBody'), keepTop = body.scrollTop, keepLeft = body.scrollLeft;
-  body.innerHTML = '<div id="ppvScale" style="width:210mm; text-align:left; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.25);">' + buildPriceListTableHTML() + '</div>';
-  var sc = document.getElementById('ppvScale');
+  var body = document.getElementById('publicPrevBody');
   var bySn = {}; estItems().forEach(function(it){ bySn[it.s] = it; });
-  sc.querySelectorAll('tr[data-sn]').forEach(function(tr){
-    var it = bySn[tr.getAttribute('data-sn')], c = it ? (_estQty[it.k] || 0) : 0;
-    tr.style.cursor = 'pointer';
-    if(c > 0){
-      tr.style.background = '#cfeedb';
-      var pc = tr.lastElementChild; if(pc) pc.insertAdjacentHTML('afterbegin', '<span style="display:inline-block; margin-right:3px; padding:0 4px; border-radius:7px; background:#1e7a3c; color:#fff; font-size:8px;">&times;' + c + '</span>');
-    }
-  });
-  sc.onclick = function(e){ var tr = e.target.closest && e.target.closest('tr[data-sn]'); if(tr) pubQtyOpen(Number(tr.getAttribute('data-sn'))); };
-  var bz = Math.min(1, Math.max(240, (body.clientWidth || window.innerWidth) - 16) / (sc.offsetWidth || 794));
-  _ppvBase = bz; sc.style.zoom = bz * _ppvMul; sc.style.margin = '0 auto'; body.scrollTop = keepTop; body.scrollLeft = keepLeft;
-  ppvBindPinch(body);
+  tzPaint(body, 'ppvScale', _ppvSt, function(sn){ var it = bySn[sn]; return it ? (_estQty[it.k] || 0) : 0; }, function(sn){ pubQtyOpen(sn); }, function(){ return _pubSheetSn; });
   var st = document.getElementById('ppvStamp');
   pubQtyPaint();
   if(st) st.textContent = _fbPricelistLive ? 'Updated ' + new Date().toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : 'Showing last saved prices';
@@ -4083,9 +4167,8 @@ async function showPublicPriceList(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
   screen.style.display = 'none';
-  document.getElementById('publicChoiceScreen').style.display = 'block';
-  document.getElementById('pcShopTa').textContent = SHOP.name_ta;
-  document.getElementById('pcShopEn').textContent = SHOP.name_en + (publicPriceBranch() && BRANCHES[publicPriceBranch()] ? ' \u2022 ' + BRANCHES[publicPriceBranch()].name : '');
+  document.getElementById('ppvTitle').textContent = SHOP.name_ta;
+  _pubShow('list');   // customers land straight on the price list
 
   document.getElementById('ppShopTa').textContent = SHOP.name_ta;
   document.getElementById('ppShopEn').textContent = SHOP.name_en + (publicPriceBranch() && BRANCHES[publicPriceBranch()] ? ' \u2022 ' + BRANCHES[publicPriceBranch()].name : '');
@@ -5300,7 +5383,8 @@ async function plEnsureQr(){
     box.remove(); _plQrFor = link; _plQrUrl = u || '';
   }catch(e){ _plQrFor = ''; _plQrUrl = ''; }
 }
-function buildPriceListTableHTML(){
+function buildPriceListTableHTML(noQr){
+  const _qrU = noQr ? '' : _plQrUrl;
   // 50% OFF is just a general text display, NOT applied to individual prices
   
   // Build items from actual CATEGORIES and INV data (current/live prices) for ONE branch
@@ -5365,10 +5449,10 @@ function buildPriceListTableHTML(){
     <div style="width:210mm; min-height:297mm; padding:7mm 8mm; background:#fff; font-family:'Segoe UI', 'Noto Sans Tamil', Arial, sans-serif; box-sizing:border-box;">
 
       <!-- Header bar — single block, matches the approved reference price list -->
-      <div style="position:relative; background:#7a1414; border-radius:6px; padding:6px ${_plQrUrl ? '78px' : '18px'}; text-align:center; min-height:${_plQrUrl ? '62px' : '0'}; display:flex; flex-direction:column; justify-content:center;">
+      <div style="position:relative; background:#7a1414; border-radius:6px; padding:6px ${_qrU ? '78px' : '18px'}; text-align:center; min-height:${_qrU ? '62px' : '0'}; display:flex; flex-direction:column; justify-content:center;">
         <div style="font-size:19px; font-weight:800; color:#fff; line-height:1.2;">${_plbTitle || 'A.R.S பட்டாசுக் கடை'}</div>
         <div style="font-size:10.5px; font-weight:700; color:#ffd9d9; margin-top:2px;">PRICE LIST - ${new Date().getFullYear()} &nbsp;|&nbsp; Branch: ${_plbName} &nbsp;|&nbsp; &#128222; ${_plbPhone}</div>
-        ${_plQrUrl ? `<div style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:#fff; border-radius:4px; padding:2px; text-align:center; width:58px;"><img src="${_plQrUrl}" style="width:54px; height:54px; display:block;" alt="QR"><div style="font-size:5.5px; font-weight:800; color:#7a1414; line-height:1.1; padding-bottom:1px;">SCAN TO ORDER</div></div>` : ''}
+        ${_qrU ? `<div style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:#fff; border-radius:4px; padding:2px; text-align:center; width:58px;"><img src="${_qrU}" style="width:54px; height:54px; display:block;" alt="QR"><div style="font-size:5.5px; font-weight:800; color:#7a1414; line-height:1.1; padding-bottom:1px;">SCAN TO ORDER</div></div>` : ''}
       </div>
 
       <!-- 3 ruled table columns, side by side -->
