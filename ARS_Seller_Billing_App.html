@@ -1036,7 +1036,25 @@
     <button onclick="publicMenu()" style="padding:8px 12px; border:1.5px solid #fff8e6; border-radius:10px; background:transparent; color:#fff8e6; font-weight:800; font-size:13px; cursor:pointer;">&#8592; Menu</button>
     <div style="flex:1; text-align:right; font-size:12px; font-weight:700;" id="ppvStamp"></div>
   </div>
-  <div id="publicPrevBody" style="flex:1; overflow:auto; padding:8px 0 20px;"></div>
+  <div class="pubTabs" style="padding:8px 10px; background:var(--paper); border-bottom:1px solid var(--line);"></div>
+  <div style="background:#fff7e0; color:#7a4a00; font-size:11.5px; font-weight:700; text-align:center; padding:5px 8px;">Tap any item to add quantity &bull; பொருளை தொட்டு எண்ணிக்கை சேர்க்கவும்</div>
+  <div id="publicPrevBody" style="flex:1; overflow:auto; padding:8px 0 90px;"></div>
+  <div id="pubQtySheet" style="display:none; position:absolute; left:0; right:0; bottom:0; background:#fff; border-top:3px solid #1e7a3c; padding:12px 14px calc(12px + env(safe-area-inset-bottom)); box-shadow:0 -4px 14px rgba(0,0,0,.25);"></div>
+</div>
+
+<!-- ============ Customer: My Estimate (selected items with quantity) ============ -->
+<div id="publicEstScreen" style="display:none; position:fixed; inset:0; z-index:30000; background:var(--paper); flex-direction:column;">
+  <div style="background:var(--maroon); color:#fff8e6; padding:calc(8px + env(safe-area-inset-top)) 10px 8px; display:flex; align-items:center; gap:10px;">
+    <button onclick="publicMenu()" style="padding:8px 12px; border:1.5px solid #fff8e6; border-radius:10px; background:transparent; color:#fff8e6; font-weight:800; font-size:13px; cursor:pointer;">&#8592; Menu</button>
+    <div style="flex:1; text-align:right; font-size:13px; font-weight:800;">My Estimate / என் மதிப்பீடு</div>
+  </div>
+  <div class="pubTabs" style="padding:8px 10px; background:var(--paper); border-bottom:1px solid var(--line);"></div>
+  <div id="publicEstBody" style="flex:1; overflow:auto;"></div>
+  <div style="background:#fff; border-top:2px solid var(--maroon); padding:10px; display:flex; gap:8px; align-items:center;">
+    <div style="flex:1; min-width:0;"><div style="font-size:11px; color:#8a6a44;" id="estCount2">No items added</div><div style="font-size:18px; font-weight:800; color:var(--maroon);" id="estTotal2">&#8377;0</div></div>
+    <button onclick="publicTab('add')" style="padding:11px 12px; background:#1e7a3c; color:#fff; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">&#10133; Add items</button>
+    <button onclick="openEstVoucher()" id="estViewBtn2" style="padding:12px 14px; background:var(--maroon); color:#fff8e6; border:none; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer;">&#129534; Voucher</button>
+  </div>
 </div>
 
 <!-- ============ PUBLIC PRICE LIST (what a customer sees after scanning) ============ -->
@@ -1048,6 +1066,7 @@
     <div style="font-size:11px; margin-top:4px;" id="ppUpdated">Loading latest prices…</div>
   </div>
   <div style="position:sticky; top:0; z-index:5; background:var(--paper); padding:8px 10px; border-bottom:1px solid var(--line);">
+    <div class="pubTabs" style="margin-bottom:8px;"></div>
     <div style="display:flex; gap:7px; align-items:center;">
       <input type="search" id="estSearch" placeholder="Search item / பொருள் தேடு…" oninput="estSearchInput(this.value)" style="flex:1; min-width:0; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); font-size:14px; background:#fff;">
       <button id="estFilterBtn" type="button" onclick="estToggleFilters()" aria-label="Filters" style="flex:0 0 auto; width:42px; height:42px; border-radius:10px; border:1.5px solid var(--maroon); background:#fff; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
@@ -1090,6 +1109,7 @@
   <div style="max-width:400px; margin:0 auto;">
     <div id="estVoucherBody" style="background:#fff; border-radius:6px; overflow:hidden;"></div>
     <div style="display:flex; gap:7px; margin-top:10px; position:sticky; bottom:8px;">
+      <button onclick="estVoucherAddMore()" style="flex:1; padding:13px 6px; background:#1e7a3c; color:#fff; border:none; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer;">&#10133; Add items</button>
       <button onclick="estSaveImage(this)" style="flex:1; padding:13px 6px; background:#0b5fd8; color:#fff; border:none; border-radius:10px; font-weight:800; font-size:14px; cursor:pointer;">&#11015;&#65039; Download</button>
       <button onclick="closeEstVoucher()" aria-label="Close" style="flex:0 0 48px; padding:13px 0; background:#fff; color:var(--maroon); border:2px solid var(--maroon); border-radius:10px; font-weight:800; font-size:16px; cursor:pointer;">&#10005;</button>
     </div>
@@ -1513,7 +1533,7 @@ function fbRefreshUI(what){
       if(appOpen){ buildCatNav(); render(); }
       if(adminOpen && (adminTab === 'items' || adminTab === 'changes')) renderAdmin();
       if(pub && pub.style.display === 'block') paintPublicPrices();
-      try{ paintPublicPreview(); }catch(e){}
+      try{ paintPublicPreview(); paintPublicEst(); }catch(e){}
     } else if(what === 'sales'){
       if(adminOpen){ if(adminTab === 'sales' || adminTab === 'reports') renderAdmin(); }
       else if(appOpen && activeTab === 'history') render();
@@ -1523,7 +1543,7 @@ function fbRefreshUI(what){
       if(appOpen){ try{ populateBranchSelector(); render(); }catch(e){} }
       if(adminOpen) renderAdmin();
       if(pub && pub.style.display === 'block') paintPublicPrices();
-      try{ paintPublicPreview(); }catch(e){}
+      try{ paintPublicPreview(); paintPublicEst(); }catch(e){}
     } else if(adminOpen && adminTab === what){
       renderAdmin();
     }
@@ -3669,12 +3689,12 @@ function estSet(i, v){
   var it = _estList[i]; if(!it) return;
   var n = Math.max(0, Math.min(999, parseInt(v, 10) || 0));
   if(n > 0) _estQty[it.k] = n; else delete _estQty[it.k];
-  estPersist(); paintPublicPrices();
+  estPersist(); estRepaintAll();
 }
 function estStep(i, d){ var it = _estList[i]; if(!it) return; estSet(i, (_estQty[it.k] || 0) + d); }
 function estClear(){
   if(!confirm('Remove all items from your estimate? / அனைத்தையும் நீக்கவா?')) return;
-  _estQty = {}; estPersist(); paintPublicPrices();
+  _estQty = {}; estPersist(); estRepaintAll();
 }
 /* ---- Estimate QR: "ARS1|<item no>x<qty>,..." using the same item numbers as Bill 1 / Bill 2 ---- */
 var _estQrFor = '', _estQrUrl = '';
@@ -3921,32 +3941,107 @@ function _pubViewport(zoomOk){
   var vp = document.querySelector('meta[name="viewport"]');
   if(vp) vp.setAttribute('content', zoomOk ? 'width=device-width, initial-scale=1, maximum-scale=5, minimum-scale=1, user-scalable=yes, viewport-fit=cover' : 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover');
 }
-function publicChoose(which){
-  document.getElementById('publicChoiceScreen').style.display = 'none';
-  try{ if(!_pubHist){ history.pushState({ pubSub: true }, ''); _pubHist = true; } }catch(e){}
-  if(which === 'list'){
-    document.getElementById('publicPrevScreen').style.display = 'flex';
-    _pubViewport(true); paintPublicPreview();
-  } else {
-    document.getElementById('publicPriceScreen').style.display = 'block';
-    paintPublicPrices(); updatePublicPriceStamp();
-  }
+var _pubTab = 'add';
+function _pubShow(which){
+  ['publicChoiceScreen','publicPriceScreen','publicPrevScreen','publicEstScreen'].forEach(function(id){ document.getElementById(id).style.display = 'none'; });
+  _pubTab = which;
+  if(which === 'list'){ document.getElementById('publicPrevScreen').style.display = 'flex'; _pubViewport(true); paintPublicPreview(); }
+  else if(which === 'est'){ document.getElementById('publicEstScreen').style.display = 'flex'; _pubViewport(false); paintPublicEst(); }
+  else { document.getElementById('publicPriceScreen').style.display = 'block'; _pubViewport(false); paintPublicPrices(); updatePublicPriceStamp(); }
+  pubTabsPaint();
 }
+function publicChoose(which){
+  if(which === 'bill') which = 'add';
+  try{ if(!_pubHist){ history.pushState({ pubSub: true }, ''); _pubHist = true; } }catch(e){}
+  _pubShow(which);
+}
+function publicTab(which){ _pubShow(which); }
 function publicMenu(fromBack){
-  document.getElementById('publicPriceScreen').style.display = 'none';
-  document.getElementById('publicPrevScreen').style.display = 'none';
+  ['publicPriceScreen','publicPrevScreen','publicEstScreen'].forEach(function(id){ document.getElementById(id).style.display = 'none'; });
   document.getElementById('publicChoiceScreen').style.display = 'block';
   _pubViewport(false);
   if(_pubHist){ _pubHist = false; if(fromBack !== true){ _estPopping = true; try{ history.back(); }catch(e){ _estPopping = false; } } }
 }
+/* Three tabs on every customer screen: Price List (maroon), Add Items (green), My Estimate (blue). */
+function pubTabsPaint(){
+  var n = 0; try{ n = estTotals().lines; }catch(e){}
+  var tab = function(id, label, col, js){
+    var act = _pubTab === id;
+    return '<button type="button" onclick="' + js + '" style="flex:1; min-width:0; padding:9px 4px; border-radius:11px; border:2px solid ' + col + '; background:' + (act ? col : '#fff') + '; color:' + (act ? '#fff' : col) + '; font-weight:800; font-size:12.5px; cursor:pointer; white-space:nowrap;">' + label + '</button>';
+  };
+  var h = '<div style="display:flex; gap:6px;">' + tab('list', '&#128196; Price List', '#7a1414', "publicTab('list')") + tab('add', '&#10133; Add Items', '#1e7a3c', "publicTab('add')") + tab('est', '&#129534; Estimate' + (n ? ' (' + n + ')' : ''), '#0b5fd8', "publicTab('est')") + '</div>';
+  document.querySelectorAll('.pubTabs').forEach(function(el){ el.innerHTML = h; });
+}
+function estRepaintAll(){
+  paintPublicPrices(); paintPublicPreview(); paintPublicEst(); pubTabsPaint();
+}
+function estVoucherAddMore(){ closeEstVoucher(); _pubShow('add'); }
+function paintPublicEst(){
+  var scr = document.getElementById('publicEstScreen'); if(!scr || scr.style.display !== 'flex') return;
+  _estList = estItems();
+  var h = '', n = 0;
+  _estList.forEach(function(it, i){
+    var c = _estQty[it.k] || 0; if(!(c > 0)) return; n++;
+    h += '<div style="display:flex; align-items:center; gap:8px; padding:9px 10px 9px 12px; background:#fff; border-bottom:1px solid #f0e6d3;">' +
+      '<div style="width:26px; flex:0 0 auto;">' + snDot(it.s, 22, 11) + '</div>' +
+      '<div style="flex:1; min-width:0;"><div style="font-weight:700; font-size:13.5px; color:#1a1a1a;">' + estEsc(it.ta) + '</div><div style="font-size:11px; color:#777;">' + estEsc(it.en) + '</div>' +
+      '<div style="font-size:12.5px; font-weight:800; color:#7a1414; margin-top:1px;">&#8377;' + it.price.toLocaleString('en-IN') + ' &times; ' + c + ' <span style="color:#1e7a3c; margin-left:4px;">= &#8377;' + (c * it.price).toLocaleString('en-IN') + '</span></div></div>' +
+      '<div style="display:flex; align-items:center; gap:4px;">' +
+      '<button onclick="estStep(' + i + ',-1)" style="width:34px; height:34px; border-radius:9px; border:1.5px solid var(--maroon); background:#fff; color:var(--maroon); font-size:19px; font-weight:800; line-height:1; cursor:pointer;">&minus;</button>' +
+      '<input type="number" inputmode="numeric" min="0" max="999" value="' + c + '" onchange="estSet(' + i + ',this.value)" style="width:44px; height:34px; box-sizing:border-box; text-align:center; border:1.5px solid var(--line); border-radius:9px; font-size:14px; font-weight:800;">' +
+      '<button onclick="estStep(' + i + ',1)" style="width:34px; height:34px; border-radius:9px; border:none; background:var(--maroon); color:#fff8e6; font-size:19px; font-weight:800; line-height:1; cursor:pointer;">+</button></div></div>';
+  });
+  if(!n) h = '<div style="padding:40px 20px; text-align:center; color:#8a6a44; font-size:14px;">No items added yet.<br>இன்னும் பொருட்கள் சேர்க்கவில்லை.<br><button onclick="publicTab(\'add\')" style="margin-top:14px; padding:12px 18px; border:none; border-radius:12px; background:#1e7a3c; color:#fff; font-weight:800; font-size:14px; cursor:pointer;">&#10133; Add Items</button></div>';
+  document.getElementById('publicEstBody').innerHTML = h;
+  var t = estTotals(_estList);
+  document.getElementById('estCount2').textContent = t.lines ? (t.lines + ' item' + (t.lines > 1 ? 's' : '') + ' • qty ' + t.qty) : 'No items added';
+  document.getElementById('estTotal2').textContent = '₹' + t.amount.toLocaleString('en-IN');
+  var vb = document.getElementById('estViewBtn2'); vb.disabled = !t.lines; vb.style.opacity = t.lines ? '1' : '0.45';
+}
+/* ---- Price List tab: tap an item to set its quantity ---- */
+var _pubSheetSn = null;
+function pubQtyOpen(sn){
+  _pubSheetSn = sn; pubQtyPaint();
+}
+function pubQtyClose(){ _pubSheetSn = null; var sh = document.getElementById('pubQtySheet'); if(sh) sh.style.display = 'none'; }
+function pubQtyPaint(){
+  var sh = document.getElementById('pubQtySheet'); if(!sh) return;
+  if(_pubSheetSn == null){ sh.style.display = 'none'; return; }
+  var list = estItems(), idx = -1;
+  list.forEach(function(it, i){ if(it.s === _pubSheetSn) idx = i; });
+  if(idx < 0){ sh.style.display = 'none'; return; }
+  _estList = list;
+  var it = list[idx], c = _estQty[it.k] || 0;
+  sh.innerHTML = '<div style="display:flex; align-items:center; gap:10px;">' +
+    '<div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:14px; color:#1a1a1a;">' + snDot(it.s, 20, 10) + ' ' + estEsc(it.ta) + '</div><div style="font-size:11px; color:#777;">' + estEsc(it.en) + '</div>' +
+    '<div style="font-size:13px; font-weight:800; color:#7a1414; margin-top:2px;">&#8377;' + it.price.toLocaleString('en-IN') + (c ? ' <span style="color:#1e7a3c;">= &#8377;' + (c * it.price).toLocaleString('en-IN') + '</span>' : '') + '</div></div>' +
+    '<div style="display:flex; align-items:center; gap:6px;">' +
+    '<button onclick="estStep(' + idx + ',-1)" style="width:42px; height:42px; border-radius:11px; border:2px solid #1e7a3c; background:#fff; color:#1e7a3c; font-size:22px; font-weight:800; line-height:1; cursor:pointer;">&minus;</button>' +
+    '<div style="min-width:34px; text-align:center; font-size:20px; font-weight:800;">' + c + '</div>' +
+    '<button onclick="estStep(' + idx + ',1)" style="width:42px; height:42px; border-radius:11px; border:none; background:#1e7a3c; color:#fff; font-size:22px; font-weight:800; line-height:1; cursor:pointer;">+</button></div></div>' +
+    '<div style="display:flex; gap:8px; margin-top:10px;"><button onclick="pubQtyClose()" style="flex:1; padding:10px; border:1.5px solid #7a1414; border-radius:10px; background:#fff; color:#7a1414; font-weight:800; font-size:13px; cursor:pointer;">Done</button>' +
+    '<button onclick="pubQtyClose(); publicTab(\'est\')" style="flex:1; padding:10px; border:none; border-radius:10px; background:#0b5fd8; color:#fff; font-weight:800; font-size:13px; cursor:pointer;">&#129534; View Estimate</button></div>';
+  sh.style.display = 'block';
+}
 function paintPublicPreview(){
   var scr = document.getElementById('publicPrevScreen'); if(!scr || scr.style.display !== 'flex') return;
-  var body = document.getElementById('publicPrevBody');
+  var body = document.getElementById('publicPrevBody'), keepTop = body.scrollTop;
   body.innerHTML = '<div id="ppvScale" style="width:210mm; text-align:left; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.25);">' + buildPriceListTableHTML() + '</div>';
   var sc = document.getElementById('ppvScale');
+  var bySn = {}; estItems().forEach(function(it){ bySn[it.s] = it; });
+  sc.querySelectorAll('tr[data-sn]').forEach(function(tr){
+    var it = bySn[tr.getAttribute('data-sn')], c = it ? (_estQty[it.k] || 0) : 0;
+    tr.style.cursor = 'pointer';
+    if(c > 0){
+      tr.style.background = '#cfeedb';
+      var pc = tr.lastElementChild; if(pc) pc.insertAdjacentHTML('afterbegin', '<span style="display:inline-block; margin-right:3px; padding:0 4px; border-radius:7px; background:#1e7a3c; color:#fff; font-size:8px;">&times;' + c + '</span>');
+    }
+  });
+  sc.onclick = function(e){ var tr = e.target.closest && e.target.closest('tr[data-sn]'); if(tr) pubQtyOpen(Number(tr.getAttribute('data-sn'))); };
   var z = Math.min(1, Math.max(240, (body.clientWidth || window.innerWidth) - 16) / (sc.offsetWidth || 794));
-  sc.style.zoom = z; sc.style.margin = '0 auto';
+  sc.style.zoom = z; sc.style.margin = '0 auto'; body.scrollTop = keepTop;
   var st = document.getElementById('ppvStamp');
+  pubQtyPaint();
   if(st) st.textContent = _fbPricelistLive ? 'Updated ' + new Date().toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : 'Showing last saved prices';
 }
 async function showPublicPriceList(){
@@ -5216,7 +5311,7 @@ function buildPriceListTableHTML(){
   const renderColTable = (rowsIn) => {
     const rows = rowsIn.map((item, idx) => item.kind === 'cat' ? `
       <tr><td colspan="3" style="padding:3px 4px 2px; border-bottom:1.5px solid #7a1414; color:#7a1414; font-weight:800; font-size:9.5px;">${item.no}. ${item.en}${item.cont ? ' <span style="font-weight:600; font-size:8.5px; color:#999;">&hellip;</span>' : ''}</td></tr>` : `
-      <tr style="background:${idx % 2 === 1 ? '#fdf3f1' : '#ffffff'};">
+      <tr data-sn="${item.s}" style="background:${idx % 2 === 1 ? '#fdf3f1' : '#ffffff'};">
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; vertical-align:middle;">${snDot(item.s, 14, 7.5)}</td>
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-size:9px; line-height:1.2; color:#1a1a1a; vertical-align:middle;">${item.ta} <span style="color:#777; font-size:8px;">(${item.en})</span></td>
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-weight:800; color:#7a1414; font-size:9px; text-align:right; white-space:nowrap; vertical-align:middle;">₹${item.price.toLocaleString('en-IN')}</td>
