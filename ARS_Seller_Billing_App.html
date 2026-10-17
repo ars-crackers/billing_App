@@ -1011,15 +1011,40 @@
 <!-- Price List Preview Modal with Pinch-Zoom -->
 <!-- ============ PUBLIC PRICE LIST (what a customer sees after scanning) ============ -->
 <div id="publicPriceScreen" style="display:none; position:fixed; inset:0; z-index:30000; background:var(--paper); overflow-y:auto;">
-  <div style="background:var(--maroon); color:#fff8e6; padding:calc(12px + env(safe-area-inset-top)) 14px 12px; text-align:center;">
+  <div style="background:var(--maroon); color:#fff8e6; padding:calc(12px + env(safe-area-inset-top)) 14px 10px; text-align:center;">
     <div style="font-size:20px; font-weight:800;" id="ppShopTa"></div>
     <div style="font-size:11px; color:var(--gold); letter-spacing:1px;" id="ppShopEn"></div>
     <div style="font-size:11px; margin-top:4px;" id="ppUpdated">Loading latest prices…</div>
   </div>
-  <div id="publicPriceBody" style="padding:10px;"></div>
-  <div style="position:sticky; bottom:0; background:#fff; border-top:1px solid var(--line); padding:10px; display:flex; gap:8px;">
-    <button onclick="publicDownloadPdf(this)" style="flex:1; padding:12px; background:var(--maroon); color:#fff8e6; border:none; border-radius:8px; font-weight:800; cursor:pointer;">&#11015; Save as PDF</button>
-    <button onclick="publicSharePrices(this)" style="flex:1; padding:12px; background:#1e7a3c; color:#fff; border:none; border-radius:8px; font-weight:800; cursor:pointer;">&#128228; Share</button>
+  <div style="position:sticky; top:0; z-index:5; background:var(--paper); padding:8px 10px; border-bottom:1px solid var(--line);">
+    <input type="search" id="estSearch" placeholder="Search item / பொருள் தேடு…" oninput="estSearchInput(this.value)" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); font-size:14px; background:#fff;">
+    <div style="display:flex; gap:6px; margin-top:7px; align-items:center;">
+      <div style="flex:1; font-size:11px; color:#8a6a44; line-height:1.3;">Add items with <b>+</b> to make your own <b>estimate voucher</b>.</div>
+      <button onclick="publicDownloadPdf(this)" style="padding:7px 9px; background:#fff; color:var(--maroon); border:1.5px solid var(--maroon); border-radius:8px; font-weight:800; font-size:11px; cursor:pointer;">&#128196; Price list PDF</button>
+      <button onclick="publicSharePrices(this)" style="padding:7px 9px; background:#fff; color:#1e7a3c; border:1.5px solid #1e7a3c; border-radius:8px; font-weight:800; font-size:11px; cursor:pointer;">&#128279; Share</button>
+    </div>
+  </div>
+  <div id="publicPriceBody" style="padding:0 0 90px;"></div>
+  <div id="estBar" style="position:sticky; bottom:0; background:#fff; border-top:2px solid var(--maroon); padding:10px; display:flex; gap:8px; align-items:center;">
+    <div style="flex:1; min-width:0;">
+      <div style="font-size:11px; color:#8a6a44;" id="estCount">No items added</div>
+      <div style="font-size:18px; font-weight:800; color:var(--maroon);" id="estTotal">&#8377;0</div>
+    </div>
+    <button onclick="estClear()" id="estClearBtn" style="padding:11px 12px; background:#fff; color:#b3261e; border:1.5px solid #b3261e; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer;">Clear</button>
+    <button onclick="openEstVoucher()" id="estViewBtn" style="padding:12px 16px; background:var(--maroon); color:#fff8e6; border:none; border-radius:10px; font-weight:800; font-size:14px; cursor:pointer;">&#128196; Get Voucher</button>
+  </div>
+</div>
+
+<!-- ============ Customer estimate (mark-up) voucher ============ -->
+<div id="estVoucherOverlay" style="display:none; position:fixed; inset:0; z-index:30500; background:rgba(0,0,0,0.55); overflow-y:auto; padding:12px;">
+  <div style="max-width:400px; margin:0 auto;">
+    <div id="estVoucherBody" style="background:#fff; border-radius:6px; overflow:hidden;"></div>
+    <div style="display:flex; gap:7px; margin-top:10px; position:sticky; bottom:8px;">
+      <button onclick="closeEstVoucher()" style="flex:1; padding:12px 6px; background:#fff; color:var(--maroon); border:2px solid var(--maroon); border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">&#9998; Edit</button>
+      <button onclick="estSaveImage(this)" style="flex:1; padding:12px 6px; background:#0b5fd8; color:#fff; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">&#128247; Image</button>
+      <button onclick="estSavePdf(this)" style="flex:1; padding:12px 6px; background:var(--maroon); color:#fff8e6; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">&#128196; PDF</button>
+      <button onclick="estShare(this)" style="flex:1; padding:12px 6px; background:#1e7a3c; color:#fff; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">&#128228; Share</button>
+    </div>
   </div>
 </div>
 
@@ -1439,7 +1464,7 @@ function fbRefreshUI(what){
     if(what === 'pricelist'){
       if(appOpen){ buildCatNav(); render(); }
       if(adminOpen && (adminTab === 'items' || adminTab === 'changes')) renderAdmin();
-      if(pub && pub.style.display === 'block') document.getElementById('publicPriceBody').innerHTML = buildPriceListTableHTML();
+      if(pub && pub.style.display === 'block') paintPublicPrices();
     } else if(what === 'sales'){
       if(adminOpen){ if(adminTab === 'sales' || adminTab === 'reports') renderAdmin(); }
       else if(appOpen && activeTab === 'history') render();
@@ -1448,7 +1473,7 @@ function fbRefreshUI(what){
       // a branch was added, renamed, put on hold or resumed on another phone / HTML copy
       if(appOpen){ try{ populateBranchSelector(); render(); }catch(e){} }
       if(adminOpen) renderAdmin();
-      if(pub && pub.style.display === 'block') document.getElementById('publicPriceBody').innerHTML = buildPriceListTableHTML();
+      if(pub && pub.style.display === 'block') paintPublicPrices();
     } else if(adminOpen && adminTab === what){
       renderAdmin();
     }
@@ -3444,6 +3469,161 @@ function pickPriceBranch(){
 }
 function priceLinkFor(bid){ return location.origin + location.pathname + '#price' + (bid ? '=' + bid : ''); }
 
+/* ================= CUSTOMER ESTIMATE (mark-up voucher) =================
+   A customer who scans the price-list QR can add items and quantities and get an ESTIMATE voucher.
+   It is clearly not a bill: nothing is recorded, sold or sent to the server. */
+var _estQty = {}, _estSearchText = '', _estList = [];
+try{ _estQty = JSON.parse(localStorage.getItem('ars_cust_estimate') || '{}') || {}; }catch(e){ _estQty = {}; }
+function estPersist(){ try{ localStorage.setItem('ars_cust_estimate', JSON.stringify(_estQty)); }catch(e){} }
+function estEsc(v){ return String(v == null ? '' : v).replace(/[&<>"]/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[ch]; }); }
+function estItems(){
+  var b = plBranchId(), out = [];
+  CATEGORIES.forEach(function(cat, ci){
+    (cat.items || []).forEach(function(it, ii){
+      if(!isItemInBranch(ci, ii, b)) return;
+      var nm = getItemName(ci, ii), cn = getCategoryName(ci);
+      out.push({ k: (cat.en || '') + '|' + (it.en || ''), ci: ci, s: itemSerialNo(ci, ii), ta: nm.ta, en: nm.en, price: Number(getBranchPrice(ci, ii, b)) || 0, unit: getUnit(ci, ii), catTa: cn.ta, catEn: cn.en });
+    });
+  });
+  return out;
+}
+function estTotals(items){
+  var n = 0, q = 0, amt = 0;
+  (items || estItems()).forEach(function(it){ var c = _estQty[it.k] || 0; if(c > 0){ n++; q += c; amt += c * it.price; } });
+  return { lines: n, qty: q, amount: amt };
+}
+function estUpdateBar(items){
+  var t = estTotals(items);
+  document.getElementById('estCount').textContent = t.lines ? (t.lines + ' item' + (t.lines > 1 ? 's' : '') + ' • qty ' + t.qty) : 'No items added';
+  document.getElementById('estTotal').textContent = '₹' + t.amount.toLocaleString('en-IN');
+  document.getElementById('estViewBtn').disabled = !t.lines;
+  document.getElementById('estViewBtn').style.opacity = t.lines ? '1' : '0.45';
+  document.getElementById('estClearBtn').style.display = t.lines ? '' : 'none';
+}
+function paintPublicPrices(){
+  var body = document.getElementById('publicPriceBody'); if(!body) return;
+  var screen = document.getElementById('publicPriceScreen'), keep = screen ? screen.scrollTop : 0;
+  _estList = estItems();
+  var q = _estSearchText.trim().toLowerCase(), h = '', lastCat = null, shown = 0;
+  _estList.forEach(function(it, i){
+    if(q && (it.en + ' ' + it.ta + ' ' + it.s).toLowerCase().indexOf(q) === -1) return;
+    shown++;
+    if(lastCat !== it.catEn){
+      lastCat = it.catEn;
+      h += '<div style="background:#f6d9d9; color:#7a1414; font-weight:800; font-size:12px; padding:6px 12px; border-top:1px solid #eac4c4;">' + estEsc(it.catTa) + ' <span style="font-weight:600; font-size:10.5px; color:#8a4a4a;">' + estEsc(it.catEn) + '</span></div>';
+    }
+    var c = _estQty[it.k] || 0, on = c > 0;
+    h += '<div style="display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; background:' + (on ? '#fff6e0' : '#fff') + '; border-bottom:1px solid #f0e6d3;">' +
+      '<div style="width:24px; font-weight:800; color:#c9651a; font-size:11.5px;">' + it.s + '</div>' +
+      '<div style="flex:1; min-width:0;"><div style="font-weight:700; font-size:13px; color:#1a1a1a;">' + estEsc(it.ta) + '</div>' +
+      '<div style="font-size:10.5px; color:#777;">' + estEsc(it.en) + '</div>' +
+      '<div style="font-size:12px; font-weight:800; color:#7a1414; margin-top:1px;">&#8377;' + it.price.toLocaleString('en-IN') + ' <span style="font-weight:600; font-size:10px; color:#8a6a44;">/ ' + estEsc(it.unit) + '</span>' +
+      (on ? ' <span style="color:#1e7a3c; margin-left:6px;">= &#8377;' + (c * it.price).toLocaleString('en-IN') + '</span>' : '') + '</div></div>' +
+      '<div style="display:flex; align-items:center; gap:4px;">' +
+      '<button onclick="estStep(' + i + ',-1)" style="width:32px; height:32px; border-radius:8px; border:1.5px solid var(--maroon); background:#fff; color:var(--maroon); font-size:18px; font-weight:800; line-height:1; cursor:pointer;' + (on ? '' : ' opacity:0.35;') + '">&minus;</button>' +
+      '<input type="number" inputmode="numeric" min="0" max="999" value="' + (on ? c : '') + '" placeholder="0" onchange="estSet(' + i + ',this.value)" style="width:42px; height:32px; box-sizing:border-box; text-align:center; border:1.5px solid var(--line); border-radius:8px; font-size:14px; font-weight:800;">' +
+      '<button onclick="estStep(' + i + ',1)" style="width:32px; height:32px; border-radius:8px; border:none; background:var(--maroon); color:#fff8e6; font-size:18px; font-weight:800; line-height:1; cursor:pointer;">+</button></div></div>';
+  });
+  if(!shown) h = '<div style="padding:30px 16px; text-align:center; color:#8a6a44; font-size:13px;">No items match your search.</div>';
+  body.innerHTML = h;
+  estUpdateBar(_estList);
+  if(screen) screen.scrollTop = keep;
+}
+function estSearchInput(v){ _estSearchText = v || ''; paintPublicPrices(); }
+function estSet(i, v){
+  var it = _estList[i]; if(!it) return;
+  var n = Math.max(0, Math.min(999, parseInt(v, 10) || 0));
+  if(n > 0) _estQty[it.k] = n; else delete _estQty[it.k];
+  estPersist(); paintPublicPrices();
+}
+function estStep(i, d){ var it = _estList[i]; if(!it) return; estSet(i, (_estQty[it.k] || 0) + d); }
+function estClear(){
+  if(!confirm('Remove all items from your estimate? / அனைத்தையும் நீக்கவா?')) return;
+  _estQty = {}; estPersist(); paintPublicPrices();
+}
+function estVoucherHtml(){
+  var items = estItems(), b = plBranchId(), br = BRANCHES[b] || {};
+  var rows = '', n = 0, tq = 0, total = 0;
+  items.forEach(function(it){
+    var c = _estQty[it.k] || 0; if(!(c > 0)) return;
+    n++; tq += c; total += c * it.price;
+    rows += '<tr><td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:10px; color:#5a6b8c; vertical-align:top;">' + n + '</td>' +
+      '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; vertical-align:top;"><b>' + estEsc(it.ta) + '</b><br><span style="font-size:9.5px; color:#667;">' + estEsc(it.en) + '</span></td>' +
+      '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; text-align:center; vertical-align:top;">' + c + '</td>' +
+      '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; text-align:right; vertical-align:top; white-space:nowrap;">' + it.price.toLocaleString('en-IN') + '</td>' +
+      '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; text-align:right; font-weight:800; vertical-align:top; white-space:nowrap;">' + (c * it.price).toLocaleString('en-IN') + '</td></tr>';
+  });
+  var now = new Date(), pad = function(x){ return (x < 10 ? '0' : '') + x; };
+  var ref = 'EST-' + String(now.getFullYear()).slice(2) + pad(now.getMonth() + 1) + pad(now.getDate()) + '-' + pad(now.getHours()) + pad(now.getMinutes());
+  var when = now.toLocaleString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  var title = branchTitle(br) || SHOP.name_ta;
+  return '<div style="width:360px; box-sizing:border-box; background:#f4f8ff; border:3px double #1b3a78; font-family:\'Segoe UI\',\'Noto Sans Tamil\',Arial,sans-serif; color:#10213f;">' +
+    '<div style="background:#1b3a78; color:#fff; text-align:center; padding:9px 8px 7px;">' +
+      '<div style="font-size:17px; font-weight:800;">' + estEsc(title) + '</div>' +
+      '<div style="font-size:10px; letter-spacing:1px; color:#cfe0ff;">' + estEsc(SHOP.name_en) + (br.name ? ' • ' + estEsc(br.name) : '') + '</div>' +
+    '</div>' +
+    '<div style="text-align:center; padding:8px 6px 4px;">' +
+      '<div style="display:inline-block; border:2px solid #b3261e; color:#b3261e; font-weight:800; letter-spacing:1.5px; font-size:14px; padding:3px 12px; border-radius:4px; transform:rotate(-2deg);">ESTIMATE VOUCHER</div>' +
+      '<div style="font-size:10.5px; font-weight:700; color:#b3261e; margin-top:5px;">மதிப்பீட்டு சீட்டு — முறையான பில் அல்ல &nbsp;|&nbsp; NOT A BILL</div>' +
+    '</div>' +
+    '<div style="display:flex; justify-content:space-between; padding:2px 10px 6px; font-size:10px; color:#44557a;"><span>Ref: <b>' + ref + '</b></span><span>' + when + '</span></div>' +
+    '<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><colgroup><col style="width:20px;"><col><col style="width:34px;"><col style="width:52px;"><col style="width:62px;"></colgroup>' +
+      '<thead><tr style="background:#dce7fb;"><th style="padding:5px 4px; font-size:9.5px; text-align:left;">#</th><th style="padding:5px 4px; font-size:9.5px; text-align:left;">Item</th><th style="padding:5px 4px; font-size:9.5px;">Qty</th><th style="padding:5px 4px; font-size:9.5px; text-align:right;">Rate &#8377;</th><th style="padding:5px 4px; font-size:9.5px; text-align:right;">Amount &#8377;</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>' +
+    '<div style="display:flex; justify-content:space-between; align-items:center; padding:9px 10px 4px; border-top:2px solid #1b3a78; margin-top:2px;"><span style="font-size:11px; color:#44557a;">' + n + ' item' + (n > 1 ? 's' : '') + ' • qty ' + tq + '</span><span style="font-size:11px; font-weight:800;">ESTIMATED TOTAL</span></div>' +
+    '<div style="text-align:right; padding:0 10px 8px; font-size:24px; font-weight:800; color:#1b3a78;">&#8377;' + total.toLocaleString('en-IN') + '</div>' +
+    '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + estEsc(branchPhoneText(br)) + '</div>' +
+  '</div>';
+}
+function openEstVoucher(){
+  var t = estTotals();
+  if(!t.lines){ alert('Add at least one item first. / முதலில் பொருட்களை சேர்க்கவும்.'); return; }
+  document.getElementById('estVoucherBody').innerHTML = estVoucherHtml();
+  document.getElementById('estVoucherOverlay').style.display = 'block';
+}
+function closeEstVoucher(){ document.getElementById('estVoucherOverlay').style.display = 'none'; }
+function estDownload(blob, name){
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+}
+async function estBusy(btn, fn){
+  var old = btn.innerHTML; btn.disabled = true; btn.innerHTML = '…';
+  try{ await fn(); }
+  catch(e){ alert('Could not prepare the voucher. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.')); }
+  finally{ btn.disabled = false; btn.innerHTML = old; }
+}
+function estSaveImage(btn){
+  return estBusy(btn, async function(){
+    var blob = await renderOffscreenToImageBlob(estVoucherHtml());
+    estDownload(blob, 'Estimate_Voucher.png');
+  });
+}
+function estSavePdf(btn){
+  return estBusy(btn, async function(){
+    await ensureJsPDF();
+    var blob = await renderOffscreenToImageBlob(estVoucherHtml());
+    var url = URL.createObjectURL(blob), img = new Image();
+    img.src = url; await img.decode();
+    var wPt = 270, hPt = wPt * (img.naturalHeight / img.naturalWidth);
+    var doc = new window.jspdf.jsPDF({ orientation: hPt >= wPt ? 'portrait' : 'landscape', unit: 'pt', format: [wPt, hPt] });
+    doc.addImage(img, 'PNG', 0, 0, wPt, hPt);
+    URL.revokeObjectURL(url);
+    doc.save('Estimate_Voucher.pdf');
+  });
+}
+function estShare(btn){
+  return estBusy(btn, async function(){
+    var blob = await renderOffscreenToImageBlob(estVoucherHtml());
+    var file = new File([blob], 'Estimate_Voucher.png', { type: 'image/png' });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      try{ await navigator.share({ files: [file], title: SHOP.name_en + ' — Estimate' }); return; }
+      catch(e){ if(e && e.name === 'AbortError') return; }
+    }
+    estDownload(blob, 'Estimate_Voucher.png');
+  });
+}
+
 async function showPublicPriceList(){
   var screen = document.getElementById('publicPriceScreen');
   document.getElementById('loginScreen').classList.add('hidden');
@@ -3453,9 +3633,7 @@ async function showPublicPriceList(){
   document.getElementById('ppShopTa').textContent = SHOP.name_ta;
   document.getElementById('ppShopEn').textContent = SHOP.name_en + (publicPriceBranch() && BRANCHES[publicPriceBranch()] ? ' \u2022 ' + BRANCHES[publicPriceBranch()].name : '');
 
-  function paint(){
-    document.getElementById('publicPriceBody').innerHTML = buildPriceListTableHTML();
-  }
+  function paint(){ paintPublicPrices(); }
   paint();   // stored prices now; the Firebase listener (read-only, started at INIT) repaints
              // this page through fbRefreshUI('pricelist') when the server's list arrives
   updatePublicPriceStamp();
