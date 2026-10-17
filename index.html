@@ -760,12 +760,6 @@
         </div>
         <button id="appQrBtn" class="icon-btn-circle hidden" onclick="openPriceQr('app')" title="Seller App QR" aria-label="Seller app QR" style="flex:0 0 auto; background:rgba(255,255,255,0.12); border:1.3px solid var(--gold); color:var(--gold); cursor:pointer;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14h1M14 20h3M20 17v4"/></svg></button>
         <a id="cleanterBtn" class="icon-btn-circle hidden" href="https://play.google.com/store/apps/details?id=id.cleancode.cleanter" target="_blank" rel="noopener" title="Download Cleanter printer app" aria-label="Download Cleanter printer app" style="flex:0 0 auto; background:rgba(255,255,255,0.12); border:1.3px solid var(--gold); color:var(--gold); text-decoration:none; display:inline-flex; align-items:center; justify-content:center;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M12 14v7m-3-3 3 3 3-3"/></svg></a>
-        <div class="hdr-actions">
-          <button id="clearShareBtn" class="clear-stack-btn" onclick="handleClearShareClick(this)" title="Clear cart">
-            <span id="clearShareIcon"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M6,19c0,1.1,0.9,2,2,2h8c1.1,0,2-0.9,2-2V7H6V19z M19,4h-3.5l-1-1h-5l-1,1H5v2h14V4z"/></svg></span>
-            <span id="clearShareLabel">Clear</span>
-          </button>
-        </div>
       </div>
       <div class="user-bar">
         <div class="u-info"><span title="Logged in" aria-label="Logged in">&#128587;</span> <b id="userNameTag"></b></div>
@@ -805,6 +799,10 @@
       <div class="cb-total">&#8377;<span id="cbTotal">0</span></div>
     </div>
     <div style="display:flex; gap:6px;">
+      <button id="clearShareBtn" type="button" onclick="handleClearShareClick(this)" title="Clear cart" aria-label="Clear cart" style="background:transparent; color:#ffe1a8; border:1.5px solid #ffe1a8; padding:10px 12px; display:flex; align-items:center; gap:5px;">
+        <span id="clearShareIcon" style="display:flex;"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M6,19c0,1.1,0.9,2,2,2h8c1.1,0,2-0.9,2-2V7H6V19z M19,4h-3.5l-1-1h-5l-1,1H5v2h14V4z"/></svg></span>
+        <span id="clearShareLabel" style="font-size:12px;">Clear</span>
+      </button>
       <button id="billBtn" onclick="openBill()" disabled>View Bill &rarr;</button>
     </div>
   </div>
@@ -1020,8 +1018,6 @@
     <input type="search" id="estSearch" placeholder="Search item / பொருள் தேடு…" oninput="estSearchInput(this.value)" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); font-size:14px; background:#fff;">
     <div style="display:flex; gap:6px; margin-top:7px; align-items:center;">
       <div style="flex:1; font-size:11px; color:#8a6a44; line-height:1.3;">Add items with <b>+</b> to make your own <b>estimate voucher</b>.</div>
-      <button onclick="publicDownloadPdf(this)" style="padding:7px 9px; background:#fff; color:var(--maroon); border:1.5px solid var(--maroon); border-radius:8px; font-weight:800; font-size:11px; cursor:pointer;">&#128196; Price list PDF</button>
-      <button onclick="publicSharePrices(this)" style="padding:7px 9px; background:#fff; color:#1e7a3c; border:1.5px solid #1e7a3c; border-radius:8px; font-weight:800; font-size:11px; cursor:pointer;">&#128279; Share</button>
     </div>
   </div>
   <div id="publicPriceBody" style="padding:0 0 90px;"></div>
@@ -1040,10 +1036,8 @@
   <div style="max-width:400px; margin:0 auto;">
     <div id="estVoucherBody" style="background:#fff; border-radius:6px; overflow:hidden;"></div>
     <div style="display:flex; gap:7px; margin-top:10px; position:sticky; bottom:8px;">
-      <button onclick="closeEstVoucher()" style="flex:1; padding:12px 6px; background:#fff; color:var(--maroon); border:2px solid var(--maroon); border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">&#9998; Edit</button>
-      <button onclick="estSaveImage(this)" style="flex:1; padding:12px 6px; background:#0b5fd8; color:#fff; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">&#128247; Image</button>
-      <button onclick="estSavePdf(this)" style="flex:1; padding:12px 6px; background:var(--maroon); color:#fff8e6; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">&#128196; PDF</button>
-      <button onclick="estShare(this)" style="flex:1; padding:12px 6px; background:#1e7a3c; color:#fff; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer;">&#128228; Share</button>
+      <button onclick="estSaveImage(this)" style="flex:1; padding:13px 6px; background:#0b5fd8; color:#fff; border:none; border-radius:10px; font-weight:800; font-size:14px; cursor:pointer;">&#11015;&#65039; Download</button>
+      <button onclick="closeEstVoucher()" aria-label="Close" style="flex:0 0 48px; padding:13px 0; background:#fff; color:var(--maroon); border:2px solid var(--maroon); border-radius:10px; font-weight:800; font-size:16px; cursor:pointer;">&#10005;</button>
     </div>
   </div>
 </div>
@@ -3120,6 +3114,10 @@ function computeTotals(cartObj){
 /* ---- Bill 1 / Bill 2 item filter: In cart, price bands, sort, reset ---- */
 var billFilters = { incart:false, recent:false, sort:'' };
 var billFilterOpen = false, billCatOpen = false;
+/* Bill 1 / Bill 2 item layout: 'list' (default, row with S.No + - qty +) or 'grid' (2-column cards). Seller can switch from the filter bar. */
+var billLayout = 'list';
+try{ var _bl = localStorage.getItem('ars_bill_layout'); if(_bl === 'grid' || _bl === 'list') billLayout = _bl; }catch(e){}
+function toggleBillLayout(){ billLayout = (billLayout === 'list') ? 'grid' : 'list'; try{ localStorage.setItem('ars_bill_layout', billLayout); }catch(e){} render(); }
 function toggleBillCat(){ billCatOpen = !billCatOpen; render(); }
 function pickBillCat(v){ billCatOpen = false; setCat(v); }
 function billFilterActive(){ return billFilters.incart || billFilters.recent || billFilters.sort || activeCat !== 'ALL'; }
@@ -3166,6 +3164,7 @@ function renderBillFilterBar(shown){
     ib('&#128344;', 'Recent billed', billFilters.recent, "setBillFilter('recent')") +
     ib('&#128722;', 'In cart', billFilters.incart, "setBillFilter('incart')") +
     ib('&#128193;', 'Category', billCatOpen || catOn, 'toggleBillCat()') +
+    ib(billLayout === 'list' ? '&#9638;' : '&#9776;', billLayout === 'list' ? 'Switch to grid view' : 'Switch to list view', false, 'toggleBillLayout()') +
     ib('&#8645;', 'S.No / category order', !billFilters.sort, "setBillFilter('sort','')") +
     ib('&#8377;&#9650;', 'Price low to high', billFilters.sort === 'low', "setBillFilter('sort','low')", 1) +
     ib('&#8377;&#9660;', 'Price high to low', billFilters.sort === 'high', "setBillFilter('sort','high')", 1) +
@@ -3231,7 +3230,19 @@ function render(){
               <div class="item-price3">&#8377;${price} <span class="item-unit3">/ ${unit}</span></div>
               ${addControl}
             </div>`;
-        rows += _card; _flat.push({ price: Number(price) || 0, serial: serial, h: _card, n: (_recentMap && _recentMap[_rk]) ? _recentMap[_rk].n : 0, last: (_recentMap && _recentMap[_rk]) ? _recentMap[_rk].last : 0 });
+        const _on = qty > 0;
+        const _btn = 'width:36px; height:36px; border-radius:9px; font-size:20px; font-weight:800; line-height:1; cursor:pointer; padding:0;';
+        const _lrow = `<div style="display:flex; align-items:center; gap:8px; padding:9px 10px 9px 12px; background:${_on ? '#fdf3dc' : '#fff'}; border-bottom:1px solid #f0e6d3;">
+              <div style="width:24px; flex:0 0 auto; font-weight:800; color:#c9651a; font-size:13px;">${serial}</div>
+              <div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:15px; color:#1a1a1a; line-height:1.25;">${name.ta}</div>
+                <div style="font-size:12px; color:#777;">${name.en}</div>
+                <div style="font-size:15px; font-weight:800; color:#7a1414; margin-top:1px;">&#8377;${price} <span style="font-weight:600; font-size:12px; color:#8a6a44;">/ ${unit}</span>${_on ? ` <span style="color:#1e7a3c; margin-left:8px;">= &#8377;${(qty * price).toLocaleString('en-IN')}</span>` : ''}</div></div>
+              <div style="display:flex; align-items:center; gap:4px; flex:0 0 auto;">
+                <button type="button" onclick="changeQty(${ci},${ii},-1)" ${_on ? '' : 'disabled'} style="${_btn} border:1.5px solid var(--maroon); background:#fff; color:var(--maroon);${_on ? '' : ' opacity:0.35;'}">&minus;</button>
+                <input type="number" inputmode="numeric" min="0" value="${qty}" onchange="setQty(${ci},${ii}, this.value)" style="width:46px; height:36px; box-sizing:border-box; text-align:center; border:1.5px solid var(--line); border-radius:9px; font-size:15px; font-weight:800; background:#fff;">
+                <button type="button" onclick="changeQty(${ci},${ii},1)" style="${_btn} border:none; background:var(--maroon); color:#fff8e6;">+</button></div></div>`;
+        const _use = billLayout === 'list' ? _lrow : _card;
+        rows += _use; _flat.push({ price: Number(price) || 0, serial: serial, h: _use, n: (_recentMap && _recentMap[_rk]) ? _recentMap[_rk].n : 0, last: (_recentMap && _recentMap[_rk]) ? _recentMap[_rk].last : 0 });
       } else {
         rows += `<div class="price-row2">
             <div class="pr-serial-badge" title="Item #${serial}">${serial}</div>
@@ -3242,9 +3253,11 @@ function render(){
     });
     if(rows){
       if(activeTab === 'billing1' || activeTab === 'billing2'){
-        html += `<div class="cat-heading">${cn.ta} <span class="en">${cn.en}</span></div><div class="item-grid2">${rows}</div>`;
+        html += billLayout === 'list'
+          ? `<div style="background:#f6d9d9; color:#7a1414; font-weight:800; font-size:13px; padding:7px 12px; border-top:1px solid #eac4c4;"><span style="display:inline-block; min-width:20px; margin-right:4px; padding:0 5px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px; text-align:center;">${ci+1}</span>${cn.ta} <span style="font-weight:600; font-size:11px; color:#8a4a4a;">${cn.en}</span></div>${rows}`
+          : `<div class="cat-heading"><span style="padding:0 6px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px;">${ci+1}</span>${cn.ta} <span class="en">${cn.en}</span></div><div class="item-grid2">${rows}</div>`;
       } else {
-        html += `<div class="cat-heading">${cn.ta} <span class="en">${cn.en}</span></div>${rows}`;
+        html += `<div class="cat-heading"><span style="padding:0 6px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px;">${ci+1}</span>${cn.ta} <span class="en">${cn.en}</span></div>${rows}`;
       }
     }
   });
@@ -3252,7 +3265,7 @@ function render(){
   if((activeTab === 'billing1' || activeTab === 'billing2') && (billFilters.sort || billFilters.recent) && _flat.length){
     if(!billFilters.sort) _flat.sort((a, b) => b.n - a.n || b.last - a.last || a.serial - b.serial);
     else _flat.sort((a, b) => billFilters.sort === 'low' ? (a.price - b.price || a.serial - b.serial) : (b.price - a.price || a.serial - b.serial));
-    html = `<div class="item-grid2">${_flat.map(x => x.h).join('')}</div>`;
+    html = billLayout === 'list' ? `<div>${_flat.map(x => x.h).join('')}</div>` : `<div class="item-grid2">${_flat.map(x => x.h).join('')}</div>`;
   }
   renderBillFilterBar(_shown);
   list.innerHTML = html || `<div class="empty-state">No items found.<br/>பொருள் இல்லை.</div>`;
@@ -3492,7 +3505,7 @@ function estItems(){
     (cat.items || []).forEach(function(it, ii){
       if(!isItemInBranch(ci, ii, b)) return;
       var nm = getItemName(ci, ii), cn = getCategoryName(ci);
-      out.push({ k: (cat.en || '') + '|' + (it.en || ''), ci: ci, s: itemSerialNo(ci, ii), ta: nm.ta, en: nm.en, price: Number(getBranchPrice(ci, ii, b)) || 0, unit: getUnit(ci, ii), catTa: cn.ta, catEn: cn.en });
+      out.push({ k: (cat.en || '') + '|' + (it.en || ''), ci: ci, s: itemSerialNo(ci, ii), ta: nm.ta, en: nm.en, price: Number(getBranchPrice(ci, ii, b)) || 0, unit: getUnit(ci, ii), catTa: cn.ta, catEn: cn.en, cno: ci + 1 });
     });
   });
   return out;
@@ -3520,7 +3533,7 @@ function paintPublicPrices(){
     shown++;
     if(lastCat !== it.catEn){
       lastCat = it.catEn;
-      h += '<div style="background:#f6d9d9; color:#7a1414; font-weight:800; font-size:12px; padding:6px 12px; border-top:1px solid #eac4c4;">' + estEsc(it.catTa) + ' <span style="font-weight:600; font-size:10.5px; color:#8a4a4a;">' + estEsc(it.catEn) + '</span></div>';
+      h += '<div style="background:#f6d9d9; color:#7a1414; font-weight:800; font-size:12px; padding:6px 12px; border-top:1px solid #eac4c4;"><span style="display:inline-block; min-width:18px; margin-right:5px; padding:0 5px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:10.5px; text-align:center;">' + it.cno + '</span>' + estEsc(it.catTa) + ' <span style="font-weight:600; font-size:10.5px; color:#8a4a4a;">' + estEsc(it.catEn) + '</span></div>';
     }
     var c = _estQty[it.k] || 0, on = c > 0;
     h += '<div style="display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; background:' + (on ? '#fff6e0' : '#fff') + '; border-bottom:1px solid #f0e6d3;">' +
@@ -4867,7 +4880,7 @@ function buildPriceListTableHTML(){
     if(!list.length) return;
     list.sort((a, b) => a.s - b.s);
     const cn = getCategoryName(ci);
-    rowsAll.push({ kind: 'cat', ta: cn.ta, en: cn.en, cont: false });
+    rowsAll.push({ kind: 'cat', ta: cn.ta, en: cn.en, no: ci + 1, cont: false });
     list.forEach(x => rowsAll.push(x));
     itemCount += list.length;
   });
@@ -4883,14 +4896,14 @@ function buildPriceListTableHTML(){
     if(cidx < 2 && cols[cidx].length >= target){
       const last = cols[cidx][cols[cidx].length - 1];
       if(last && last.kind === 'cat'){ cols[cidx].pop(); cidx++; cols[cidx].push(last); }
-      else { cidx++; if(r.kind === 'item' && curCat) cols[cidx].push({ kind: 'cat', ta: curCat.ta, en: curCat.en, cont: true }); }
+      else { cidx++; if(r.kind === 'item' && curCat) cols[cidx].push({ kind: 'cat', ta: curCat.ta, en: curCat.en, no: curCat.no, cont: true }); }
     }
     cols[cidx].push(r);
   });
 
   const renderColTable = (rowsIn) => {
     const rows = rowsIn.map((item, idx) => item.kind === 'cat' ? `
-      <tr><td colspan="3" style="padding:5px 5px 3px; border-bottom:1.5px solid #7a1414; color:#7a1414; font-weight:800; font-size:10px;">${item.en}${item.cont ? ' <span style="font-weight:600; font-size:8.5px; color:#999;">&hellip;</span>' : ''}</td></tr>` : `
+      <tr><td colspan="3" style="padding:5px 5px 3px; border-bottom:1.5px solid #7a1414; color:#7a1414; font-weight:800; font-size:10px;">${item.no}. ${item.en}${item.cont ? ' <span style="font-weight:600; font-size:8.5px; color:#999;">&hellip;</span>' : ''}</td></tr>` : `
       <tr style="background:${idx % 2 === 1 ? '#fdf3f1' : '#ffffff'};">
         <td style="padding:3px 4px; border-bottom:1px solid #eee; font-weight:800; color:#c9651a; font-size:9.5px; vertical-align:top;">${item.s}</td>
         <td style="padding:3px 4px; border-bottom:1px solid #eee; font-size:9.5px; color:#1a1a1a; vertical-align:top;">${item.ta} <span style="color:#777; font-size:8.5px;">(${item.en})</span></td>
