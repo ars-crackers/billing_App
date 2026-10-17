@@ -1858,11 +1858,21 @@ function initFirebase(opts){
       updateFbStatusEl();
     });
 
+    if(_fbReadOnly){
+      // A customer's phone only ever reads the prices - ONCE - and then disconnects, so customers
+      // never keep a live connection open on the server (they would crowd out the shop's own phones).
+      var _custDone = false;
+      var _custOff = function(){ if(_custDone) return; _custDone = true; try{ _fbDb.goOffline(); }catch(e){} };
+      _fbDb.ref(FB_DOCS.pricelist.path).once('value')
+        .then(function(s){ fbOnDocValue('pricelist', s.val()); })
+        .catch(fbNoteError)
+        .then(function(){ setTimeout(_custOff, 400); });
+      setTimeout(_custOff, 15000);
+      return;
+    }
     Object.keys(FB_DOCS).forEach(function(name){
-      if(_fbReadOnly && name !== 'pricelist') return;      // a customer's phone only ever reads prices
       _fbDb.ref(FB_DOCS[name].path).on('value', function(s){ fbOnDocValue(name, s.val()); }, fbNoteError);
     });
-    if(_fbReadOnly) return;
 
     Object.keys(FB_COLL).forEach(function(name){
       var c = FB_COLL[name], ref = _fbDb.ref(c.path);
@@ -3575,13 +3585,22 @@ function estVoucherHtml(){
     '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + estEsc(branchPhoneText(br)) + '</div>' +
   '</div>';
 }
+var _estHistPushed = false, _estPopping = false;
 function openEstVoucher(){
   var t = estTotals();
   if(!t.lines){ alert('Add at least one item first. / முதலில் பொருட்களை சேர்க்கவும்.'); return; }
   document.getElementById('estVoucherBody').innerHTML = estVoucherHtml();
   document.getElementById('estVoucherOverlay').style.display = 'block';
+  // one history step (made by this tap), so the phone's Back key closes the voucher instead of leaving the page
+  try{ if(!_estHistPushed){ history.pushState({ estVoucher: true }, ''); _estHistPushed = true; } }catch(e){}
 }
-function closeEstVoucher(){ document.getElementById('estVoucherOverlay').style.display = 'none'; }
+function closeEstVoucher(fromBack){
+  document.getElementById('estVoucherOverlay').style.display = 'none';
+  if(_estHistPushed){
+    _estHistPushed = false;
+    if(fromBack !== true){ _estPopping = true; try{ history.back(); }catch(e){ _estPopping = false; } }
+  }
+}
 function estDownload(blob, name){
   var url = URL.createObjectURL(blob), a = document.createElement('a');
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
@@ -7533,6 +7552,10 @@ function openAddBranchModal(){
   function stay(){ try { history.pushState({ arsApp: true }, ''); } catch(e){} }
 
   window.addEventListener('popstate', function(e){
+    // customer estimate voucher: Back closes it (and stays on the price list)
+    var _ev = document.getElementById('estVoucherOverlay');
+    if(_ev && _ev.style.display === 'block'){ closeEstVoucher(true); return; }
+    if(_estPopping){ _estPopping = false; return; }
     var appEl = document.getElementById('app'), adminEl = document.getElementById('adminScreen');
     var loggedIn = (typeof session !== 'undefined') && session;
     if(closeTopOverlay()){ stay(); return; }
