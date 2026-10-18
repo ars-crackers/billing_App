@@ -3082,6 +3082,7 @@ const WHATSAPP_ICON_SVG_SM = '<svg width="13" height="13" viewBox="0 0 32 32" fi
 
 function setTab(t){
   activeTab = t;
+  _billSheetSn = null; { const _bq = document.getElementById('billQtySheet'); if(_bq) _bq.style.display = 'none'; }   // qty panel belongs to the bill tabs only
   // Update button active states
   document.getElementById('tabBilling1Btn').classList.toggle('active', t==='billing1');
   document.getElementById('tabBilling2Btn').classList.toggle('active', t==='billing2');
@@ -3110,7 +3111,6 @@ function setTab(t){
     btn.classList.add('hidden');
   } else if(t === 'billing1' || t === 'billing2'){
     btn.classList.remove('hidden');
-    _clearIcon(!!(_clearUndo && _clearUndo.bill === activeBillingTab));
     document.getElementById('clearShareLabel').textContent = 'Clear';
   }
   render();
@@ -3175,27 +3175,10 @@ function setQtyInBill(ci, ii, val){
   if(Object.keys(cart).length === 0){ closeBill(); return; }
   openBill(true);   // keep the discount / phone already entered
 }
-/* Wrong Clear? Press Clear again within 2 minutes and the cleared order comes back. */
-var _clearUndo = null, _clearUndoTimer = null;
-function _clearIcon(undo){
-  var ic = document.getElementById('clearShareIcon'), b = document.getElementById('clearShareBtn');
-  if(ic) ic.innerHTML = undo ? '<span style="font-size:17px; line-height:1;">&#8630;</span>' : CLEAR_ICON_SVG;
-  if(b){ b.title = undo ? 'Restore cleared order' : 'Clear cart'; b.style.borderColor = undo ? '#9be8b0' : '#ffe1a8'; b.style.color = undo ? '#9be8b0' : '#ffe1a8'; }
-}
-function _clearUndoExpire(){ _clearUndo = null; clearTimeout(_clearUndoTimer); _clearIcon(false); }
 async function clearCart(){
-  if(_clearUndo && Object.keys(cart).length === 0 && _clearUndo.bill === activeBillingTab && Date.now() - _clearUndo.t < 120000){
-    cart = Object.assign({}, _clearUndo.cart); _clearUndoExpire(); saveCart(); render();
-    try{ scanToast('Order restored', 'green'); }catch(e){}
-    return;
-  }
   if(Object.keys(cart).length){
     const ok = await showConfirm('Clear current sale? / விற்பனையை அழிக்கவா?');
     if(!ok) return;
-    _clearUndo = { cart: Object.assign({}, cart), bill: activeBillingTab, t: Date.now() };
-    clearTimeout(_clearUndoTimer); _clearUndoTimer = setTimeout(_clearUndoExpire, 120000);
-    _clearIcon(true);
-    try{ scanToast('Order cleared \u2022 press \u21B6 again within 2 minutes to restore', 'blue'); }catch(e){}
   }
   cart = {}; 
   activeCat = 'ALL';
@@ -3326,7 +3309,7 @@ function billSheetPaint(){
   sh.innerHTML = '<div style="display:flex; align-items:center; gap:10px;"><div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:14px;">' + snDot(_billSheetSn, 20, 10) + ' ' + nm.ta + '</div><div style="font-size:11px; color:#777;">' + nm.en + '</div>' +
     '<div style="font-size:13px; font-weight:800; color:#7a1414; margin-top:2px;">&#8377;' + price + ' / ' + unit + (c ? ' <span style="color:#1e7a3c;">= &#8377;' + (c * price).toLocaleString('en-IN') + '</span>' : '') + '</div></div>' +
     '<div style="display:flex; align-items:center; gap:6px;"><button onclick="changeQty(' + e.ci + ',' + e.ii + ',-1)" style="width:42px; height:42px; border-radius:11px; border:2px solid #1e7a3c; background:#fff; color:#1e7a3c; font-size:22px; font-weight:800; line-height:1;">&minus;</button>' +
-    '<div style="min-width:34px; text-align:center; font-size:20px; font-weight:800;">' + c + '</div>' +
+    '<input type="number" inputmode="numeric" min="0" max="9999" value="' + c + '" onfocus="this.select()" onchange="setQty(' + e.ci + ',' + e.ii + ',this.value)" style="width:64px; height:42px; box-sizing:border-box; text-align:center; border:2px solid #1e7a3c; border-radius:11px; font-size:20px; font-weight:800; background:#fff;">' +
     '<button onclick="changeQty(' + e.ci + ',' + e.ii + ',1)" style="width:42px; height:42px; border-radius:11px; border:none; background:#1e7a3c; color:#fff; font-size:22px; font-weight:800; line-height:1;">+</button></div>' +
     '<button onclick="_billSheetSn=null; render();" style="padding:10px 14px; border:1.5px solid #7a1414; border-radius:10px; background:#fff; color:#7a1414; font-weight:800; font-size:13px;">Done</button></div>';
   sh.style.display = 'block';
@@ -3337,6 +3320,7 @@ function _billChrome(){
   var lb = document.getElementById('billLayoutBtn');
   if(lb){
     lb.classList.toggle('hidden', !billing);
+    if(billing) lb.style.removeProperty('display'); else lb.style.setProperty('display','none','important');
     lb.innerHTML = tbl ? '&#9776;' : '&#9638;';
     lb.title = lb.ariaLabel = tbl ? 'List format' : 'Table format';
   }
@@ -4147,7 +4131,7 @@ function pubQtyPaint(){
     '<div style="font-size:13px; font-weight:800; color:#7a1414; margin-top:2px;">&#8377;' + it.price.toLocaleString('en-IN') + (c ? ' <span style="color:#1e7a3c;">= &#8377;' + (c * it.price).toLocaleString('en-IN') + '</span>' : '') + '</div></div>' +
     '<div style="display:flex; align-items:center; gap:6px;">' +
     '<button onclick="estStep(' + idx + ',-1)" style="width:42px; height:42px; border-radius:11px; border:2px solid #1e7a3c; background:#fff; color:#1e7a3c; font-size:22px; font-weight:800; line-height:1; cursor:pointer;">&minus;</button>' +
-    '<div style="min-width:34px; text-align:center; font-size:20px; font-weight:800;">' + c + '</div>' +
+    '<input type="number" inputmode="numeric" min="0" max="999" value="' + c + '" onfocus="this.select()" onchange="estSet(' + idx + ',this.value)" style="width:64px; height:42px; box-sizing:border-box; text-align:center; border:2px solid #1e7a3c; border-radius:11px; font-size:20px; font-weight:800; background:#fff;">' +
     '<button onclick="estStep(' + idx + ',1)" style="width:42px; height:42px; border-radius:11px; border:none; background:#1e7a3c; color:#fff; font-size:22px; font-weight:800; line-height:1; cursor:pointer;">+</button></div></div>' +
     '<div style="display:flex; gap:8px; margin-top:10px;"><button onclick="pubQtyClose()" style="flex:1; padding:10px; border:1.5px solid #7a1414; border-radius:10px; background:#fff; color:#7a1414; font-weight:800; font-size:13px; cursor:pointer;">Done</button>' +
     '</div>';
@@ -4411,7 +4395,7 @@ function completeSale(paymentMethod, splitDetails){
   // Auto-send bill text to admin (controlled by admin panel toggle, hidden from sellers)
   sendBillToAdminSMS(newSale);
   
-  cart = {}; saveCart(); _clearUndoExpire();
+  cart = {}; saveCart();
   document.getElementById('billNoDisplay').textContent = newSale.billNo;
   document.getElementById('saleSavedMsg').classList.remove('hidden');
   document.getElementById('cashBtn').disabled = true;
@@ -5445,15 +5429,19 @@ function buildPriceListTableHTML(noQr){
       </table>`;
   };
 
-  return `
-    <div style="width:210mm; min-height:297mm; padding:7mm 8mm; background:#fff; font-family:'Segoe UI', 'Noto Sans Tamil', Arial, sans-serif; box-sizing:border-box;">
-
+  const _hdrHtml = noQr ? '' : `
       <!-- Header bar — single block, matches the approved reference price list -->
       <div style="position:relative; background:#7a1414; border-radius:6px; padding:6px ${_qrU ? '78px' : '18px'}; text-align:center; min-height:${_qrU ? '62px' : '0'}; display:flex; flex-direction:column; justify-content:center;">
         <div style="font-size:19px; font-weight:800; color:#fff; line-height:1.2;">${_plbTitle || 'A.R.S பட்டாசுக் கடை'}</div>
         <div style="font-size:10.5px; font-weight:700; color:#ffd9d9; margin-top:2px;">PRICE LIST - ${new Date().getFullYear()} &nbsp;|&nbsp; Branch: ${_plbName} &nbsp;|&nbsp; &#128222; ${_plbPhone}</div>
         ${_qrU ? `<div style="position:absolute; right:6px; top:50%; transform:translateY(-50%); background:#fff; border-radius:4px; padding:2px; text-align:center; width:58px;"><img src="${_qrU}" style="width:54px; height:54px; display:block;" alt="QR"><div style="font-size:5.5px; font-weight:800; color:#7a1414; line-height:1.1; padding-bottom:1px;">SCAN TO ORDER</div></div>` : ''}
       </div>
+
+`;
+  return `
+    <div style="width:210mm; min-height:297mm; padding:7mm 8mm; background:#fff; font-family:'Segoe UI', 'Noto Sans Tamil', Arial, sans-serif; box-sizing:border-box;">
+
+      ${_hdrHtml}
 
       <!-- 3 ruled table columns, side by side -->
       <div style="display:flex; flex-direction:row; align-items:flex-start; gap:4mm; border:1px solid #ddd; margin-top:5px;">
