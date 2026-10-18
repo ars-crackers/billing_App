@@ -3307,7 +3307,10 @@ function renderBillFilterBar(shown){
   }
   bar.innerHTML = h; bar.classList.remove('hidden');
 }
-var _billTableOn = false, _billSheetSn = null, _billSt = { base: 1, mul: 1, pinch: null };
+var _billTableOn = false, _billSheetSn = null, _billSt = { base: 1, mul: 1, pinch: null,
+  isOpen: function(){ return _billSheetSn != null; },
+  close: function(){ _billSheetSn = null; var sh = document.getElementById('billQtySheet'); if(sh){ sh.style.display = 'none'; sh.removeAttribute('data-sig'); } },
+  repaint: function(){ if(_billSheetSn == null && _billTableOn) render(); } };
 function _billSerialMap(){
   var m = {};
   CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(isItemInBranch(ci, ii, activeBillingTab ? activeBranchId : activeBranchId)) m[itemSerialNo(ci, ii)] = { ci: ci, ii: ii }; }); });
@@ -3998,12 +4001,27 @@ async function scanHandle(txt){
   saveCart(); render();
 }
 var _estHistPushed = false, _estPopping = false;
+/* The voucher is drawn 360px wide (that width is also used for the saved image). On a narrow or zoomed phone screen it is
+   shrunk to fit, so the Amount column and the total are never cut off. */
+function estVoucherFit(){
+  try{
+    var ov = document.getElementById('estVoucherOverlay'), body = document.getElementById('estVoucherBody');
+    var v = body && body.firstElementChild; if(!v) return;
+    v.style.zoom = '1';
+    var avail = (ov.clientWidth || window.innerWidth) - 24;
+    var z = Math.min(1, avail / 360);
+    v.style.zoom = String(z);
+    var wrap = body.parentElement; if(wrap) wrap.style.maxWidth = Math.max(260, Math.min(400, avail)) + 'px';
+  }catch(e){}
+}
+window.addEventListener('resize', function(){ var o = document.getElementById('estVoucherOverlay'); if(o && o.style.display === 'block') estVoucherFit(); });
 function openEstVoucher(){
   var t = estTotals();
   if(!t.lines){ alert('Add at least one item first. / முதலில் பொருட்களை சேர்க்கவும்.'); return; }
   document.getElementById('estVoucherBody').innerHTML = estVoucherHtml();
   document.getElementById('estVoucherOverlay').style.display = 'block';
-  estEnsureQr().then(function(changed){ if(changed && document.getElementById('estVoucherOverlay').style.display === 'block') document.getElementById('estVoucherBody').innerHTML = estVoucherHtml(); });
+  estVoucherFit();
+  estEnsureQr().then(function(changed){ if(changed && document.getElementById('estVoucherOverlay').style.display === 'block'){ document.getElementById('estVoucherBody').innerHTML = estVoucherHtml(); estVoucherFit(); } });
   // one history step (made by this tap), so the phone's Back key closes the voucher instead of leaving the page
   try{ if(!_estHistPushed){ history.pushState({ estVoucher: true }, ''); _estHistPushed = true; } }catch(e){}
 }
@@ -4142,9 +4160,18 @@ function tzApply(st, body, sc, mul, fx, fy){
 function tzBind(st, body){
   if(body._pinchBound) return; body._pinchBound = true;
   var dist = function(t){ var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); };
-  body.addEventListener('touchstart', function(e){ if(e.touches.length === 2){ st.pinch = { d: dist(e.touches), m: st.mul }; } }, { passive: true });
+  // Moving the view (drag, pinch or wheel) hides the open qty panel; the table is repainted once the movement stops,
+  // and every item that has a quantity stays highlighted green with its x-count.
+  var arm = function(){ clearTimeout(st._t); st._t = setTimeout(function(){ if(st._pend){ st._pend = false; if(st.repaint) st.repaint(); } }, 220); };
+  var fire = function(){ if(st.isOpen && st.isOpen()){ if(st.close) st.close(); st._pend = true; } if(st._pend) arm(); };
+  var sx = 0, sy = 0;
+  body.addEventListener('scroll', function(){ if(st._pend) arm(); }, { passive: true });
+  body.addEventListener('wheel', fire, { passive: true });
+  body.addEventListener('touchstart', function(e){ if(e.touches.length === 1){ sx = e.touches[0].clientX; sy = e.touches[0].clientY; } if(e.touches.length === 2){ st.pinch = { d: dist(e.touches), m: st.mul }; fire(); } }, { passive: true });
   body.addEventListener('touchmove', function(e){
+    if(e.touches.length === 1 && (Math.abs(e.touches[0].clientX - sx) > 10 || Math.abs(e.touches[0].clientY - sy) > 10)) fire();
     if(e.touches.length === 2 && st.pinch){
+      fire();
       e.preventDefault();
       var sc = body.firstElementChild; if(!sc) return;
       var r = body.getBoundingClientRect();
@@ -4177,7 +4204,10 @@ function tzPaint(body, scaleId, st, qtyOf, onTap, curOf){
   body.scrollTop = keepT; body.scrollLeft = keepL;
   tzBind(st, body);
 }
-var _ppvSt = { base: 1, mul: 1, pinch: null };
+var _ppvSt = { base: 1, mul: 1, pinch: null,
+  isOpen: function(){ return _pubSheetSn != null; },
+  close: function(){ _pubSheetSn = null; var sh = document.getElementById('pubQtySheet'); if(sh) sh.style.display = 'none'; },
+  repaint: function(){ if(_pubSheetSn == null) paintPublicPreview(); } };
 var _pubSheetSn = null;
 function pubQtyOpen(sn){
   _pubSheetSn = sn; paintPublicPreview();
@@ -4387,7 +4417,10 @@ async function printPriceQr(){
 }
 
 /* ===== Admin price list editor: the same order-format table, tap an item to edit its price / names ===== */
-var _pleSt = { base: 1, mul: 1, pinch: null }, _pleSn = null;
+var _pleSn = null, _pleSt = { base: 1, mul: 1, pinch: null,
+  isOpen: function(){ return _pleSn != null; },
+  close: function(){ _pleSn = null; var sh = document.getElementById('plEditSheet'); if(sh) sh.style.display = 'none'; },
+  repaint: function(){ if(_pleSn == null) plePaint(); } };
 function _pleMap(){
   var m = {}, bid = plBranchId();
   CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(isItemInBranch(ci, ii, bid)) m[itemSerialNo(ci, ii)] = { ci: ci, ii: ii }; }); });
