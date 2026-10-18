@@ -728,6 +728,10 @@
     to { transform: translateX(400px); opacity: 0; }
   }
 </style>
+<script>/* customer self-order link: hide login/app from the very first paint */
+(function(){ try{ var h = location.hash || '', q = location.search || '';
+  if(/^#?\/?(price|pricelist|order|selforder|self-order)(\b|=|$)/i.test(h) || /[?&](price|pricelist|order|selforder)(=|&|$)/i.test(q)) document.documentElement.className += ' pub-mode'; }catch(e){} })();</script>
+<style>.pub-mode #loginScreen, .pub-mode #app, .pub-mode #adminScreen, .pub-mode #a2hsBar, .pub-mode #a2hsHelp { display:none !important; }</style>
 </head>
 <body translate="no" class="notranslate">
 
@@ -3672,11 +3676,13 @@ function closeBill(){
    price changes. */
 
 function isPublicPriceRequest(){
-  return /^#?(price|pricelist)(=[\w-]+)?$/i.test(location.hash || '');
+  return /^#?\/?(price|pricelist|order|selforder|self-order)(\b|=|$)/i.test(location.hash || '') || /[?&](price|pricelist|order|selforder)(=|&|$)/i.test(location.search || '');
 }
+// the customer link opened inside an already-open tab: reload so only the self-order page is shown
+window.addEventListener('hashchange', function(){ try{ if(isPublicPriceRequest() && !document.documentElement.classList.contains('pub-mode')) location.reload(); }catch(e){} });
 /* Branch named in a customer price-list link (#price=tbp); '' when the link names none. */
 function publicPriceBranch(){
-  var m = /^#?(?:price|pricelist)=([\w-]+)$/i.exec(location.hash || '');
+  var m = /^#?\/?(?:price|pricelist|order|selforder|self-order)=([\w-]+)/i.exec(location.hash || '') || /[?&](?:price|pricelist|order|selforder)=([\w-]+)/i.exec(location.search || '');
   return (m && BRANCHES[m[1]]) ? m[1] : '';
 }
 let _plBranch = '';
@@ -3889,8 +3895,8 @@ var _lastScanTxt = '';
 function scanToast(msg, kind){
   var col = kind === 'red' ? '#c62828' : (kind === 'blue' ? '#0b5fd8' : '#1e7a3c');
   var t = document.getElementById('scanToast');
-  if(!t){ t = document.createElement('div'); t.id = 'scanToast'; t.style.cssText = 'position:fixed; left:50%; bottom:90px; transform:translateX(-50%); max-width:86%; z-index:40000; white-space:pre-line; color:#fff; padding:10px 16px; border-radius:12px; font-weight:800; font-size:13px; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,0.3); transition:opacity .3s;'; document.body.appendChild(t); }
-  t.style.background = col; t.style.pointerEvents = 'auto'; t.onclick = function(){ t.style.opacity = '0'; };
+  if(!t){ t = document.createElement('div'); t.id = 'scanToast'; t.style.cssText = 'position:fixed; left:50%; top:10px; transform:translateX(-50%); max-width:86%; z-index:40000; pointer-events:none; white-space:pre-line; color:#fff; padding:10px 16px; border-radius:12px; font-weight:800; font-size:13px; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,0.3); transition:opacity .3s;'; document.body.appendChild(t); }
+  t.style.background = col; t.style.pointerEvents = 'none';   // shown at the top and never catches taps, so the qty panel buttons below keep working
   t.textContent = msg; t.style.opacity = '1'; clearTimeout(t._h); t._h = setTimeout(function(){ t.style.opacity = '0'; }, kind === 'red' ? 12000 : 4500);
 }
 var _scanStream = null, _scanTimer = null, _scanHist = false, _scanBusy = false, _jsQrLoad = null;
