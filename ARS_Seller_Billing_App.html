@@ -4101,7 +4101,7 @@ function pubBarPaint(){
   var bar = document.getElementById('pubVoucherBar'); if(!bar) return;
   var t = estTotals();
   bar.style.display = t.lines ? 'flex' : 'none';
-  var ds = document.getElementById('pubDiscStrip'); if(ds) ds.style.display = t.lines ? 'block' : 'none';
+  var ds = document.getElementById('pubDiscStrip'); if(ds) ds.style.display = 'none';   // offer text is shown on the estimate voucher only (not under the table view)
   document.getElementById('pubBarCount').textContent = t.lines + ' item' + (t.lines > 1 ? 's' : '') + ' \u2022 qty ' + t.qty;
   document.getElementById('pubBarTotal').textContent = '\u20B9' + t.amount.toLocaleString('en-IN');
 }
