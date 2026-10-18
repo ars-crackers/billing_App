@@ -1044,7 +1044,7 @@
   </div>
   <div id="pubBottom" style="position:absolute; left:0; right:0; bottom:0; background:#fff; box-shadow:0 -4px 14px rgba(0,0,0,.25);">
     <div id="pubQtySheet" style="display:none; border-top:3px solid #1e7a3c; padding:12px 14px 8px;"></div>
-    <div id="pubDiscStrip" style="display:none; border-top:2px solid var(--maroon);"><div style="display:flex; align-items:center; justify-content:center; gap:6px; padding:5px 10px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border-bottom:1px solid #f0c969; color:#7a1414; font-size:12px; font-weight:800; line-height:1.3; text-align:center;"><span style="font-size:14px;">&#127873;</span>கடையில் பில் செய்தால் கூடுதலாக 15–20% தள்ளுபடி!</div></div>
+    <div id="pubDiscStrip" style="display:none; border-top:2px solid var(--maroon);"><div style="display:flex; align-items:center; justify-content:center; gap:6px; padding:5px 10px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border-bottom:1px solid #f0c969; color:#7a1414; font-size:12px; font-weight:800; line-height:1.3; text-align:center;"><span style="font-size:14px;">&#127873;</span>QR-ஐ காட்டினால் கூடுதலாக <span style="white-space:nowrap;">15–20%</span> தள்ளுபடி பெறலாம்!</div></div>
     <div id="pubVoucherBar" style="display:none; border-top:0; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); align-items:center; gap:8px;">
       <div style="flex:1; min-width:0;"><div style="font-size:11px; color:#8a6a44;" id="pubBarCount"></div><div style="font-size:18px; font-weight:800; color:var(--maroon);" id="pubBarTotal"></div></div>
       <button onclick="estClear()" style="padding:11px 12px; background:#fff; color:#b3261e; border:1.5px solid #b3261e; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer;">Clear</button>
@@ -1088,7 +1088,7 @@
   </div>
   <div id="publicPriceBody" style="padding:0 0 90px;"></div>
   <div id="estBar" style="position:sticky; bottom:0; background:#fff; border-top:2px solid var(--maroon);">
-    <div style="display:flex; align-items:center; justify-content:center; gap:6px; padding:5px 10px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border-bottom:1px solid #f0c969; color:#7a1414; font-size:12px; font-weight:800; line-height:1.3; text-align:center;"><span style="font-size:14px;">&#127873;</span>கடையில் பில் செய்தால் கூடுதலாக 15–20% தள்ளுபடி!</div>
+    <div style="display:flex; align-items:center; justify-content:center; gap:6px; padding:5px 10px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border-bottom:1px solid #f0c969; color:#7a1414; font-size:12px; font-weight:800; line-height:1.3; text-align:center;"><span style="font-size:14px;">&#127873;</span>QR-ஐ காட்டினால் கூடுதலாக <span style="white-space:nowrap;">15–20%</span> தள்ளுபடி பெறலாம்!</div>
     <div style="padding:10px; display:flex; gap:8px; align-items:center;">
     <div style="flex:1; min-width:0;">
       <div style="font-size:11px; color:#8a6a44;" id="estCount">No items added</div>
@@ -3877,7 +3877,7 @@ function estVoucherHtml(){
       '<tbody>' + rows + '</tbody></table>' +
     '<div style="display:flex; justify-content:space-between; align-items:center; padding:9px 10px 4px; border-top:2px solid #1b3a78; margin-top:2px;"><span style="font-size:11px; color:#44557a;">' + n + ' item' + (n > 1 ? 's' : '') + ' • qty ' + tq + '</span><span style="font-size:11px; font-weight:800;">ESTIMATED TOTAL</span></div>' +
     '<div style="text-align:right; padding:0 10px 4px; font-size:24px; font-weight:800; color:#1b3a78;">&#8377;' + total.toLocaleString('en-IN') + '</div>' +
-    '<div style="margin:0 10px 8px; padding:6px 10px; border-radius:9px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border:1px solid #f0c969; color:#7a1414; font-size:12.5px; font-weight:800; text-align:center;">&#127873; கடையில் பில் செய்தால் கூடுதலாக 15–20% தள்ளுபடி!</div>' + qrBlock +
+    '<div style="margin:0 10px 8px; padding:6px 10px; border-radius:9px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border:1px solid #f0c969; color:#7a1414; font-size:12.5px; font-weight:800; text-align:center;">&#127873; QR-ஐ காட்டினால் கூடுதலாக <span style="white-space:nowrap;">15–20%</span> தள்ளுபடி பெறலாம்!</div>' + qrBlock +
     '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + estEsc(branchPhoneText(br)) + '</div>' +
   '</div>';
 }
