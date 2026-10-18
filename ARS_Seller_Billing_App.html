@@ -94,7 +94,7 @@
     padding:28px 24px 22px; width:100%; max-width:380px; text-align:center;}
   .login-tagline{font-size:11px; color:#ffe1a8; margin-top:10px; margin-bottom:20px;}
   .login-shop-title{font-size:30px; font-weight:800; color:#fff8e6; text-align:center; margin-top:6px; line-height:1.25; text-shadow:0 1px 3px rgba(0,0,0,0.3);}
-  .login-shop-sub{font-size:12px; font-weight:700; letter-spacing:2.5px; color:var(--gold); text-align:center; margin-top:6px;}
+  .login-shop-sub{font-size:12px; font-weight:700; letter-spacing:2.5px; color:var(--gold); text-align:center; margin-top:6px; margin-bottom:18px;}
   .login-card input{
     width:100%; padding:13px 14px; border-radius:10px; border:none; outline:none; margin-bottom:10px;
     font-size:15px; background:#fff8ea; color:var(--ink); text-align:center; letter-spacing:1px;
@@ -945,7 +945,8 @@
 <!-- ================= EDIT / ADD PRODUCT MODAL ================= -->
 <div class="modal-overlay" id="itemEditOverlay">
   <div class="item-edit-sheet">
-    <div class="bill-head">
+    <div class="bill-head" style="position:sticky;">
+      <button id="itemEditDeleteBtn" type="button" onclick="deleteFromItemEdit()" title="Delete this product" aria-label="Delete this product" style="display:none; position:absolute; right:12px; top:50%; transform:translateY(-50%); width:38px; height:38px; align-items:center; justify-content:center; border:none; border-radius:10px; background:rgba(255,255,255,.18); color:#fff; cursor:pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6,19c0,1.1,0.9,2,2,2h8c1.1,0,2-0.9,2-2V7H6V19z M19,4h-3.5l-1-1h-5l-1,1H5v2h14V4z"/></svg></button>
       <div class="bn" id="itemEditTitle">Edit Product</div>
     </div>
     <div class="item-edit-body">
@@ -1145,6 +1146,16 @@
   </div>
 </div>
 
+<div id="plEditOverlay" style="display:none; position:fixed; inset:0; z-index:45; background:#f0f0f0; flex-direction:column;">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; background:#fff8ea; border-bottom:1px solid #e6d3b0;">
+    <button onclick="closePriceEditor()" style="background:none; border:none; font-size:14px; font-weight:800; color:var(--maroon); cursor:pointer; padding:6px 8px;">&#8592; Back</button>
+    <div style="font-weight:800; font-size:14px; color:var(--maroon); text-align:center; line-height:1.2;">Price List<div style="font-size:10.5px; font-weight:600; color:#8a6a44;">Tap an item to edit</div></div>
+    <button onclick="openPriceListPDFPreview()" title="PDF preview / share" style="background:#fff8e6; border:1.5px solid var(--maroon); border-radius:8px; padding:6px 9px; font-size:14px; cursor:pointer;">&#128196; PDF</button>
+  </div>
+  <div id="plEditBody" style="flex:1; overflow:auto; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y; padding:8px; text-align:center;"></div>
+  <div id="plEditSheet" style="display:none; background:#fff; border-top:3px solid #e08a00; padding:10px 12px; box-shadow:0 -4px 14px rgba(0,0,0,.25);"></div>
+</div>
+
 <div class="modal-overlay" id="priceListPreviewOverlay" style="z-index:9999;">
   <div class="bill-sheet" style="max-width:500px; padding:0;">
     <div class="bill-head" style="display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; background:#fff8ea;">
@@ -1244,7 +1255,31 @@ const CATEGORIES = (function(){
 })();
 /* Serial numbers always run 1..N in category order, exactly as the price list PDF prints them.
    Adding, removing or moving an item re-sequences everything (called on load and on every catalog save). */
+/* Item CODE: a permanent 3-digit id (001, 002 …) given to every item once. It never changes and is never
+   reused when an item is removed - new items always get the next unused code. It is hidden from every screen;
+   it travels with the item to the server and into the order QR, so an order still matches the right item even
+   when serial numbers shift after an item is added or removed. */
+var CODESEQ = 0, _codesAdded = false;
+try{ var _svc = loadJSON('ars_catalog', null); CODESEQ = Number(_svc && _svc.codeSeq) || 0; }catch(e){}
+function ensureCodes(){
+  var items = [], max = CODESEQ;
+  CATEGORIES.forEach(function(c){ (c.items || []).forEach(function(it){ items.push(it); var n = parseInt(it.code, 10); if(n > max) max = n; }); });
+  var seen = {};
+  items.forEach(function(it){
+    var n = parseInt(it.code, 10);
+    if(!(n > 0) || seen[n]){ n = ++max; _codesAdded = true; }
+    it.code = String(n).padStart(3, '0'); seen[n] = 1;
+  });
+  CODESEQ = max;
+}
+function itemCode(ci, ii){ var it = CATEGORIES[ci] && CATEGORIES[ci].items[ii]; return it ? String(it.code || '') : ''; }
+function findItemByCode(code, bid){
+  var hit = null; code = String(code);
+  CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(!hit && String(it.code) === code && (bid == null || isItemInBranch(ci, ii, bid))) hit = { ci: ci, ii: ii }; }); });
+  return hit;
+}
 function ensureSerials(){
+  ensureCodes();
   var n = 0;
   CATEGORIES.forEach(function(c){ (c.items || []).forEach(function(it){ it.sn = ++n; }); });
 }
@@ -1254,7 +1289,7 @@ function nextSerial(){
   return m + 1;
 }
 ensureSerials();
-function saveCatalog(){ ensureSerials(); saveJSON('ars_catalog', {categories: CATEGORIES}); }
+function saveCatalog(){ ensureSerials(); saveJSON('ars_catalog', {categories: CATEGORIES, codeSeq: CODESEQ}); }
 
 document.getElementById('billShopTitle').textContent = SHOP.name_ta;
 document.getElementById('billPhone').textContent = 'Branch: Thanneerpandhal  •  Ph: ' + SHOP.phones.join(' / ');
@@ -1585,7 +1620,7 @@ const _fbDocTimers = {};
 const FB_DOCS = {
   pricelist: {
     path: 'pricelist',
-    get: function(){ return { categories: CATEGORIES, inventory: INV, catnames: CATNAMES, version: _plDocVersion }; },
+    get: function(){ return { categories: CATEGORIES, inventory: INV, catnames: CATNAMES, version: _plDocVersion, codeSeq: CODESEQ }; },
     isEmpty: function(){ return !CATEGORIES.length; },
     // The server copy is from an OLDER price list than this phone's (or from before lists
     // were versioned at all) - it must never be loaded over the current list.
@@ -1669,12 +1704,14 @@ function applyRemotePricelist(r){
   flushPriceChangeDiff();          // log any local edit still waiting, before the baseline moves
   CATEGORIES.length = 0;           // CATEGORIES is const — replace its contents in place
   cats.forEach(function(c){ CATEGORIES.push(c); });
+  CODESEQ = Math.max(CODESEQ, Number(r.codeSeq) || 0);
   ensureSerials();
+  if(_codesAdded){ _codesAdded = false; try{ if(session && session.role === 'admin') setTimeout(function(){ fbDocChanged('pricelist'); }, 1500); }catch(e){} }   // first time: save the new item codes to the server
   INV = fbToObj(r.inventory);
   CATNAMES = fbToObj(r.catnames);
   var rv = String(r.version || '');
   if(rv > _plDocVersion){ _plDocVersion = rv; _rawSaveJSON('ars_price_list_doc_version', rv); }
-  _rawSaveJSON('ars_catalog', {categories: CATEGORIES});
+  _rawSaveJSON('ars_catalog', {categories: CATEGORIES, codeSeq: CODESEQ});
   _rawSaveJSON('ars_inventory', INV);
   _rawSaveJSON('ars_catnames', CATNAMES);
   resetPriceChangeBaseline();      // a change made on another phone is logged by THAT phone, not again here
@@ -2099,7 +2136,7 @@ async function testFirebaseConnection(){
     ok('Bills on server: ' + snaps[2].numChildren() + ' (this phone: ' + (loadJSON('ars_sales', []) || []).length + ')');
     ok('Login history on server: ' + snaps[3].numChildren() + ' (this phone: ' + (loadJSON('ars_login_history', []) || []).length + ')');
     ok('Price-change records on server: ' + snaps[4].numChildren());
-    var same = fbSame({categories: pl.categories, inventory: pl.inventory, catnames: pl.catnames, version: pl.version}, FB_DOCS.pricelist.get());
+    var same = fbSame({categories: pl.categories, inventory: pl.inventory, catnames: pl.catnames, version: pl.version, codeSeq: pl.codeSeq}, FB_DOCS.pricelist.get());
     if(same) ok('Price list on this phone matches the server exactly');
     else lines.push('<span style="color:#b45309; font-weight:700;">•</span> Price list on this phone differs from the server right now' + (_fbDirty.pricelist ? ' (upload in progress)' : '') + ' — it should match within a few seconds.');
     show();
@@ -2135,7 +2172,7 @@ function priceSnapshot(){
       var inv = INV[ci + '_' + ii] || {};
       var co = (CATNAMES && CATNAMES[ci]) || {};
       snap[idn] = {
-        serial: (Number(item.sn) > 0 ? Number(item.sn) : n), base: base,
+        serial: (Number(item.sn) > 0 ? Number(item.sn) : n), code: item.code || '', base: base,
         ta: (inv.name_ta && String(inv.name_ta).trim()) ? inv.name_ta : item.ta,
         en: (inv.name_en && String(inv.name_en).trim()) ? inv.name_en : item.en,
         cat: (co.name_en && String(co.name_en).trim()) ? co.name_en : cat.en,
@@ -2166,7 +2203,7 @@ function flushPriceChangeDiff(){
   if(!before) return;
 
   var changes = [];
-  function add(type, it, oldV, newV){ changes.push({ type: type, serial: it.serial, ta: it.ta, en: it.en, cat: it.cat, old: oldV, new: newV, unit: it.unit || 'box' }); }
+  function add(type, it, oldV, newV){ changes.push({ type: type, serial: it.serial, code: it.code || '', ta: it.ta, en: it.en, cat: it.cat, old: oldV, new: newV, unit: it.unit || 'box' }); }
   var removed = Object.keys(before).filter(function(k){ return !after[k]; });
   var added = Object.keys(after).filter(function(k){ return !before[k]; });
   // An item that left one category and appeared in another was MOVED, not deleted + created.
@@ -2284,17 +2321,18 @@ function discardPreviewPrices(){
 
 // Undo a price change: given the serial number of the item and the price to restore
 function _findItemForChange(c){
-  var n = 0, byName = null, bySerial = null;
+  var n = 0, byName = null, bySerial = null, byCode = null;
   for(var ci = 0; ci < CATEGORIES.length; ci++){
     var cn = getCategoryName(ci).en;
     for(var ii = 0; ii < CATEGORIES[ci].items.length; ii++){
       n++;
       var nm = getItemName(ci, ii);
       if(!byName && nm.en === c.en && (cn === c.cat || c.type === 'moved')) byName = { ci: ci, ii: ii, k: ci + '_' + ii };
+      if(c.code && String(CATEGORIES[ci].items[ii].code) === String(c.code)) byCode = { ci: ci, ii: ii, k: ci + '_' + ii };
       if(itemSerialNo(ci, ii) === Number(c.serial)) bySerial = { ci: ci, ii: ii, k: ci + '_' + ii };
     }
   }
-  return byName || bySerial;
+  return byCode || byName || bySerial;
 }
 function _catIndexByName(nameEn){
   for(var ci = 0; ci < CATEGORIES.length; ci++){ if(getCategoryName(ci).en === nameEn) return ci; }
@@ -2325,7 +2363,7 @@ async function undoChange(changeId){
   var c = log.filter(function(e){ return e.id === changeId; })[0];
   if(!c){ alert('This change record was not found.'); return; }
   var label = (c.ta || '') + ' / ' + (c.en || '');
-  if(c.type === 'price'){ return undoPriceChange(c.id, Number(c.serial), Number(c.old)); }
+  if(c.type === 'price'){ return undoPriceChange(c.id, Number(c.serial), Number(c.old), c.code); }
   if(c.type === 'unit'){
     var it = _findItemForChange(c);
     if(!it){ alert('Item not found. The catalog may have changed since this entry.'); return; }
@@ -2376,18 +2414,18 @@ async function undoChange(changeId){
     // put it back at the place its serial number belongs, so the list order is the serial order
     var _at = CATEGORIES[ci].items.findIndex(function(x){ return Number(x.sn) > _newSn; });
     if(_at < 0) _at = CATEGORIES[ci].items.length;
-    insertItemAt(ci, _at, { ta: c.ta, en: c.en, price: Number(c.old), sn: _newSn }, { price: Number(c.old), unit: c.unit || 'box', name_ta: c.ta, name_en: c.en });
+    insertItemAt(ci, _at, { ta: c.ta, en: c.en, price: Number(c.old), sn: _newSn, code: c.code || undefined }, { price: Number(c.old), unit: c.unit || 'box', name_ta: c.ta, name_en: c.en });
     return _afterUndoRefresh();
   }
 }
-function undoPriceChange(changeId, serial, oldPrice){
+function undoPriceChange(changeId, serial, oldPrice, code){
   // Find the item by its serial number in the current catalog
   var n = 0;
   for(var ci = 0; ci < CATEGORIES.length; ci++){
     var cat = CATEGORIES[ci];
     for(var ii = 0; ii < cat.items.length; ii++){
       n++;
-      if(itemSerialNo(ci, ii) === serial){
+      if(code ? String(cat.items[ii].code) === String(code) : itemSerialNo(ci, ii) === serial){
         var k = ci + '_' + ii;
         if(!INV[k]) INV[k] = {};
         var curPrice = (INV[k].price != null) ? INV[k].price : cat.items[ii].price;
@@ -3660,7 +3698,7 @@ function estItems(){
     (cat.items || []).forEach(function(it, ii){
       if(!isItemInBranch(ci, ii, b)) return;
       var nm = getItemName(ci, ii), cn = getCategoryName(ci);
-      out.push({ k: (cat.en || '') + '|' + (it.en || ''), ci: ci, s: itemSerialNo(ci, ii), ta: nm.ta, en: nm.en, price: Number(getBranchPrice(ci, ii, b)) || 0, unit: getUnit(ci, ii), catTa: cn.ta, catEn: cn.en, cno: ci + 1 });
+      out.push({ k: (cat.en || '') + '|' + (it.en || ''), ci: ci, s: itemSerialNo(ci, ii), code: String(it.code || ''), ta: nm.ta, en: nm.en, price: Number(getBranchPrice(ci, ii, b)) || 0, unit: getUnit(ci, ii), catTa: cn.ta, catEn: cn.en, cno: ci + 1 });
     });
   });
   return out;
@@ -3757,12 +3795,13 @@ function estClear(){
   if(!confirm('Remove all items from your estimate? / அனைத்தையும் நீக்கவா?')) return;
   _estQty = {}; estPersist(); estRepaintAll();
 }
-/* ---- Estimate QR: "ARS1|<item no>x<qty>,..." using the same item numbers as Bill 1 / Bill 2 ---- */
+/* ---- Estimate QR: "ARS2|<item code>x<qty>,...|<total>" - the hidden permanent item codes, so an order still
+   matches the right items after serial numbers change. (Old "ARS1|" vouchers, which hold serial numbers, still scan.) ---- */
 var _estQrFor = '', _estQrUrl = '';
 function estPayload(){
   var parts = [], tot = 0;
-  estItems().forEach(function(it){ var c = _estQty[it.k] || 0; if(c > 0){ parts.push(it.s + 'x' + c); tot += c * it.price; } });
-  return parts.length ? 'ARS1|' + parts.join(',') + '|' + tot : '';
+  estItems().forEach(function(it){ var c = _estQty[it.k] || 0; if(c > 0){ parts.push((it.code || it.s) + 'x' + c); tot += c * it.price; } });
+  return parts.length ? 'ARS2|' + parts.join(',') + '|' + tot : '';
 }
 async function estEnsureQr(){
   var txt = estPayload();
@@ -3909,7 +3948,8 @@ async function scanFromFile(inp){
   }catch(e){ _scanSay('Could not read that photo.'); }
 }
 async function scanHandle(txt){
-  if(String(txt).indexOf('ARS1|') !== 0){ _scanSay('That QR is not an A.R.S estimate voucher.'); return; }
+  var _v2 = String(txt).indexOf('ARS2|') === 0;
+  if(!_v2 && String(txt).indexOf('ARS1|') !== 0){ _scanSay('That QR is not an A.R.S estimate voucher.'); return; }
   _scanStop(); _scanBusy = true;
   var add = [], skipped = 0, subtotal = 0, qtySum = 0;
   var _seg = String(txt).slice(5).split('|'), qrTotal = (_seg.length > 1 && /^\d+$/.test(_seg[1])) ? Number(_seg[1]) : null;
@@ -3917,7 +3957,8 @@ async function scanHandle(txt){
     var m = /^(\d+)x(\d+)$/.exec(pr.trim()); if(!m){ return; }
     var sn = Number(m[1]), q = Math.min(9999, Number(m[2]));
     var hit = null;
-    CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(!hit && itemSerialNo(ci, ii) === sn && isItemInBranch(ci, ii, activeBranchId)) hit = { ci: ci, ii: ii }; }); });
+    if(_v2) hit = findItemByCode(m[1], activeBranchId);
+    else CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(!hit && itemSerialNo(ci, ii) === sn && isItemInBranch(ci, ii, activeBranchId)) hit = { ci: ci, ii: ii }; }); });
     if(!hit || !(q > 0)){ skipped++; return; }
     add.push({ ci: hit.ci, ii: hit.ii, q: q }); subtotal += q * getPrice(hit.ci, hit.ii); qtySum += q;
   });
@@ -4070,7 +4111,7 @@ function paintPublicEst(){
 /* ---- Price-list table picker, shared by Bill 1 / Bill 2 and the customer page ----
    Shows the A4 price list; tap an item to set its quantity; pinch with two fingers to zoom the list only. */
 function tzApply(st, body, sc, mul, fx, fy){
-  mul = Math.max(1, Math.min(5, mul));
+  mul = Math.max(st.minMul || 1, Math.min(5, mul));
   var oz = st.base * st.mul, nz = st.base * mul;
   if(fx == null){ fx = body.clientWidth / 2; fy = body.clientHeight / 2; }
   var cx = (body.scrollLeft + fx) / oz, cy = (body.scrollTop + fy) / oz;
@@ -4107,7 +4148,10 @@ function tzPaint(body, scaleId, st, qtyOf, onTap, curOf){
     if(cur){ tr.style.background = '#ffd966'; tr.style.outline = '2px solid #e08a00'; tr.style.outlineOffset = '-2px'; }
   });
   sc.onclick = function(e){ var tr = e.target.closest && e.target.closest('tr[data-sn]'); if(tr) onTap(Number(tr.getAttribute('data-sn'))); };
-  st.base = Math.min(1, Math.max(240, (body.clientWidth || window.innerWidth) - 16) / (sc.offsetWidth || 794));
+  // Order-taking view: text is shown at a comfortable reading size, so the sheet grows wider and
+  // taller than one phone screen (scroll, or pinch two fingers to zoom out). Only the PDF keeps the compact A4 text size.
+  var fit = Math.min(1, Math.max(240, (body.clientWidth || window.innerWidth) - 16) / (sc.offsetWidth || 794));
+  st.base = Math.max(fit, 1.75); st.minMul = fit / st.base;
   sc.style.zoom = st.base * st.mul; sc.style.margin = '0 auto';
   body.scrollTop = keepT; body.scrollLeft = keepL;
   tzBind(st, body);
@@ -4315,6 +4359,71 @@ async function printPriceQr(){
     '<div style="font-weight:800; font-size:12px; margin-bottom:6px;">' + title + '</div>' +
     '<img src="' + src + '" style="display:block; margin:0 auto; width:62mm; height:62mm; image-rendering:pixelated;">' +
     '<div style="font-size:9px; margin-top:8px;">' + note + '</div></div>');
+}
+
+/* ===== Admin price list editor: the same order-format table, tap an item to edit its price / names ===== */
+var _pleSt = { base: 1, mul: 1, pinch: null }, _pleSn = null;
+function _pleMap(){
+  var m = {}, bid = plBranchId();
+  CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(isItemInBranch(ci, ii, bid)) m[itemSerialNo(ci, ii)] = { ci: ci, ii: ii }; }); });
+  return m;
+}
+async function openPriceEditor(){
+  var pbid = await pickPriceBranch(); if(!pbid) return;
+  _plBranch = pbid; _pleSn = null;
+  document.getElementById('plEditOverlay').style.display = 'flex';
+  plePaint();
+}
+function closePriceEditor(){
+  _pleSn = null; _plBranch = '';
+  document.getElementById('plEditOverlay').style.display = 'none';
+  try{ renderAdmin(); }catch(e){}
+}
+function plePaint(){
+  var ov = document.getElementById('plEditOverlay'); if(!ov || ov.style.display === 'none') return;
+  var body = document.getElementById('plEditBody');
+  tzPaint(body, 'pleScale', _pleSt, function(){ return 0; }, function(sn){ _pleSn = sn; plePaint(); }, function(){ return _pleSn; });
+  pleSheetPaint();
+  // keep the tapped row visible above the edit panel
+  var sh = document.getElementById('plEditSheet'), tr = _pleSn != null ? body.querySelector('tr[data-sn="' + _pleSn + '"]') : null;
+  body.style.paddingBottom = (sh && sh.style.display !== 'none' ? 8 : 8) + 'px';
+  if(tr && sh && sh.style.display !== 'none'){
+    var br = body.getBoundingClientRect(), rr = tr.getBoundingClientRect();
+    if(rr.bottom > br.bottom - 8) body.scrollTop += rr.bottom - br.bottom + 12;
+    else if(rr.top < br.top) body.scrollTop -= br.top - rr.top + 12;
+  }
+}
+function pleSheetPaint(){
+  var sh = document.getElementById('plEditSheet'); if(!sh) return;
+  var e = (_pleSn == null) ? null : _pleMap()[_pleSn];
+  if(!e){ sh.style.display = 'none'; return; }
+  var k = key(e.ci, e.ii), nm = getItemName(e.ci, e.ii), bid = plBranchId(), price = getBranchPrice(e.ci, e.ii, bid);
+  var r = branchRule(e.ci, e.ii, bid), own = !!(r && r.price != null && r.price !== '' && !isNaN(Number(r.price)));
+  var esc = function(v){ return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); };
+  var inp = 'width:100%; box-sizing:border-box; padding:8px 10px; border:1.5px solid #d9c7a3; border-radius:9px; font-size:14px;';
+  sh.innerHTML = '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">' + snDot(_pleSn, 20, 10) +
+      '<div style="flex:1; font-weight:800; font-size:13px; color:#7a1414;">Edit item' + (own ? ' <span style="font-weight:600; color:#8a6a44;">(' + esc((BRANCHES[bid] || {}).short || bid) + ' price)</span>' : '') + '</div>' +
+      '<button onclick="_pleSn=null; plePaint();" style="padding:8px 14px; border:1.5px solid #7a1414; border-radius:10px; background:#fff; color:#7a1414; font-weight:800; font-size:13px;">Done</button></div>' +
+    '<div style="display:flex; gap:8px; align-items:flex-end;">' +
+      '<div style="width:112px; flex:0 0 auto;"><div style="font-size:11px; color:#777; margin-bottom:2px;">Price &#8377;</div><input type="number" inputmode="decimal" min="0" value="' + price + '" onfocus="this.select()" onchange="pleSetPrice(' + e.ci + ',' + e.ii + ',this.value)" style="' + inp + ' font-size:18px; font-weight:800; color:#7a1414;"></div>' +
+      '<div style="flex:1; min-width:0;"><div style="font-size:11px; color:#777; margin-bottom:2px;">Tamil name</div><input type="text" value="' + esc(nm.ta) + '" onchange="pleSetName(\'' + k + '\',\'name_ta\',this.value)" style="' + inp + '"></div></div>' +
+    '<div style="display:flex; gap:8px; align-items:flex-end; margin-top:8px;">' +
+      '<div style="flex:1; min-width:0;"><div style="font-size:11px; color:#777; margin-bottom:2px;">English name</div><input type="text" value="' + esc(nm.en) + '" onchange="pleSetName(\'' + k + '\',\'name_en\',this.value)" style="' + inp + '"></div>' +
+      '<button onclick="openItemEditModal(\'' + k + '\')" style="flex:0 0 auto; padding:9px 12px; border:1.5px solid #7a1414; border-radius:9px; background:#fff8e6; color:#7a1414; font-weight:800; font-size:12px;">More &#9656;</button></div>';
+  sh.style.display = 'block';
+}
+function pleSetPrice(ci, ii, val){
+  var v = Math.max(0, parseFloat(val) || 0), k = key(ci, ii), bid = plBranchId();
+  getInvItem(ci, ii);
+  var r = branchRule(ci, ii, bid);
+  if(r && r.price != null && r.price !== '' && !isNaN(Number(r.price))) r.price = v; else INV[k].price = v;
+  saveJSON('ars_inventory', INV);
+  plePaint();
+}
+function pleSetName(k, field, val){
+  if(!String(val || '').trim()){ pleSheetPaint(); return; }
+  updateName(k, field, val);
+  plePaint();
 }
 
 async function openPriceListPDFPreview(){
@@ -5415,11 +5524,11 @@ function buildPriceListTableHTML(noQr){
       <tr><td colspan="3" style="padding:3px 4px 2px; border-bottom:1.5px solid #7a1414; color:#7a1414; font-weight:800; font-size:9.5px;">${item.no}. ${item.en}${item.cont ? ' <span style="font-weight:600; font-size:8.5px; color:#999;">&hellip;</span>' : ''}</td></tr>` : `
       <tr data-sn="${item.s}" style="background:${idx % 2 === 1 ? '#fdf3f1' : '#ffffff'};">
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; vertical-align:middle;">${snDot(item.s, 14, 7.5)}</td>
-        <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-size:9px; line-height:1.2; color:#1a1a1a; vertical-align:middle;">${item.ta} <span style="color:#777; font-size:8px;">(${item.en})</span></td>
+        <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-size:${noQr ? 10.2 : 9}px; ${noQr ? "font-weight:800; " : ""}line-height:1.2; color:#1a1a1a; vertical-align:middle;">${item.ta} <span style="color:#777; font-size:${noQr ? 7 : 8}px;">(${item.en})</span></td>
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-weight:800; color:#7a1414; font-size:9px; text-align:right; white-space:nowrap; vertical-align:middle;">₹${item.price.toLocaleString('en-IN')}</td>
       </tr>`).join('');
     return `<table style="width:100%; border-collapse:collapse; table-layout:fixed;">
-        <colgroup><col style="width:22px;"><col><col style="width:48px;"></colgroup>
+        <colgroup><col style="width:22px;"><col><col style="width:${noQr ? 80 : 48}px;"></colgroup>
         <thead><tr style="background:#f6d9d9;">
           <th style="padding:2px 3px; text-align:left; font-size:9.5px; color:#7a1414;">No.</th>
           <th style="padding:2px 3px; text-align:left; font-size:9.5px; color:#7a1414;">Product Name</th>
@@ -6263,7 +6372,7 @@ function renderAdmin(){
       <div class="history-head-row pl-sticky-head">
         <div class="section-title" style="margin:0;">Price List</div>
         <span style="display:flex; gap:6px; flex-wrap:wrap;">
-          <button onclick="openPriceListPDFPreview()" title="Preview latest Price List" class="icon-btn-sm" style="background:#fff8e6; border:1.5px solid var(--maroon);">&#128065;&#65039;</button>
+          <button onclick="openPriceEditor()" title="Price List - tap an item to edit" class="icon-btn-sm" style="background:#fff8e6; border:1.5px solid var(--maroon);">&#128065;&#65039;</button>
           <button onclick="sharePriceListPDF(this)" title="Share Price List PDF" class="icon-btn-sm" style="background:#7a1414; color:#fff;">&#128228;</button>
           <button onclick="exportPriceListExcel()" title="Export Price List as Excel" class="icon-btn-sm">&#128202;</button>
           <button onclick="triggerPriceListImport()" title="Import Price List from Excel" class="icon-btn-sm">&#128193;</button>
@@ -6816,7 +6925,7 @@ function moveItemCategory(k, newCiRaw){
 
   // Add it to the new category, carrying the (possibly custom) names
   const newIi = CATEGORIES[newCi].items.length;
-  CATEGORIES[newCi].items.push({ ta: movedItem.ta, en: movedItem.en, price: movedItem.price, sn: movedItem.sn });
+  CATEGORIES[newCi].items.push({ ta: movedItem.ta, en: movedItem.en, price: movedItem.price, sn: movedItem.sn, code: movedItem.code });
   const newKey = key(newCi, newIi);
   INV[newKey] = { price, unit, name_ta: name.ta, name_en: name.en };
   if(brRules) INV[newKey].br = brRules;
@@ -6896,8 +7005,9 @@ function flashSaved(k){
 var itemFilters = { cat:'', min:'', max:'', recent:'', sort:'' };
 function itemLastChange(serial){
   try{
-    var log = loadJSON('ars_price_changes', []) || [], best = 0;
-    for(var i = 0; i < log.length; i++){ var c = log[i]; if(c && c.type !== 'removed' && Number(c.serial) === Number(serial)){ var t = Date.parse(c.time) || 0; if(t > best) best = t; } }
+    var log = loadJSON('ars_price_changes', []) || [], best = 0, code = '';
+    CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(itemSerialNo(ci, ii) === Number(serial)) code = String(it.code || ''); }); });
+    for(var i = 0; i < log.length; i++){ var c = log[i]; if(c && c.type !== 'removed' && (c.code ? String(c.code) === code : Number(c.serial) === Number(serial))){ var t = Date.parse(c.time) || 0; if(t > best) best = t; } }
     return best;
   }catch(e){ return 0; }
 }
@@ -7002,6 +7112,7 @@ function openItemEditModal(k){
   const name = getItemName(ci, ii);
   const inv = getInvItem(ci, ii);
   document.getElementById('itemEditTitle').textContent = 'Edit Product';
+  { const _db = document.getElementById('itemEditDeleteBtn'); if(_db) _db.style.display = adminScope() ? 'none' : 'flex'; }
   document.getElementById('itemEditNameEn').value = name.en;
   document.getElementById('itemEditNameTa').value = name.ta;
   populateItemEditCategoryOptions(ci);
@@ -7014,6 +7125,7 @@ function openItemEditModal(k){
 function openNewItemModal(){
   itemEditingKey = null;
   document.getElementById('itemEditTitle').textContent = 'Add New Product';
+  { const _db = document.getElementById('itemEditDeleteBtn'); if(_db) _db.style.display = 'none'; }
   document.getElementById('itemEditNameEn').value = '';
   document.getElementById('itemEditNameTa').value = '';
   populateItemEditCategoryOptions(0);
@@ -7023,6 +7135,21 @@ function openNewItemModal(){
   document.getElementById('itemEditOverlay').classList.add('show');
 }
 
+async function deleteFromItemEdit(){
+  const k = itemEditingKey; if(k === null) return;
+  const [ci, ii] = k.split('_').map(Number);
+  const name = getItemName(ci, ii);
+  const ok = await showConfirm('\u{1F5D1}\uFE0F Delete "' + name.ta + ' / ' + name.en + '" completely?\n\nIt is removed from the price list and billing screen. This cannot be undone.');
+  if(!ok) return;
+  closeItemEditModal();
+  deleteItemCore(k);
+  saveJSON('ars_inventory', INV);
+  saveCatalog();
+  try{ buildCatNav(); render(); }catch(e){}
+  try{ renderAdmin(); }catch(e){}
+  try{ _pleSn = null; plePaint(); }catch(e){}
+  try{ scanToast('Item deleted', 'blue'); }catch(e){}
+}
 function closeItemEditModal(){
   document.getElementById('itemEditOverlay').classList.remove('show');
 }
