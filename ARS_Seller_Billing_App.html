@@ -1682,26 +1682,26 @@ function fbOnDocValue(name, remote){
   var doc = FB_DOCS[name];
   if(fbCanon(remote) === undefined){
     // Nothing on the server yet (first ever connection) — upload what this phone has.
-    if(name === 'pricelist'){ _fbPricelistLive = true; hideSyncWaitBanner(); }
+    if(name === 'pricelist'){ plMarkLive(); }
     if(!doc.isEmpty()) fbPushDoc(name);
     return;
   }
   if(doc.stale && doc.stale(remote)){
     // Server still holds an older price list: replace it with this phone's. A customer's
     // read-only price page cannot write, so it simply keeps the list shipped in this file.
-    if(name === 'pricelist'){ _fbPricelistLive = true; hideSyncWaitBanner(); }
+    if(name === 'pricelist'){ plMarkLive(); }
     if(!_fbReadOnly) fbPushDoc(name);
     return;
   }
   var local = null;
   try{ local = doc.get(); }catch(e){}
   if(fbSame(remote, local)){                               // already identical (includes the echo of our own upload)
-    if(name === 'pricelist'){ _fbPricelistLive = true; hideSyncWaitBanner(); try{ updatePublicPriceStamp(); }catch(e){} }
+    if(name === 'pricelist'){ plMarkLive(); try{ updatePublicPriceStamp(); }catch(e){} }
     return;
   }
   if(_fbDirty[name] && !_fbReadOnly){ fbPushDoc(name); return; }   // this phone has edits the server hasn't seen — send them
   try{ doc.apply(remote); }catch(e){}
-  if(name === 'pricelist'){ _fbPricelistLive = true; hideSyncWaitBanner(); try{ updatePublicPriceStamp(); }catch(e){} }
+  if(name === 'pricelist'){ plMarkLive(); try{ updatePublicPriceStamp(); }catch(e){} }
 }
 
 function applyRemotePricelist(r){
@@ -2047,6 +2047,28 @@ function custSaveProfile(addEst, total){
 var _scanVids = loadJSON('ars_scan_vid', {}) || {};
 function scanVidSet(tab, vid){ if(vid) _scanVids[tab] = vid; else delete _scanVids[tab]; _rawSaveJSON('ars_scan_vid', _scanVids); }
 
+/* The price-change log is only shown to admins, so seller phones do not download it. */
+function fbCollWanted(name){ return name !== 'priceChanges' || !!(typeof session !== 'undefined' && session && session.role === 'admin'); }
+function fbAttachColl(name){
+  var c = FB_COLL[name]; if(!_fbDb || c.attached) return; c.attached = true;
+  var ref = _fbDb.ref(c.path);
+  ref.on('child_added',   function(s){ c.remote.add(s.key); fbQueueRemote(name, s.val()); }, fbNoteError);
+  ref.on('child_changed', function(s){ fbQueueRemote(name, s.val()); });
+}
+function fbLoadColl(name){
+  var c = FB_COLL[name]; if(!_fbDb || c.loadAsked) return; c.loadAsked = true;
+  _fbDb.ref(c.path).once('value').then(function(){
+    c.loaded = true;
+    // let the queued merge finish first, so "missing" is judged on the merged list
+    setTimeout(function(){ fbPushMissing(name, true); }, 200);
+  }).catch(function(e){ c.loadAsked = false; fbNoteError(e); });
+}
+/* After an admin logs in on a phone that started without them: fetch the admin-only lists too. */
+function fbAttachAdminColls(){
+  if(!_fbDb || _fbReadOnly) return;
+  Object.keys(FB_COLL).forEach(function(name){ if(fbCollWanted(name)){ fbAttachColl(name); if(_fbMetaKnown) fbLoadColl(name); } });
+}
+function plMarkLive(){ _fbPricelistLive = true; hideSyncWaitBanner(); _rawSaveJSON('ars_pl_live_at', Date.now()); }
 /* ================= CONNECT ================= */
 function initFirebase(opts){
   if(opts && opts.readOnly) _fbReadOnly = true;
@@ -2083,15 +2105,17 @@ function initFirebase(opts){
       setTimeout(_custOff, 15000);
       return;
     }
+    // Speed: the price list (small, needed first) is asked for before the big bill / log lists, so the
+    // seller's screen is ready quickly; the lists start right after it arrives (or after 1.5 s at most).
+    var _collsOn = false;
+    var attachColls = function(){
+      if(_collsOn) return; _collsOn = true;
+      Object.keys(FB_COLL).forEach(function(name){ if(fbCollWanted(name)) fbAttachColl(name); });
+    };
     Object.keys(FB_DOCS).forEach(function(name){
-      _fbDb.ref(FB_DOCS[name].path).on('value', function(s){ fbOnDocValue(name, s.val()); }, fbNoteError);
+      _fbDb.ref(FB_DOCS[name].path).on('value', function(s){ fbOnDocValue(name, s.val()); if(name === 'pricelist') attachColls(); }, fbNoteError);
     });
-
-    Object.keys(FB_COLL).forEach(function(name){
-      var c = FB_COLL[name], ref = _fbDb.ref(c.path);
-      ref.on('child_added',   function(s){ c.remote.add(s.key); fbQueueRemote(name, s.val()); }, fbNoteError);
-      ref.on('child_changed', function(s){ fbQueueRemote(name, s.val()); });
-    });
+    setTimeout(attachColls, 1500);
 
     _fbDb.ref('meta').on('value', function(s){
       fbApplyMeta(s.val() || {});
@@ -2100,14 +2124,7 @@ function initFirebase(opts){
       // First answer from the server: finish any reset made offline, then upload
       // whatever this phone has that the server is missing.
       fbFlushPendingResets();
-      Object.keys(FB_COLL).forEach(function(name){
-        var c = FB_COLL[name];
-        _fbDb.ref(c.path).once('value').then(function(){
-          c.loaded = true;
-          // let the queued merge finish first, so "missing" is judged on the merged list
-          setTimeout(function(){ fbPushMissing(name, true); }, 200);
-        }).catch(fbNoteError);
-      });
+      Object.keys(FB_COLL).forEach(function(name){ if(fbCollWanted(name)) fbLoadColl(name); });
       Object.keys(_fbDirty).forEach(function(name){ if(FB_DOCS[name]) fbPushDoc(name); });
     }, fbNoteError);
   }catch(e){
@@ -2160,7 +2177,7 @@ async function fbFullSync(){
       fbOnDocValue(names[i], snap.val());
     }
     Object.keys(_fbDirty).forEach(function(n){ if(FB_DOCS[n]) fbPushDoc(n); });
-    var colls = Object.keys(FB_COLL);
+    var colls = Object.keys(FB_COLL).filter(fbCollWanted);
     for(var j = 0; j < colls.length; j++){
       await fbTimeout(_fbDb.ref(FB_COLL[colls[j]].path).once('value'), 20000, 'Sync');
       setTimeout((function(n){ return function(){ fbPushMissing(n, true); }; })(colls[j]), 300);
@@ -3027,7 +3044,7 @@ async function getDeviceInfo(){
   if(br) d.browser = ({Edg:'Edge', OPR:'Opera', SamsungBrowser:'Samsung Internet'}[br[1]] || br[1]) + ' ' + br[2].split('.')[0];
   try{
     if(navigator.userAgentData && navigator.userAgentData.getHighEntropyValues){
-      var hv = await fbTimeout(navigator.userAgentData.getHighEntropyValues(['model', 'platformVersion']), 1500, 'ua');
+      var hv = await fbTimeout(navigator.userAgentData.getHighEntropyValues(['model', 'platformVersion']), 400, 'ua');
       if(hv.model) d.model = hv.model;
       if(hv.platformVersion && /Android/.test(d.os || '')) d.os = 'Android ' + hv.platformVersion.split('.')[0];
     }
@@ -3073,13 +3090,20 @@ async function attemptLogin(){
   err.textContent = 'Checking… / சரிபார்க்கிறது…';
   if(btn) btn.disabled = true;
   try{
-    // Always check against the newest account list on the server, so a removed account or changed PIN takes effect.
-    try{ await fetchLatestUsers(); }
-    catch(e){
-      err.textContent = navigator.onLine
-        ? 'Could not reach the server. Please try again. / சர்வரை அணுக முடியவில்லை, மீண்டும் முயற்சிக்கவும்.'
-        : 'Internet needed to login. / உள்நுழைய இணையம் தேவை.';
-      return;
+    // Fast login: if this phone already has the account and the PIN matches, open at once and check the newest
+    // account list from the server in the background (a removed account or changed PIN is then logged out).
+    // Otherwise wait for the server's list.
+    const _lid = USERS[idRaw] ? idRaw : (Object.keys(USERS).filter(function(k){ return k.toLowerCase() === idRaw.toLowerCase(); })[0] || '');
+    const _quick = !!(_lid && USERS[_lid] && String(USERS[_lid].pin) === pin);
+    if(_quick){ fetchLatestUsers().catch(function(){}); }
+    else {
+      try{ await fetchLatestUsers(); }
+      catch(e){
+        err.textContent = navigator.onLine
+          ? 'Could not reach the server. Please try again. / சர்வரை அணுக முடியவில்லை, மீண்டும் முயற்சிக்கவும்.'
+          : 'Internet needed to login. / உள்நுழைய இணையம் தேவை.';
+        return;
+      }
     }
     if(!Object.keys(USERS).length){ err.textContent = 'No accounts found on the server. Ask the admin. / கணக்குகள் இல்லை.'; return; }
     // the ID is matched without caring about capital letters (phone keyboards often capitalise the first letter)
@@ -3195,11 +3219,15 @@ function enterApp(){
   // Show sync-wait banner until Firebase confirms latest prices (usually < 2s on good signal)
   // Bypass if price list was already confirmed live in a previous login this session,
   // or after 6s fallback so a weak signal never blocks the seller permanently.
-  if(!_fbPricelistLive){
+  var _plFresh = Date.now() - (Number(loadJSON('ars_pl_live_at', 0)) || 0) < 6 * 3600 * 1000;
+  if(!_fbPricelistLive && !_plFresh){
     var b = document.getElementById('syncWaitBanner');
     if(b) b.style.display = 'flex';
-    setTimeout(hideSyncWaitBanner, 6000); // 6s hard fallback — never block the seller forever
+    setTimeout(hideSyncWaitBanner, 3000); // 3s hard fallback — never block the seller
+  } else {
+    hideSyncWaitBanner();                  // prices were confirmed recently; live updates keep arriving in the background
   }
+  if(session && session.role === 'admin') fbAttachAdminColls();
   initFirebase();   // open live listeners so other devices' bills appear instantly
   startFbFullSyncTimer();   // plus a full re-sync every 40 minutes
   fbFullSync();
@@ -8919,7 +8947,7 @@ function pubWelcomeToast(){
       '<div style="font-size:14px; font-weight:700; color:#ffe7a8; line-height:2;">\u2795 Add qty<br>\u2193<br>\uD83E\uDDFE Check voucher<br>\u2193<br>\u25A6 Show QR at the counter</div>' +
     '</div>';
   document.body.appendChild(ov);
-  var done = false, finish = function(){ if(done) return; done = true; if(ov.parentNode) ov.remove(); ['pubHintTop', 'pubHint'].forEach(function(i){ var h = document.getElementById(i); if(h){ h.style.background = 'rgba(255,211,77,0.45)'; setTimeout(function(){ h.style.background = 'transparent'; }, 1000); } }); };
+  var done = false, finish = function(){ if(done) return; done = true; if(ov.parentNode) ov.remove(); setTimeout(pubCoach, 700); ['pubHintTop', 'pubHint'].forEach(function(i){ var h = document.getElementById(i); if(h){ h.style.background = 'rgba(255,211,77,0.45)'; setTimeout(function(){ h.style.background = 'transparent'; }, 1000); } }); };
   var fly = function(){
     var card = document.getElementById('pubWelcomeCard'), hint = ['pubHintTop', 'pubHint'].map(function(i){ return document.getElementById(i); }).filter(function(el){ return el && el.getBoundingClientRect().width > 0; })[0];
     if(!card || !hint){ finish(); return; }
@@ -8954,24 +8982,29 @@ var _promoImgs = {}, _promoPickQ = '';
 function promoLink(){ return /^https?:/.test(location.protocol) ? priceLinkFor('') : SELF_ORDER_URL; }
 function promoIsAdmin(){ return !!(session && session.role === 'admin'); }
 /* Featured items: the admin's picks; if none picked yet, the 6 best sellers (by quantity sold), else the first items. */
-function promoItems(){
-  var bid = plBranchId(), out = [];
-  (PROMO.items || []).forEach(function(code){
-    var h = findItemByCode(code, bid); if(!h) return;
-    var nm = getItemName(h.ci, h.ii);
-    out.push({ code: code, ta: nm.ta, en: nm.en, price: getBranchPrice(h.ci, h.ii, bid) });
-  });
-  if(out.length) return out;
+function promoSoldMap(){
   var sold = {};
   (SALES || []).forEach(function(x){ if(!isCountedSale(x)) return; (x.items || []).forEach(function(it){ sold[it.en] = (sold[it.en] || 0) + (it.qty || 0); }); });
-  var all = [];
+  return sold;
+}
+function promoAllItems(){
+  var bid = plBranchId(), sold = promoSoldMap(), all = [];
   CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){
     if(!isItemInBranch(ci, ii, bid)) return;
-    var nm = getItemName(ci, ii);
-    all.push({ code: itemCode(ci, ii), ta: nm.ta, en: nm.en, price: getBranchPrice(ci, ii, bid), sold: sold[nm.en] || 0 });
+    var nm = getItemName(ci, ii), cn = getCategoryName(ci);
+    all.push({ code: itemCode(ci, ii), ci: ci, cat: cn.en, ta: nm.ta, en: nm.en, price: getBranchPrice(ci, ii, bid), sold: sold[nm.en] || 0, s: itemSerialNo(ci, ii) });
   }); });
-  all.sort(function(a, b){ return b.sold - a.sold; });
-  return all.slice(0, 6);
+  return all;
+}
+/* Featured items: the admin's picks; if none picked yet, the 6 best sellers. The 2 best-selling ones get a "fast selling" flag. */
+function promoItems(){
+  var all = promoAllItems(), byCode = {}, out = [];
+  all.forEach(function(x){ byCode[x.code] = x; });
+  (PROMO.items || []).forEach(function(code){ if(byCode[code]) out.push(byCode[code]); });
+  if(!out.length) out = all.slice().sort(function(a, b){ return b.sold - a.sold; }).slice(0, 6);
+  var ranked = out.filter(function(x){ return x.sold > 0; }).sort(function(a, b){ return b.sold - a.sold; }).slice(0, 2);
+  out.forEach(function(x){ x.fast = ranked.indexOf(x) >= 0; });
+  return out;
 }
 function promoSave(){ saveJSON('ars_promo', PROMO); }
 
@@ -9008,8 +9041,20 @@ function promoPaintScreen(){
       '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">' + types + '</div>' +
       (adm
         ? '<label class="field-label">Headline</label><input type="text" maxlength="40" value="' + estEsc(PROMO.headline || '') + '" onchange="PROMO.headline=this.value.trim(); promoSave(); _promoImgs={};" style="width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' +
+          '<div style="display:flex; gap:8px; margin-bottom:8px;"><div style="flex:1;"><label class="field-label">Discount on image %</label><input type="number" min="0" max="80" inputmode="numeric" value="' + (Number(PROMO.disc) || 0) + '" onchange="PROMO.disc=Math.max(0, Math.min(80, Number(this.value) || 0)); promoSave(); _promoImgs={};" style="width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px;"></div>' +
+          '<label style="flex:1; display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:#5b4630; padding-top:16px;"><input type="checkbox" ' + (PROMO.badges !== false ? 'checked' : '') + ' onchange="PROMO.badges=this.checked; promoSave(); _promoImgs={};" style="width:18px; height:18px;"> 🔥 Fast-selling &amp; HOT badges</label></div>' +
+          '<div style="font-size:10px; color:#8a6a44; margin:-4px 0 8px;">Discount 0 = normal price. Above 0 = the image shows the list price struck through and the offer price (use the real discount you give).</div>' +
           '<label class="field-label">Offer line</label><textarea maxlength="120" onchange="PROMO.offer=this.value.trim(); promoSave(); _promoImgs={};" style="width:100%; box-sizing:border-box; height:56px; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' + estEsc(PROMO.offer || '') + '</textarea>'
         : '<div style="font-size:13px; font-weight:800; color:#7a1414;">' + estEsc(PROMO.headline || '') + '</div><div style="font-size:12px; color:#44557a; margin-bottom:8px;">' + estEsc(PROMO.offer || '') + '</div>') +
+      '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:6px 0 6px;">POSTER STYLE</div>' +
+      '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + PROMO_STYLES.map(function(t, i){ var on = (PROMO.style || 'qr') === t[0]; return '<button ' + (adm ? 'onclick="promoSetStyle(\'' + t[0] + '\')"' : 'disabled') + ' style="padding:6px 10px; border-radius:14px; border:1.5px solid #1b3a78; background:' + (on ? '#1b3a78' : '#fff') + '; color:' + (on ? '#fff' : '#1b3a78') + '; font-size:12px; font-weight:700; cursor:pointer;">' + (i + 1) + '. ' + t[1] + '</button>'; }).join('') + '</div>' +
+      '<button id="promoPrevBtn" onclick="promoPreviewAll(this)" style="width:100%; padding:9px; border-radius:9px; border:1.5px solid #1b3a78; background:#e8f0ff; color:#1b3a78; font-weight:800; font-size:12.5px; cursor:pointer; margin-bottom:6px;">\uD83D\uDC40 Preview all 6 styles</button>' +
+      '<div id="promoStylePrev"></div>' +
+      (adm ? '<label class="field-label">Tamil headline (QR poster)</label><input type="text" maxlength="60" value="' + estEsc(promoTa('headTa')) + '" onchange="PROMO.headTa=this.value.trim(); promoSave(); _promoImgs={};" style="width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' +
+        '<label class="field-label">Tamil offer text (numbers and % show in gold)</label><textarea maxlength="160" onchange="PROMO.offerTa=this.value.trim(); promoSave(); _promoImgs={};" style="width:100%; box-sizing:border-box; height:60px; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' + estEsc(promoTa('offerTa')) + '</textarea>' +
+        '<label class="field-label">Valid till (2 lines, split with |)</label><input type="text" maxlength="60" value="' + estEsc(promoTa('dateTa')) + '" onchange="PROMO.dateTa=this.value.trim(); promoSave(); _promoImgs={};" style="width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' : '') +
+      '<div style="display:flex; gap:6px; align-items:center; margin-bottom:8px;"><label style="flex:1; padding:8px; border-radius:8px; border:1px dashed #7a1414; background:#fff; color:#7a1414; font-size:12px; font-weight:800; text-align:center; cursor:pointer;">\uD83D\uDCF7 ' + (function(){ try{ return localStorage.getItem('ars_promo_photo') ? 'Change shop photo' : 'Add shop photo (optional)'; }catch(e){ return 'Add shop photo'; } })() + '<input type="file" accept="image/*" onchange="promoPhotoPick(this)" style="display:none;"></label>' +
+        ((function(){ try{ return !!localStorage.getItem('ars_promo_photo'); }catch(e){ return false; } })() ? '<button onclick="promoPhotoClear()" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; font-size:12px; cursor:pointer;">Remove</button>' : '') + '</div>' +
       '<div style="display:flex; justify-content:space-between; align-items:center; margin:4px 0 6px;"><div style="font-size:11.5px; font-weight:800; color:#5b4630;">FEATURED ITEMS (' + items.length + ')' + ((PROMO.items || []).length ? '' : ' • best sellers') + '</div>' +
         (adm ? '<button onclick="promoPickOpen()" style="padding:6px 10px; border-radius:8px; border:1px solid #7a1414; background:#fff; color:#7a1414; font-size:12px; font-weight:800; cursor:pointer;">✎ Select items</button>' : '') + '</div>' +
       '<div style="font-size:12px; color:#333; line-height:1.5; background:#fff; border:1px solid #ecd9b0; border-radius:8px; padding:8px; margin-bottom:8px;">' + (itemsTxt || 'No items') + '</div>' +
@@ -9028,35 +9073,57 @@ function promoSetType(t){
 }
 function promoToggleFmt(k){ _promoFmts[k] = !_promoFmts[k]; _rawSaveJSON('ars_promo_fmts', _promoFmts); promoPaintScreen(); }
 /* admin: choose the featured items */
+var _promoPick = { q: '', cat: '', sort: '', sel: false };
 function promoPickOpen(){
   var box = document.getElementById('promoPick'); if(!box) return;
   if(box.innerHTML){ box.innerHTML = ''; return; }
-  _promoPickQ = '';
+  _promoPick = { q: '', cat: '', sort: '', sel: false };
+  var cats = '<option value="">All categories</option>' + CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci); return '<option value="' + ci + '">' + (ci + 1) + '. ' + estEsc(n.en) + '</option>'; }).join('');
+  var fs = 'padding:7px; border-radius:8px; border:1px solid var(--line); font-size:12px; background:#fff;';
   box.innerHTML = '<div style="background:#fff; border:1px solid #7a1414; border-radius:10px; padding:8px; margin-bottom:8px;">' +
-    '<input type="search" placeholder="Search item…" oninput="_promoPickQ=this.value; promoPickList()" style="width:100%; box-sizing:border-box; padding:8px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:6px;">' +
-    '<div style="font-size:10.5px; color:#8a6a44; margin-bottom:4px;">Tick up to 8 items (WhatsApp shows 8, Instagram 6, Facebook 4).</div>' +
-    '<div id="promoPickList" style="max-height:260px; overflow-y:auto;"></div>' +
-    '<div style="display:flex; gap:6px; margin-top:6px;"><button onclick="PROMO.items=[]; promoSave(); _promoImgs={}; promoPaintScreen();" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:12px; cursor:pointer;">Clear (use best sellers)</button>' +
+    '<input type="search" placeholder="Search item…" oninput="_promoPick.q=this.value; promoPickList()" style="width:100%; box-sizing:border-box; padding:8px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:6px;">' +
+    '<div style="display:flex; gap:6px; margin-bottom:6px;"><select onchange="_promoPick.cat=this.value; promoPickList()" style="flex:1.3; min-width:0; ' + fs + '">' + cats + '</select>' +
+      '<select onchange="_promoPick.sort=this.value; promoPickList()" style="flex:1; min-width:0; ' + fs + '"><option value="">List order</option><option value="sold">Best sellers</option><option value="lo">Price: low → high</option><option value="hi">Price: high → low</option></select></div>' +
+    '<div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;"><label style="flex:1; display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700;"><input type="checkbox" onchange="_promoPick.sel=this.checked; promoPickList()" style="width:17px; height:17px;"> Selected only</label>' +
+      '<button onclick="promoAutoPick()" style="padding:6px 9px; border-radius:8px; border:1px solid #1e7a3c; background:#eef7ee; color:#1e7a3c; font-size:11.5px; font-weight:800; cursor:pointer;">⭐ Auto: top 6 sellers</button></div>' +
+    '<div id="promoPickInfo" style="font-size:10.5px; color:#8a6a44; margin-bottom:4px;"></div>' +
+    '<div id="promoPickList" style="max-height:280px; overflow-y:auto;"></div>' +
+    '<div style="display:flex; gap:6px; margin-top:6px;"><button onclick="PROMO.items=[]; promoSave(); _promoImgs={}; promoPaintScreen();" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:12px; cursor:pointer;">Clear all</button>' +
     '<button onclick="document.getElementById(\'promoPick\').innerHTML=\'\'; promoPaintScreen();" style="flex:1; padding:8px; border:none; border-radius:8px; background:#1e7a3c; color:#fff; font-weight:800; font-size:12px; cursor:pointer;">Done</button></div></div>';
   promoPickList();
 }
+function promoAutoPick(){
+  PROMO.items = promoAllItems().filter(function(x){ return x.sold > 0; }).sort(function(a, b){ return b.sold - a.sold; }).slice(0, 6).map(function(x){ return x.code; });
+  if(!PROMO.items.length){ alert('No sales yet to find the best sellers. Tick the items yourself.'); }
+  promoSave(); _promoImgs = {}; promoPickList();
+}
 function promoPickList(){
   var box = document.getElementById('promoPickList'); if(!box) return;
-  var bid = plBranchId(), q = _promoPickQ.toLowerCase().trim(), sel = PROMO.items || [], rows = [];
-  CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){
-    if(!isItemInBranch(ci, ii, bid)) return;
-    var nm = getItemName(ci, ii), code = itemCode(ci, ii);
-    if(q && (nm.ta + ' ' + nm.en).toLowerCase().indexOf(q) < 0) return;
-    var on = sel.indexOf(code) >= 0;
-    rows.push('<label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid #f0e6d2; font-size:12.5px; cursor:pointer;"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="promoPickToggle(\'' + code + '\', this)" style="width:18px; height:18px;"><span style="flex:1;"><b>' + estEsc(nm.ta) + '</b> <span style="color:#777; font-size:11px;">(' + estEsc(nm.en) + ')</span></span><b style="color:#7a1414;">₹' + Number(getBranchPrice(ci, ii, bid)).toLocaleString('en-IN') + '</b></label>');
-  }); });
-  box.innerHTML = rows.join('') || '<div class="empty-admin">No match.</div>';
+  var f = _promoPick, q = f.q.toLowerCase().trim(), sel = PROMO.items || [];
+  var list = promoAllItems().filter(function(x){
+    if(f.cat !== '' && String(x.ci) !== f.cat) return false;
+    if(f.sel && sel.indexOf(x.code) < 0) return false;
+    return !q || (x.ta + ' ' + x.en).toLowerCase().indexOf(q) >= 0;
+  });
+  if(f.sort === 'sold') list.sort(function(a, b){ return b.sold - a.sold; });
+  else if(f.sort === 'lo') list.sort(function(a, b){ return a.price - b.price; });
+  else if(f.sort === 'hi') list.sort(function(a, b){ return b.price - a.price; });
+  var info = document.getElementById('promoPickInfo');
+  if(info) info.textContent = sel.length + ' of 8 selected • ' + list.length + ' item' + (list.length === 1 ? '' : 's') + ' shown (WhatsApp shows 8, Instagram 6, Facebook 4)';
+  box.innerHTML = list.map(function(x){
+    var on = sel.indexOf(x.code) >= 0;
+    return '<label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid #f0e6d2; font-size:12.5px; cursor:pointer;' + (on ? ' background:#eef7ee;' : '') + '"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="promoPickToggle(\'' + x.code + '\', this)" style="width:18px; height:18px;">' +
+      '<span style="flex:1; min-width:0;"><b>' + estEsc(x.ta) + '</b> <span style="color:#777; font-size:11px;">(' + estEsc(x.en) + ')</span>' + (x.sold ? '<br><span style="font-size:10px; color:#b45309;">🔥 ' + x.sold + ' sold</span>' : '') + '</span>' +
+      '<b style="color:#7a1414;">₹' + Number(x.price).toLocaleString('en-IN') + '</b></label>';
+  }).join('') || '<div class="empty-admin">No items here.</div>';
 }
 function promoPickToggle(code, cb){
   var sel = PROMO.items = (PROMO.items || []).slice(), i = sel.indexOf(code);
   if(cb.checked){ if(sel.length >= 8){ cb.checked = false; alert('Up to 8 items.'); return; } if(i < 0) sel.push(code); }
   else if(i >= 0) sel.splice(i, 1);
   promoSave(); _promoImgs = {};
+  var info = document.getElementById('promoPickInfo'); if(info) info.textContent = sel.length + ' of 8 selected';
+  var lb = cb.closest('label'); if(lb) lb.style.background = cb.checked ? '#eef7ee' : '';
 }
 
 /* ---- drawing ---- */
@@ -9085,21 +9152,65 @@ async function promoQrCanvas(text, size){
   return src;
 }
 function promoCard(ctx, it, cx, cy, cardW, cardH, u, big){
+  var disc = Number(PROMO.disc) || 0, badges = PROMO.badges !== false;
   ctx.fillStyle = '#fff8e6'; promoRR(ctx, cx, cy, cardW, cardH, 18 * u); ctx.fill();
-  ctx.strokeStyle = '#ffd34d'; ctx.lineWidth = 3 * u; ctx.stroke();
+  ctx.strokeStyle = it.fast && badges ? '#ff8a00' : '#ffd34d'; ctx.lineWidth = (it.fast && badges ? 5 : 3) * u; ctx.stroke();
   var inner = cardW - 28 * u;
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  var ts = promoFit(ctx, it.ta, inner, (big ? 38 : 32) * u, 18 * u, '800');
-  var tl = promoWrap(ctx, it.ta, inner).slice(0, 2);
-  var es = Math.round((big ? 22 : 19) * u), ps = Math.round((big ? 54 : 44) * u);
-  var total = tl.length * ts * 1.22 + 6 * u + es + 14 * u + ps;
-  var y = cy + Math.max(10 * u, (cardH - total) / 2);
+  // everything is sized to the card: on a short card all text scales down together so nothing spills out
+  var k = 1, ts, tl, es, ps, os, topPad, total;
+  for(var pass = 0; pass < 6; pass++){
+    ts = promoFit(ctx, it.ta, inner, (big ? 38 : 32) * u * k, 14 * u, '800');
+    tl = promoWrap(ctx, it.ta, inner).slice(0, 2);
+    es = Math.round((big ? 22 : 19) * u * k); ps = Math.round((big ? 54 : 44) * u * k); os = Math.round((big ? 26 : 22) * u * k);
+    topPad = (disc > 0 || (it.fast && badges)) ? 30 * u * Math.max(0.75, k) : 0;
+    total = topPad + tl.length * ts * 1.22 + 6 * u * k + es + 12 * u * k + (disc > 0 ? os + 4 * u * k : 0) + ps;
+    if(total <= cardH - 14 * u) break;
+    k *= Math.max(0.6, (cardH - 14 * u) / total);
+  }
+  var y = cy + Math.max(10 * u, (cardH - total) / 2) + topPad;
   ctx.fillStyle = '#5a0d0d'; ctx.font = '800 ' + ts + 'px ' + PROMO_FONT;
   tl.forEach(function(l){ ctx.fillText(l, cx + cardW / 2, y); y += ts * 1.22; });
-  y += 6 * u;
-  ctx.fillStyle = '#666'; promoFit(ctx, it.en, inner, es, 11 * u, '600'); ctx.fillText(it.en, cx + cardW / 2, y); y += es + 14 * u;
+  y += 6 * u * k;
+  ctx.fillStyle = '#666'; promoFit(ctx, it.en, inner, es, 10 * u, '600'); ctx.fillText(it.en, cx + cardW / 2, y); y += es + 12 * u * k;
+  var price = Number(it.price) || 0;
+  if(disc > 0){
+    var old = '₹' + price.toLocaleString('en-IN');
+    ctx.fillStyle = '#8a8a8a'; ctx.font = '700 ' + os + 'px ' + PROMO_FONT; ctx.fillText(old, cx + cardW / 2, y);
+    var ow = ctx.measureText(old).width; ctx.strokeStyle = '#b3261e'; ctx.lineWidth = 3 * u;
+    ctx.beginPath(); ctx.moveTo(cx + cardW / 2 - ow / 2 - 4 * u, y + os * 0.55); ctx.lineTo(cx + cardW / 2 + ow / 2 + 4 * u, y + os * 0.5); ctx.stroke();
+    y += os + 4 * u * k;
+    price = Math.round(price * (100 - disc) / 100);
+  }
   ctx.fillStyle = '#b3261e'; ctx.font = '800 ' + ps + 'px ' + PROMO_FONT;
-  ctx.fillText('₹' + Number(it.price).toLocaleString('en-IN'), cx + cardW / 2, y);
+  ctx.fillText('₹' + price.toLocaleString('en-IN'), cx + cardW / 2, y);
+  // corner badges
+  var bs = Math.round((big ? 21 : 17) * u * Math.max(0.8, k));
+  if(disc > 0){
+    var dt = disc + '% OFF'; ctx.font = '800 ' + bs + 'px ' + PROMO_FONT;
+    var dw = ctx.measureText(dt).width + 22 * u, dh = bs * 1.6;
+    ctx.fillStyle = '#d32f2f'; promoRR(ctx, cx + 10 * u, cy + 10 * u, dw, dh, dh / 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(dt, cx + 10 * u + dw / 2, cy + 10 * u + dh / 2 + u); ctx.textBaseline = 'top';
+  }
+  if(it.fast && badges){
+    var ft = '🔥 FAST SELLING'; ctx.font = '800 ' + bs + 'px ' + PROMO_FONT;
+    var fw = ctx.measureText(ft).width + 22 * u, fh = bs * 1.6;
+    if(fw > cardW * 0.62){ ft = '🔥 HOT'; fw = ctx.measureText(ft).width + 22 * u; }
+    ctx.fillStyle = '#ff8a00'; promoRR(ctx, cx + cardW - 10 * u - fw, cy + 10 * u, fw, fh, fh / 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(ft, cx + cardW - 10 * u - fw / 2, cy + 10 * u + fh / 2 + u); ctx.textBaseline = 'top';
+  }
+}
+/* "HOT DEALS" sticker in the top corner of the image */
+function promoSticker(ctx, x, y, r, u){
+  if(PROMO.badges === false) return;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(-0.22);
+  ctx.fillStyle = '#ffd34d'; ctx.beginPath();
+  for(var i = 0; i < 32; i++){ var a = i * Math.PI / 16, rr = i % 2 ? r * 0.82 : r; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#b3261e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '800 ' + (r * 0.34) + 'px ' + PROMO_FONT; ctx.fillText('HOT', 0, -r * 0.18);
+  ctx.font = '800 ' + (r * 0.28) + 'px ' + PROMO_FONT; ctx.fillText('DEALS', 0, r * 0.2);
+  ctx.restore(); ctx.textBaseline = 'top';
 }
 function promoQrBar(ctx, qr, x, y, w, h, u, big){
   ctx.fillStyle = 'rgba(0,0,0,0.28)'; promoRR(ctx, x, y, w, h, 22 * u); ctx.fill();
@@ -9135,7 +9246,7 @@ function promoHead(ctx, x, w, y, u, sc){
   promoWrap(ctx, PROMO.offer || '', w).slice(0, 3).forEach(function(l){ ctx.fillText(l, cx, y); y += 48 * u * sc; });
   return y;
 }
-async function promoDraw(fmt, items, qr){
+async function promoDrawClassic(fmt, items, qr){
   var W = fmt.w, H = fmt.h, land = W > H;
   var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   var ctx = cv.getContext('2d');
@@ -9145,8 +9256,10 @@ async function promoDraw(fmt, items, qr){
     var u = H / 760;
     promoBg(ctx, W, H, u);
     var pad = 50 * u, leftW = W * 0.42 - pad, rx = pad + leftW + 34 * u, rw = W - pad - rx;
-    promoHead(ctx, pad, leftW, 52 * u, u, 0.86);
-    var barH = 210 * u; promoQrBar(ctx, qr, pad, H - 44 * u - barH, leftW, barH, u, false);
+    var hb = promoHead(ctx, pad, leftW, 52 * u, u, 0.86);
+    var barH = 210 * u;
+    if(H - 44 * u - barH - hb > 90 * u) promoSticker(ctx, pad + leftW / 2, (hb + H - 44 * u - barH) / 2, 50 * u, u);
+    promoQrBar(ctx, qr, pad, H - 44 * u - barH, leftW, barH, u, false);
     var cols = list.length > 1 ? 2 : 1, rowsN = Math.ceil(list.length / cols) || 1, gap = 22 * u;
     var top = 52 * u, bottom = H - 44 * u - (more ? 40 * u : 0), cardW = (rw - gap * (cols - 1)) / cols, cardH = (bottom - top - gap * (rowsN - 1)) / rowsN;
     list.forEach(function(it, k){
@@ -9158,8 +9271,10 @@ async function promoDraw(fmt, items, qr){
   }
   var u2 = W / 1080, pad2 = 56 * u2, cw = W - 2 * pad2;
   promoBg(ctx, W, H, u2);
-  var y = promoHead(ctx, pad2, cw, 70 * u2, u2, 1) + 16 * u2;
-  var barH2 = 250 * u2, barY = H - 44 * u2 - barH2;
+  var squat = H / W < 1.4;                                   // Instagram 4:5 has less height: smaller header and QR bar
+  var y = promoHead(ctx, pad2, cw, (squat ? 56 : 70) * u2, u2, squat ? 0.8 : 1) + (squat ? 8 : 16) * u2;
+  promoSticker(ctx, W - 96 * u2, 104 * u2, 62 * u2, u2);
+  var barH2 = (squat ? 200 : 250) * u2, barY = H - 44 * u2 - barH2;
   var cols2 = Math.min(fmt.cols, Math.max(1, list.length)), rows2 = Math.ceil(list.length / cols2) || 1, gap2 = 18 * u2;
   var areaH = barY - 22 * u2 - (more ? 46 * u2 : 0) - y;
   var cardW2 = (cw - gap2 * (cols2 - 1)) / cols2, cardH2 = Math.min((areaH - gap2 * (rows2 - 1)) / rows2, 300 * u2);
@@ -9173,12 +9288,465 @@ async function promoDraw(fmt, items, qr){
   promoQrBar(ctx, qr, pad2, barY, cw, barH2, u2, true);
   return cv;
 }
+/* ================= PROMOTION POSTER STYLES (6) =================
+   All drawn on the phone (diyas, lights, marigold toran, rangoli, QR panel) - no pictures are taken from
+   the internet, so there is nothing to download and no copyright problem. The admin can add an own photo
+   (shop / products) which the "Self-Order QR Poster" style shows in its photo band. */
+const PROMO_STYLES = [
+  ['qr', 'Self-Order QR Poster'], ['classic', 'Classic Cards'], ['lights', 'Festival Lights'],
+  ['burst', 'Big Offer'], ['board', 'Price Board'], ['royal', 'Royal Gold']
+];
+const PROMO_TA_DEFAULTS = {
+  headTa: 'தீபாவளி சுயமாக ஆர்டர் செய்யும் தள்ளுபடி!',
+  offerTa: 'கடையில் QR குறியீட்டை ஸ்கேன் செய்து சுயமாக ஆர்டர் செய்யவும் மேலும் 10% முதல் 20% வரை தள்ளுபடி',
+  dateTa: 'நவம்பர் 04, 2026 | வரை மட்டுமே'
+};
+function promoTa(k){ return (PROMO[k] != null && String(PROMO[k]).trim() !== '') ? String(PROMO[k]) : PROMO_TA_DEFAULTS[k]; }
+var _promoPhotoImg = null;
+function promoPhotoLoad(){
+  return new Promise(function(res){
+    var d = ''; try{ d = localStorage.getItem('ars_promo_photo') || ''; }catch(e){}
+    if(!d){ _promoPhotoImg = null; res(null); return; }
+    var im = new Image(); im.onload = function(){ _promoPhotoImg = im; res(im); }; im.onerror = function(){ _promoPhotoImg = null; res(null); }; im.src = d;
+  });
+}
+function promoPhotoPick(inp){
+  var f = inp.files && inp.files[0]; inp.value = ''; if(!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    var im = new Image();
+    im.onload = function(){
+      var sc = Math.min(1, 1080 / im.width), c = document.createElement('canvas');
+      c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      try{ localStorage.setItem('ars_promo_photo', c.toDataURL('image/jpeg', 0.82)); }catch(e){ alert('Photo is too big to keep on this phone.'); }
+      _promoImgs = {}; promoPaintScreen();
+    };
+    im.src = rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+function promoPhotoClear(){ try{ localStorage.removeItem('ars_promo_photo'); }catch(e){} _promoPhotoImg = null; _promoImgs = {}; promoPaintScreen(); }
+
+/* ---- drawing kit ---- */
+function kDiya(ctx, x, y, s){
+  ctx.save();
+  var g = ctx.createRadialGradient(x, y - s * 0.55, 0, x, y - s * 0.55, s * 0.95);
+  g.addColorStop(0, 'rgba(255,205,90,0.55)'); g.addColorStop(1, 'rgba(255,150,0,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - s * 0.55, s * 0.95, 0, Math.PI * 2); ctx.fill();
+  var bg = ctx.createLinearGradient(0, y - s * 0.3, 0, y + s * 0.12); bg.addColorStop(0, '#e8842e'); bg.addColorStop(1, '#6e260b');
+  ctx.fillStyle = bg; ctx.beginPath(); ctx.moveTo(x - s / 2, y - s * 0.24);
+  ctx.quadraticCurveTo(x, y + s * 0.36, x + s / 2, y - s * 0.24); ctx.quadraticCurveTo(x, y - s * 0.1, x - s / 2, y - s * 0.24); ctx.fill();
+  ctx.strokeStyle = '#ffd27a'; ctx.lineWidth = Math.max(1, s * 0.035); ctx.beginPath(); ctx.ellipse(x, y - s * 0.23, s * 0.5, s * 0.07, 0, 0, Math.PI * 2); ctx.stroke();
+  var fy = y - s * 0.28, fg = ctx.createRadialGradient(x, fy - s * 0.14, s * 0.02, x, fy - s * 0.16, s * 0.28);
+  fg.addColorStop(0, '#fffbe6'); fg.addColorStop(0.45, '#ffd34d'); fg.addColorStop(1, '#ff6a00');
+  ctx.fillStyle = fg; ctx.beginPath(); ctx.moveTo(x, fy - s * 0.52); ctx.quadraticCurveTo(x + s * 0.17, fy - s * 0.12, x, fy); ctx.quadraticCurveTo(x - s * 0.17, fy - s * 0.12, x, fy - s * 0.52); ctx.fill();
+  ctx.restore();
+}
+function kLights(ctx, x0, x1, y, sag, n, u){
+  ctx.save(); ctx.strokeStyle = 'rgba(60,30,10,0.8)'; ctx.lineWidth = 2.5 * u;
+  var cx = (x0 + x1) / 2, cy = y + sag * 2;
+  ctx.beginPath(); ctx.moveTo(x0, y); ctx.quadraticCurveTo(cx, cy, x1, y); ctx.stroke();
+  var cols = ['#ffd34d', '#ff8a3d', '#ffe9a8', '#ff5e5e', '#7dffb0'];
+  for(var i = 1; i < n; i++){
+    var t = i / n, px = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * cx + t * t * x1, py = (1 - t) * (1 - t) * y + 2 * (1 - t) * t * cy + t * t * y;
+    var col = cols[i % cols.length], gl = ctx.createRadialGradient(px, py + 8 * u, 0, px, py + 8 * u, 22 * u);
+    gl.addColorStop(0, col); gl.addColorStop(1, 'rgba(255,200,80,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(px, py + 8 * u, 22 * u, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(px, py + 9 * u, 5 * u, 7.5 * u, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+function kToran(ctx, W, y, u){
+  ctx.save();
+  var loops = Math.max(6, Math.round(W / (150 * u))), lw = W / loops;
+  for(var i = 0; i < loops; i++){
+    var x0 = i * lw;
+    for(var k = 0; k <= 10; k++){
+      var t = k / 10, px = x0 + t * lw, py = y + Math.sin(t * Math.PI) * 34 * u;
+      ctx.fillStyle = k % 2 ? '#ffb300' : '#ff7a00'; ctx.beginPath(); ctx.arc(px, py, 8.5 * u, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#2e7d32'; ctx.beginPath(); ctx.moveTo(x0 + lw / 2 - 9 * u, y + 40 * u); ctx.quadraticCurveTo(x0 + lw / 2, y + 80 * u, x0 + lw / 2 + 9 * u, y + 40 * u); ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = '#ffb300'; ctx.fillRect(0, y - 6 * u, W, 6 * u);
+  ctx.restore();
+}
+function kMandala(ctx, cx, cy, r, col, alpha){
+  ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, r * 0.012);
+  [1, 0.78, 0.56, 0.34].forEach(function(k){ ctx.beginPath(); ctx.arc(cx, cy, r * k, 0, Math.PI * 2); ctx.stroke(); });
+  for(var ring = 0; ring < 3; ring++){
+    var rr = r * (0.45 + ring * 0.22), n = 12 + ring * 6;
+    for(var i = 0; i < n; i++){
+      var a = i * Math.PI * 2 / n + ring * 0.2;
+      ctx.save(); ctx.translate(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); ctx.rotate(a);
+      ctx.beginPath(); ctx.ellipse(0, 0, r * 0.09, r * 0.035, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
+  }
+  ctx.restore();
+}
+function kRays(ctx, cx, cy, R, n, c1, c2){
+  ctx.save();
+  for(var i = 0; i < n; i++){
+    var a0 = i * Math.PI * 2 / n, a1 = a0 + Math.PI / n;
+    ctx.fillStyle = i % 2 ? c1 : c2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0, a1); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+function kBurst(ctx, cx, cy, r, spikes, fill, stroke, lw){
+  ctx.save(); ctx.beginPath();
+  for(var i = 0; i < spikes * 2; i++){ var a = i * Math.PI / spikes - Math.PI / 2, rr = i % 2 ? r * 0.84 : r; ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); if(stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+  ctx.restore();
+}
+/* fits text into maxLines lines inside maxW; returns {size, lines} with ctx.font set */
+function kFitLines(ctx, text, maxW, maxLines, size, minSize, weight){
+  var s = size, lines;
+  for(; s >= minSize; s -= 2){ ctx.font = weight + ' ' + s + 'px ' + PROMO_FONT; lines = promoWrap(ctx, text, maxW); if(lines.length <= maxLines && lines.every(function(l){ return ctx.measureText(l).width <= maxW; })) break; }
+  if(s < minSize){ s = minSize; ctx.font = weight + ' ' + s + 'px ' + PROMO_FONT; lines = promoWrap(ctx, text, maxW).slice(0, maxLines); }
+  return { size: s, lines: lines };
+}
+/* centred lines; words with a % or a number drawn in the highlight colour (bigger) */
+function kRich(ctx, text, cx, y, maxW, maxLines, size, minSize, col, hi, weight, lh){
+  var f = kFitLines(ctx, text, maxW, maxLines, size, minSize, weight);
+  f.lines.forEach(function(line){
+    var words = line.split(' '), ws = words.map(function(w){ ctx.font = weight + ' ' + (/[%0-9]/.test(w) ? f.size * 1.18 : f.size) + 'px ' + PROMO_FONT; return ctx.measureText(w + ' ').width; });
+    var tot = ws.reduce(function(a, b){ return a + b; }, 0), x = cx - tot / 2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    words.forEach(function(w, i){
+      var isHi = /[%0-9]/.test(w);
+      ctx.font = weight + ' ' + (isHi ? f.size * 1.18 : f.size) + 'px ' + PROMO_FONT; ctx.fillStyle = isHi ? hi : col;
+      ctx.fillText(w, x, y + f.size); x += ws[i];
+    });
+    y += f.size * (lh || 1.3);
+  });
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  return y;
+}
+function kQrPanel(ctx, qr, x, y, w, h, u, topTxt, botTxt){
+  ctx.save();
+  var r = 26 * u, tip = Math.min(48 * u, h * 0.12);
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - tip - r); ctx.quadraticCurveTo(x + w, y + h - tip, x + w - r, y + h - tip);
+  ctx.lineTo(x + w / 2 + tip, y + h - tip); ctx.lineTo(x + w / 2, y + h); ctx.lineTo(x + w / 2 - tip, y + h - tip);
+  ctx.lineTo(x + r, y + h - tip); ctx.quadraticCurveTo(x, y + h - tip, x, y + h - tip - r); ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
+  var g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#8e1b1b'); g.addColorStop(1, '#5a0d0d');
+  ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = '#ffc94d'; ctx.lineWidth = 5 * u; ctx.stroke();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#ffd34d'; var ts = promoFit(ctx, topTxt, w - 30 * u, 30 * u, 12 * u, '800'); ctx.fillText(topTxt, x + w / 2, y + 18 * u);
+  var qs = Math.min(w - 50 * u, h - tip - ts - 150 * u), qx = x + (w - qs) / 2, qy = y + 30 * u + ts;
+  ctx.fillStyle = '#fff'; promoRR(ctx, qx, qy, qs, qs, 16 * u); ctx.fill();
+  if(qr){ try{ ctx.drawImage(qr, qx + 12 * u, qy + 12 * u, qs - 24 * u, qs - 24 * u); }catch(e){} }
+  var by = qy + qs + 16 * u;
+  ctx.fillStyle = '#ffd34d'; var bf = kFitLines(ctx, botTxt, w - 36 * u, 2, 40 * u, 16 * u, '800'); bf.lines.forEach(function(l){ ctx.fillText(l, x + w / 2, by); by += bf.size * 1.2; });
+  ctx.restore();
+}
+function kDateBox(ctx, cx, y, w, u, sizeK){
+  var parts = promoTa('dateTa').split('|'), l1 = (parts[0] || '').trim(), l2 = (parts[1] || '').trim();
+  var s1 = 44 * u * sizeK, s2 = 32 * u * sizeK, h = s1 * 1.3 + (l2 ? s2 * 1.3 : 0) + 28 * u;
+  ctx.save();
+  ctx.fillStyle = '#5a0d0d'; promoRR(ctx, cx - w / 2, y, w, h, 18 * u); ctx.fill();
+  ctx.strokeStyle = '#ffc94d'; ctx.lineWidth = 4 * u; ctx.stroke();
+  var yy = kRich(ctx, l1, cx, y + 12 * u, w - 30 * u, 1, s1, 14 * u, '#ffffff', '#ffd34d', '800', 1.25);
+  if(l2){ ctx.fillStyle = '#ffffff'; promoFit(ctx, l2, w - 30 * u, s2, 12 * u, '700'); ctx.textAlign = 'center'; ctx.fillText(l2, cx, yy); }
+  ctx.restore();
+  return y + h;
+}
+function kFooter(ctx, x, y, w, h, u){
+  ctx.save();
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#7a1414'; ctx.fillRect(x, y + h - 10 * u, w, 10 * u);
+  var c1 = w * 0.3, c2 = w * 0.33, cy = y + (h - 10 * u) / 2;
+  // badge
+  var bw = c1 - 40 * u, bh = Math.min(h - 40 * u, 110 * u), bx = x + 20 * u, by = cy - bh / 2;
+  var bg = ctx.createLinearGradient(0, by, 0, by + bh); bg.addColorStop(0, '#8e1b1b'); bg.addColorStop(1, '#5a0d0d');
+  ctx.fillStyle = bg; promoRR(ctx, bx, by, bw, bh, 22 * u); ctx.fill(); ctx.strokeStyle = '#ffc94d'; ctx.lineWidth = 4 * u; ctx.stroke();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffd34d'; promoFit(ctx, 'Diwali', bw - 20 * u, bh * 0.42, 12 * u, 'italic 800'); ctx.fillText('Diwali', bx + bw / 2, by + bh * 0.36);
+  ctx.fillStyle = '#ffffff'; promoFit(ctx, new Date().getFullYear() + ' Offers', bw - 20 * u, bh * 0.22, 10 * u, '700'); ctx.fillText(new Date().getFullYear() + ' Offers', bx + bw / 2, by + bh * 0.74);
+  ctx.strokeStyle = '#7a1414'; ctx.lineWidth = 3 * u;
+  [x + c1, x + c1 + c2].forEach(function(lx){ ctx.beginPath(); ctx.moveTo(lx, y + 22 * u); ctx.lineTo(lx, y + h - 32 * u); ctx.stroke(); });
+  // store
+  var mx = x + c1 + c2 / 2;
+  ctx.fillStyle = '#2b1a10'; var ss = promoFit(ctx, SHOP.name_ta, c2 - 30 * u, 40 * u, 12 * u, '800'); ctx.fillText(SHOP.name_ta, mx, cy - ss * 0.55);
+  var ph = branchPhoneText(BRANCHES[plBranchId()]);
+  ctx.fillStyle = '#7a1414'; promoFit(ctx, '📞 ' + ph, c2 - 30 * u, 28 * u, 10 * u, '700'); ctx.fillText('📞 ' + ph, mx, cy + ss * 0.65);
+  // call to action
+  var rx = x + c1 + c2 + (w - c1 - c2) / 2;
+  ctx.fillStyle = '#2b1a10'; var as = promoFit(ctx, 'இன்றே வாங்குங்கள்!', w - c1 - c2 - 30 * u, 38 * u, 12 * u, '800'); ctx.fillText('இன்றே வாங்குங்கள்!', rx, cy - as * 0.55);
+  ctx.fillStyle = '#444'; promoFit(ctx, 'சலுகை வரையறுக்கப்பட்டது', w - c1 - c2 - 30 * u, 26 * u, 10 * u, '700'); ctx.fillText('சலுகை வரையறுக்கப்பட்டது', rx, cy + as * 0.65);
+  ctx.restore(); ctx.textBaseline = 'top';
+}
+function kBgMaroon(ctx, W, H){
+  var g = ctx.createRadialGradient(W / 2, H * 0.42, 10, W / 2, H * 0.42, Math.max(W, H) * 0.8);
+  g.addColorStop(0, '#b3261e'); g.addColorStop(0.55, '#7a1414'); g.addColorStop(1, '#3d0707');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+function kPhotoBand(ctx, img, x, y, w, h, u){
+  ctx.save(); promoRR(ctx, x, y, w, h, 22 * u); ctx.clip();
+  var sc = Math.max(w / img.width, h / img.height), iw = img.width * sc, ih = img.height * sc;
+  ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+  var g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, 'rgba(122,20,20,0.15)'); g.addColorStop(1, 'rgba(122,20,20,0.55)');
+  ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  ctx.restore();
+  ctx.strokeStyle = '#ffc94d'; ctx.lineWidth = 4 * u; promoRR(ctx, x, y, w, h, 22 * u); ctx.stroke();
+}
+function kMaxPct(){
+  var m = String(promoTa('offerTa') + ' ' + (PROMO.offer || '')).match(/(\d{1,2})\s*%/g) || [];
+  var best = 0; m.forEach(function(x){ best = Math.max(best, parseInt(x, 10)); });
+  return best || Number(PROMO.disc) || 0;
+}
+function kItemPrice(it){ var d = Number(PROMO.disc) || 0, p = Number(it.price) || 0; return { now: d > 0 ? Math.round(p * (100 - d) / 100) : p, was: d > 0 ? p : 0 }; }
+
+/* ---- the styles (portrait 9:16 / 4:5 and landscape) ---- */
+function styleQr(ctx, W, H, qr, items){
+  var land = W > H, u = land ? H / 760 : W / 1080, squat = !land && H / W < 1.4;
+  kBgMaroon(ctx, W, H);
+  kMandala(ctx, 0, H * 0.78, 260 * u, '#ffd34d', 0.18); kMandala(ctx, W, H * 0.78, 260 * u, '#ffd34d', 0.18);
+  kToran(ctx, W, 10 * u, u);
+  var footH = (land ? 120 : squat ? 140 : 170) * u, footY = H - footH;
+  if(land){
+    var pad = 40 * u, y = 105 * u;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    var colX = W * 0.36, colW = W - colX - pad;
+    ctx.fillStyle = '#ffd34d'; var f1 = kFitLines(ctx, promoTa('headTa'), colW, 1, 46 * u, 18 * u, '800'); ctx.fillText(f1.lines[0], colX + colW / 2, y); y += f1.size * 1.3;
+    var en = (PROMO.headline || 'Diwali Self-Order Discount').toUpperCase() + '!';
+    ctx.fillStyle = '#ffd34d'; promoFit(ctx, en, colW, 48 * u, 18 * u, '800'); ctx.fillText(en, colX + colW / 2, y); y += 66 * u;
+    y = kRich(ctx, promoTa('offerTa'), colX + colW / 2, y, colW, 3, 40 * u, 16 * u, '#ffffff', '#ffd34d', '800', 1.28) + 8 * u;
+    kDateBox(ctx, colX + colW / 2, y, Math.min(colW * 0.7, 520 * u), u, 0.8);
+    kQrPanel(ctx, qr, pad, 100 * u, colX - pad - 30 * u, footY - 120 * u, u, 'SCAN TO SELF-ORDER & SAVE!', 'கூடுதல் தள்ளுபடி பெற');
+    kFooter(ctx, 0, footY, W, footH, u);
+    return;
+  }
+  var pad2 = 50 * u, cw = W - 2 * pad2, y2 = (squat ? 90 : 110) * u;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#ffd34d'; var h1 = kFitLines(ctx, promoTa('headTa'), cw, 2, (squat ? 54 : 64) * u, 24 * u, '800');
+  h1.lines.forEach(function(l){ ctx.fillText(l, W / 2, y2); y2 += h1.size * 1.25; });
+  var en2 = (PROMO.headline || 'Diwali Self-Order Discount').toUpperCase() + '!';
+  ctx.fillStyle = '#ffd34d'; var es = promoFit(ctx, en2, cw, (squat ? 58 : 70) * u, 24 * u, '800'); ctx.fillText(en2, W / 2, y2 + 4 * u); y2 += es * 1.35 + 10 * u;
+  // photo band or lights + diyas
+  var bandH = squat ? 0 : 300 * u;
+  if(bandH){
+    if(_promoPhotoImg) kPhotoBand(ctx, _promoPhotoImg, pad2, y2, cw, bandH, u);
+    else { kLights(ctx, pad2, W - pad2, y2 + 20 * u, 40 * u, 14, u); kDiya(ctx, W / 2, y2 + bandH - 30 * u, 170 * u); kDiya(ctx, W / 2 - 230 * u, y2 + bandH - 40 * u, 110 * u); kDiya(ctx, W / 2 + 230 * u, y2 + bandH - 40 * u, 110 * u); }
+    y2 += bandH + 30 * u;
+  } else { kLights(ctx, pad2, W - pad2, y2 - 6 * u, 26 * u, 12, u); y2 += 40 * u; }
+  var avail = footY - (squat ? 24 : 150) * u - y2, pw = cw * 0.44;
+  var panelH = Math.min(avail, pw - 50 * u + (squat ? 150 : 190) * u);
+  var rx = pad2 + pw + 26 * u, rw = W - pad2 - rx;
+  // size the offer text + date box together, then centre both blocks in the space
+  var fsz = (squat ? 52 : 62) * u, fl = kFitLines(ctx, promoTa('offerTa'), rw, squat ? 5 : 6, fsz, 18 * u, '800');
+  var dk = squat ? 0.85 : 1, rightH = fl.lines.length * fl.size * 1.24 + 18 * u + (44 * 1.3 + 32 * 1.3 + 28) * u * dk;
+  var blockH = Math.max(panelH, rightH), by0 = y2 + Math.max(0, (avail - blockH) / 2);
+  kQrPanel(ctx, qr, pad2, by0 + (blockH - panelH) / 2, pw, panelH, u, 'SCAN TO SELF-ORDER & SAVE!', 'கூடுதல் தள்ளுபடி பெற');
+  var ry = by0 + (blockH - rightH) / 2;
+  ry = kRich(ctx, promoTa('offerTa'), rx + rw / 2, ry, rw, squat ? 5 : 6, fsz, 18 * u, '#ffffff', '#ffd34d', '800', 1.24) + 18 * u;
+  kDateBox(ctx, rx + rw / 2, ry, rw, u, dk);
+  if(!squat){ for(var i = 0; i < 5; i++) kDiya(ctx, pad2 + 60 * u + i * (cw - 120 * u) / 4, footY - 26 * u, (i === 2 ? 120 : 84) * u); }
+  kFooter(ctx, 0, footY, W, footH, u);
+}
+function styleLights(ctx, W, H, qr, items, fmt){
+  var land = W > H, u = land ? H / 760 : W / 1080;
+  var g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#120a3a'); g.addColorStop(0.6, '#3a0f5c'); g.addColorStop(1, '#6b1240');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  for(var i = 0; i < 90; i++){ ctx.fillStyle = 'rgba(255,255,255,' + (0.15 + (i % 4) * 0.12) + ')'; ctx.beginPath(); ctx.arc((i * 331) % W, (i * 557) % (H * 0.6), (1 + i % 3) * u, 0, Math.PI * 2); ctx.fill(); }
+  kLights(ctx, 0, W, 6 * u, 30 * u, Math.round(W / (70 * u)), u);
+  kLights(ctx, 0, W, 60 * u, 22 * u, Math.round(W / (90 * u)), u);
+  promoDrawCardsLayout(ctx, W, H, qr, items, fmt, u, land, { top: land ? 100 : 130, diyas: true });
+}
+function styleBurst(ctx, W, H, qr, items){
+  var land = W > H, u = land ? H / 760 : W / 1080;
+  var g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#ff8a00'); g.addColorStop(1, '#b3261e');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  var cx = land ? W * 0.3 : W / 2, cy = land ? H * 0.5 : H * 0.36;
+  kRays(ctx, cx, cy, Math.max(W, H) * 1.2, 36, 'rgba(255,230,120,0.22)', 'rgba(255,255,255,0.0)');
+  ctx.strokeStyle = '#ffd34d'; ctx.lineWidth = 6 * u; promoRR(ctx, 18 * u, 18 * u, W - 36 * u, H - 36 * u, 28 * u); ctx.stroke();
+  var squatB = !land && H / W < 1.4;
+  if(squatB) cy = H * 0.3;
+  var r = (land ? 230 : squatB ? 220 : 300) * u, pct = kMaxPct();
+  kBurst(ctx, cx, cy, r, 22, '#ffd34d', '#7a1414', 8 * u);
+  kBurst(ctx, cx, cy, r * 0.8, 22, '#b3261e');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff8e6';
+  if(pct){
+    ctx.font = '800 ' + r * 0.2 + 'px ' + PROMO_FONT; ctx.fillText('UP TO', cx, cy - r * 0.38);
+    ctx.fillStyle = '#ffd34d'; ctx.font = '900 ' + r * 0.5 + 'px ' + PROMO_FONT; ctx.fillText(pct + '%', cx, cy + r * 0.02);
+    ctx.fillStyle = '#fff8e6'; ctx.font = '800 ' + r * 0.22 + 'px ' + PROMO_FONT; ctx.fillText('OFF', cx, cy + r * 0.42);
+  } else { promoFit(ctx, 'SPECIAL OFFER', r * 1.3, r * 0.22, 20 * u, '900'); ctx.fillText('SPECIAL OFFER', cx, cy); }
+  ctx.textBaseline = 'top';
+  // shop name at top
+  var colX = land ? W * 0.58 : 60 * u, colW = land ? W - colX - 50 * u : W - 120 * u;
+  if(!land){ ctx.fillStyle = '#fff8e6'; promoFit(ctx, SHOP.name_ta, colW, 64 * u, 24 * u, '800'); ctx.fillText(SHOP.name_ta, W / 2, 50 * u); }
+  var y = land ? 60 * u : cy + r + 40 * u;
+  if(land){ ctx.fillStyle = '#fff8e6'; promoFit(ctx, SHOP.name_ta, colW, 54 * u, 20 * u, '800'); ctx.fillText(SHOP.name_ta, colX + colW / 2, y); y += 74 * u; }
+  var head = (PROMO.headline || 'Special Offer').toUpperCase();
+  var hs = promoFit(ctx, head, colW - 60 * u, (land ? 40 : 54) * u, 18 * u, '800'), hw = Math.min(colW, ctx.measureText(head).width + 60 * u), hh = hs * 1.55;
+  ctx.fillStyle = '#7a1414'; promoRR(ctx, (land ? colX + colW / 2 : W / 2) - hw / 2, y, hw, hh, hh / 2); ctx.fill();
+  ctx.fillStyle = '#ffd34d'; ctx.textBaseline = 'middle'; ctx.fillText(head, land ? colX + colW / 2 : W / 2, y + hh / 2 + 2 * u); ctx.textBaseline = 'top';
+  y += hh + 18 * u;
+  y = kRich(ctx, promoTa('offerTa'), land ? colX + colW / 2 : W / 2, y, colW, 3, (land ? 34 : 44) * u, 14 * u, '#ffffff', '#fff3b0', '800', 1.26) + 12 * u;
+  // item chips
+  var barH0 = (land ? 170 : squatB ? 190 : 230) * u, roomRows = Math.floor((H - 40 * u - barH0 - 16 * u - y) / ((land ? 74 : 92) * u + 14 * u));
+  var chips = items.slice(0, Math.max(0, Math.min(4, roomRows * 2))), chW = (colW - 18 * u) / 2, chH = (land ? 74 : 92) * u;
+  chips.forEach(function(it, k){
+    var x = (land ? colX : 60 * u) + (k % 2) * (chW + 18 * u), yy = y + Math.floor(k / 2) * (chH + 14 * u), p = kItemPrice(it);
+    ctx.fillStyle = 'rgba(255,248,230,0.95)'; promoRR(ctx, x, yy, chW, chH, chH / 2); ctx.fill();
+    ctx.textAlign = 'left'; ctx.fillStyle = '#5a0d0d'; promoFit(ctx, it.ta, chW * 0.58, (land ? 26 : 32) * u, 12 * u, '800'); ctx.textBaseline = 'middle'; ctx.fillText(it.ta, x + 22 * u, yy + chH / 2);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#b3261e'; ctx.font = '800 ' + (land ? 30 : 38) * u + 'px ' + PROMO_FONT; ctx.fillText('₹' + p.now.toLocaleString('en-IN'), x + chW - 22 * u, yy + chH / 2); ctx.textBaseline = 'top';
+  });
+  y += Math.ceil(chips.length / 2) * (chH + 14 * u) + 10 * u;
+  var barH = barH0, bx = land ? colX : 60 * u, bw = colW, by2 = H - 40 * u - barH;
+  promoQrBar(ctx, qr, bx, by2, bw, barH, u, !land);
+  ctx.textAlign = 'center';
+}
+function styleBoard(ctx, W, H, qr, items){
+  var land = W > H, u = land ? H / 760 : W / 1080;
+  kBgMaroon(ctx, W, H);
+  ctx.strokeStyle = '#ffd34d'; ctx.lineWidth = 6 * u; promoRR(ctx, 18 * u, 18 * u, W - 36 * u, H - 36 * u, 28 * u); ctx.stroke();
+  var pad = 50 * u, bx, by, bw, bh;
+  if(land){
+    var lw = W * 0.4 - pad, hb = promoHead(ctx, pad, lw, 50 * u, u, 0.82);
+    promoQrBar(ctx, qr, pad, H - 44 * u - 200 * u, lw, 200 * u, u, false);
+    bx = pad + lw + 30 * u; by = 44 * u; bw = W - pad - bx; bh = H - 88 * u;
+  } else {
+    var squat = H / W < 1.4, yy = promoHead(ctx, pad, W - 2 * pad, (squat ? 50 : 70) * u, u, squat ? 0.78 : 1) + 12 * u;
+    var barH = (squat ? 190 : 240) * u;
+    promoQrBar(ctx, qr, pad, H - 44 * u - barH, W - 2 * pad, barH, u, true);
+    bx = pad; by = yy; bw = W - 2 * pad; bh = H - 44 * u - barH - 24 * u - yy;
+  }
+  ctx.fillStyle = '#fff8e6'; promoRR(ctx, bx, by, bw, bh, 22 * u); ctx.fill(); ctx.strokeStyle = '#ffc94d'; ctx.lineWidth = 5 * u; ctx.stroke();
+  ctx.fillStyle = '#7a1414'; promoRR(ctx, bx, by, bw, 64 * u, 22 * u); ctx.fill(); ctx.fillRect(bx, by + 30 * u, bw, 34 * u);
+  ctx.fillStyle = '#ffd34d'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = '800 ' + 30 * u + 'px ' + PROMO_FONT; ctx.fillText('✨ TODAY\'S PRICES', bx + 24 * u, by + 33 * u);
+  ctx.textAlign = 'right'; ctx.fillText('₹', bx + bw - 24 * u, by + 33 * u);
+  var list = items.slice(0, land ? 6 : 8), rowH = Math.min((bh - 84 * u) / Math.max(1, list.length), 130 * u), y = by + 74 * u;
+  list.forEach(function(it, k){
+    var p = kItemPrice(it), mid = y + rowH / 2;
+    if(k % 2){ ctx.fillStyle = '#fbeed2'; ctx.fillRect(bx + 8 * u, y, bw - 16 * u, rowH); }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    var nameW = bw * 0.62;
+    ctx.fillStyle = '#5a0d0d'; promoFit(ctx, it.ta, nameW, Math.min(40 * u, rowH * 0.36), 12 * u, '800'); ctx.fillText(it.ta, bx + 26 * u, mid - rowH * 0.15);
+    var nameEnd = bx + 26 * u + Math.min(nameW, ctx.measureText(it.ta).width);
+    ctx.fillStyle = '#777'; promoFit(ctx, it.en, nameW, Math.min(24 * u, rowH * 0.22), 10 * u, '600'); ctx.fillText(it.en, bx + 26 * u, mid + rowH * 0.22);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#b3261e'; ctx.font = '800 ' + Math.min(48 * u, rowH * 0.42) + 'px ' + PROMO_FONT;
+    ctx.fillText('₹' + p.now.toLocaleString('en-IN'), bx + bw - 26 * u, mid - (p.was ? rowH * 0.1 : 0));
+    if(p.was){
+      var ot = '₹' + p.was.toLocaleString('en-IN'); ctx.fillStyle = '#888'; ctx.font = '700 ' + Math.min(24 * u, rowH * 0.2) + 'px ' + PROMO_FONT;
+      ctx.fillText(ot, bx + bw - 26 * u, mid + rowH * 0.27); var ow = ctx.measureText(ot).width;
+      ctx.strokeStyle = '#b3261e'; ctx.lineWidth = 2.5 * u; ctx.beginPath(); ctx.moveTo(bx + bw - 26 * u - ow, mid + rowH * 0.27); ctx.lineTo(bx + bw - 26 * u, mid + rowH * 0.25); ctx.stroke();
+    }
+    if(it.fast && PROMO.badges !== false){ ctx.textAlign = 'left'; ctx.fillStyle = '#ff8a00'; ctx.font = '800 ' + Math.min(22 * u, rowH * 0.2) + 'px ' + PROMO_FONT; ctx.fillText('🔥', nameEnd + 8 * u, mid - rowH * 0.15); }
+    y += rowH;
+  });
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  promoSticker(ctx, land ? pad + 40 * u : W - 96 * u, land ? H - 300 * u : 104 * u, (land ? 48 : 62) * u, u);
+}
+function styleRoyal(ctx, W, H, qr, items){
+  var land = W > H, u = land ? H / 760 : W / 1080;
+  var g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#0d0705'); g.addColorStop(0.5, '#2a0a0a'); g.addColorStop(1, '#4a0d0d');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  kMandala(ctx, W / 2, H / 2, Math.min(W, H) * 0.62, '#d4a937', 0.16);
+  ctx.strokeStyle = '#d4a937'; ctx.lineWidth = 3 * u; promoRR(ctx, 20 * u, 20 * u, W - 40 * u, H - 40 * u, 10 * u); ctx.stroke();
+  ctx.lineWidth = 1.5 * u; promoRR(ctx, 32 * u, 32 * u, W - 64 * u, H - 64 * u, 8 * u); ctx.stroke();
+  var pad = 60 * u, cw = W - 2 * pad, y;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  var gold = ctx.createLinearGradient(0, 0, 0, 120 * u); gold.addColorStop(0, '#fff1b8'); gold.addColorStop(1, '#d4a937');
+  if(land){
+    var lw = W * 0.42 - pad; y = 64 * u;
+    ctx.fillStyle = '#f5d67a'; promoFit(ctx, SHOP.name_ta, lw, 54 * u, 20 * u, '800'); ctx.fillText(SHOP.name_ta, pad + lw / 2, y); y += 70 * u;
+    ctx.fillStyle = '#d4a937'; promoFit(ctx, (PROMO.headline || '').toUpperCase(), lw, 36 * u, 14 * u, '800'); ctx.fillText((PROMO.headline || '').toUpperCase(), pad + lw / 2, y); y += 54 * u;
+    kRich(ctx, PROMO.offer || '', pad + lw / 2, y, lw, 3, 28 * u, 12 * u, '#f3e7c9', '#ffd34d', '700', 1.3);
+    promoQrBar(ctx, qr, pad, H - 50 * u - 200 * u, lw, 200 * u, u, false);
+    royalList(ctx, items.slice(0, 6), pad + lw + 36 * u, 60 * u, W - pad - (pad + lw + 36 * u), H - 120 * u, u, 2);
+    return;
+  }
+  var squat = H / W < 1.4; y = (squat ? 60 : 90) * u;
+  ctx.fillStyle = '#d4a937'; ctx.font = '700 ' + 26 * u + 'px ' + PROMO_FONT; ctx.fillText('✦  ' + SHOP.name_en + '  ✦', W / 2, y); y += 46 * u;
+  ctx.fillStyle = '#f5d67a'; var ns = promoFit(ctx, SHOP.name_ta, cw, (squat ? 66 : 80) * u, 24 * u, '800'); ctx.fillText(SHOP.name_ta, W / 2, y); y += ns * 1.3;
+  ctx.strokeStyle = '#d4a937'; ctx.lineWidth = 2 * u; ctx.beginPath(); ctx.moveTo(W / 2 - 220 * u, y); ctx.lineTo(W / 2 + 220 * u, y); ctx.stroke(); y += 20 * u;
+  ctx.fillStyle = '#ffd34d'; var hs = promoFit(ctx, (PROMO.headline || '').toUpperCase(), cw, (squat ? 48 : 58) * u, 18 * u, '800'); ctx.fillText((PROMO.headline || '').toUpperCase(), W / 2, y); y += hs * 1.35;
+  y = kRich(ctx, PROMO.offer || '', W / 2, y, cw, 2, (squat ? 30 : 36) * u, 12 * u, '#f3e7c9', '#ffd34d', '700', 1.3) + 16 * u;
+  var barH = (squat ? 190 : 240) * u, barY = H - 50 * u - barH;
+  royalList(ctx, items.slice(0, squat ? 6 : 8), pad, y, cw, barY - 24 * u - y, u, squat ? 2 : 2);
+  promoQrBar(ctx, qr, pad, barY, cw, barH, u, true);
+}
+function royalList(ctx, list, x, y, w, h, u, cols){
+  var rows = Math.ceil(list.length / cols) || 1, gap = 16 * u, cw = (w - gap * (cols - 1)) / cols, rh = Math.min((h - gap * (rows - 1)) / rows, 170 * u);
+  list.forEach(function(it, k){
+    var cx = x + (k % cols) * (cw + gap), cy = y + Math.floor(k / cols) * (rh + gap), p = kItemPrice(it);
+    ctx.fillStyle = 'rgba(212,169,55,0.08)'; promoRR(ctx, cx, cy, cw, rh, 12 * u); ctx.fill();
+    ctx.strokeStyle = '#d4a937'; ctx.lineWidth = 2 * u; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillStyle = '#fff1d0'; var ts = promoFit(ctx, it.ta, cw - 24 * u, Math.min(36 * u, rh * 0.26), 12 * u, '800'); ctx.fillText(it.ta, cx + cw / 2, cy + rh * 0.12);
+    ctx.fillStyle = '#bfa572'; promoFit(ctx, it.en, cw - 24 * u, Math.min(20 * u, rh * 0.15), 10 * u, '600'); ctx.fillText(it.en, cx + cw / 2, cy + rh * 0.12 + ts * 1.25);
+    ctx.fillStyle = '#ffd34d'; ctx.font = '800 ' + Math.min(48 * u, rh * 0.32) + 'px ' + PROMO_FONT; ctx.textBaseline = 'bottom';
+    ctx.fillText('₹' + p.now.toLocaleString('en-IN'), cx + cw / 2, cy + rh - rh * 0.1); ctx.textBaseline = 'top';
+    if(it.fast && PROMO.badges !== false){ ctx.fillStyle = '#ff8a00'; ctx.font = '800 ' + Math.min(20 * u, rh * 0.14) + 'px ' + PROMO_FONT; ctx.textAlign = 'right'; ctx.fillText('🔥 HOT', cx + cw - 10 * u, cy + 8 * u); ctx.textAlign = 'center'; }
+  });
+}
+/* cards layout shared by "Festival Lights" (and usable by others) */
+function promoDrawCardsLayout(ctx, W, H, qr, items, fmt, u, land, o){
+  var list = items.slice(0, fmt.max), more = items.length > list.length;
+  if(land){
+    var pad = 50 * u, leftW = W * 0.42 - pad, rx = pad + leftW + 34 * u, rw = W - pad - rx;
+    var hb = promoHead(ctx, pad, leftW, (o.top - 30) * u, u, 0.8), barH = 200 * u;
+    promoQrBar(ctx, qr, pad, H - 44 * u - barH, leftW, barH, u, false);
+    if(o.diyas && H - 44 * u - barH - hb > 90 * u) kDiya(ctx, pad + leftW / 2, H - 44 * u - barH - 14 * u, 90 * u);
+    var cols = list.length > 1 ? 2 : 1, rowsN = Math.ceil(list.length / cols) || 1, gap = 20 * u, top = (o.top - 20) * u, bottom = H - 44 * u;
+    var cardW = (rw - gap * (cols - 1)) / cols, cardH = (bottom - top - gap * (rowsN - 1)) / rowsN;
+    list.forEach(function(it, k){ promoCard(ctx, it, rx + (k % cols) * (cardW + gap), top + Math.floor(k / cols) * (cardH + gap), cardW, cardH, u, false); });
+    return;
+  }
+  var squat = H / W < 1.4, pad2 = 56 * u, cw = W - 2 * pad2;
+  var y = promoHead(ctx, pad2, cw, (squat ? o.top - 30 : o.top) * u, u, squat ? 0.78 : 1) + 12 * u;
+  var barH2 = (squat ? 190 : 240) * u, barY = H - 44 * u - barH2 - (o.diyas && !squat ? 70 * u : 0);
+  var cols2 = Math.min(fmt.cols, Math.max(1, list.length)), rows2 = Math.ceil(list.length / cols2) || 1, gap2 = 18 * u;
+  var areaH = barY - 20 * u - y, cardW2 = (cw - gap2 * (cols2 - 1)) / cols2, cardH2 = Math.min((areaH - gap2 * (rows2 - 1)) / rows2, 300 * u);
+  var gridH = rows2 * cardH2 + (rows2 - 1) * gap2, gy = y + Math.max(0, (areaH - gridH) / 2);
+  list.forEach(function(it, k){
+    var inRow = Math.min(cols2, list.length - Math.floor(k / cols2) * cols2), x0 = pad2 + (cw - (inRow * cardW2 + (inRow - 1) * gap2)) / 2;
+    promoCard(ctx, it, x0 + (k % cols2) * (cardW2 + gap2), gy + Math.floor(k / cols2) * (cardH2 + gap2), cardW2, cardH2, u, true);
+  });
+  if(o.diyas && !squat){ for(var i = 0; i < 5; i++) kDiya(ctx, pad2 + 40 * u + i * (cw - 80 * u) / 4, H - 44 * u - barH2 - 12 * u, (i === 2 ? 96 : 70) * u); }
+  promoQrBar(ctx, qr, pad2, H - 44 * u - barH2, cw, barH2, u, true);
+}
+async function promoDraw(fmt, items, qr, style){
+  var W = fmt.w, H = fmt.h, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  var ctx = cv.getContext('2d'), st = style || PROMO.style || 'qr';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  if(st === 'classic') return promoDrawClassic(fmt, items, qr);
+  if(st === 'lights') styleLights(ctx, W, H, qr, items, fmt);
+  else if(st === 'burst') styleBurst(ctx, W, H, qr, items);
+  else if(st === 'board') styleBoard(ctx, W, H, qr, items);
+  else if(st === 'royal') styleRoyal(ctx, W, H, qr, items);
+  else styleQr(ctx, W, H, qr, items);
+  return cv;
+}
+/* 6 small previews (WhatsApp size) so the admin can pick a style */
+async function promoPreviewAll(btn){
+  var box = document.getElementById('promoStylePrev'); if(!box) return;
+  var old = btn.innerHTML; btn.disabled = true; btn.innerHTML = 'Making 6 previews…';
+  try{
+    try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+    await promoPhotoLoad();
+    var qr = null; try{ qr = await promoQrCanvas(promoLink(), 300); }catch(e){}
+    var items = promoItems(), fmt = PROMO_FMTS[0], html = '';
+    for(var i = 0; i < PROMO_STYLES.length; i++){
+      var cv = await promoDraw(fmt, items, qr, PROMO_STYLES[i][0]);
+      var sm = document.createElement('canvas'); sm.width = 270; sm.height = 480; sm.getContext('2d').drawImage(cv, 0, 0, 270, 480);
+      var on = (PROMO.style || 'qr') === PROMO_STYLES[i][0];
+      html += '<div onclick="promoSetStyle(\'' + PROMO_STYLES[i][0] + '\')" style="cursor:pointer; text-align:center; border-radius:10px; padding:4px; border:3px solid ' + (on ? '#1e7a3c' : 'transparent') + ';"><img src="' + sm.toDataURL('image/jpeg', 0.8) + '" style="width:100%; border-radius:6px; display:block;"><div style="font-size:11px; font-weight:800; margin-top:3px;">' + (on ? '✅ ' : '') + (i + 1) + '. ' + PROMO_STYLES[i][1] + '</div></div>';
+    }
+    box.innerHTML = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px;">' + html + '</div>';
+  }catch(e){ box.innerHTML = '<div class="empty-admin">Could not make previews.</div>'; }
+  btn.disabled = false; btn.innerHTML = old;
+}
+function promoSetStyle(st){ PROMO.style = st; promoSave(); _promoImgs = {}; promoPaintScreen(); setTimeout(function(){ var b = document.getElementById('promoPrevBtn'); if(b) promoPreviewAll(b); }, 50); }
+
 async function promoGenerate(btn){
   var fmts = PROMO_FMTS.filter(function(f){ return _promoFmts[f.key]; });
   if(!fmts.length){ alert('Tick at least one format (WhatsApp, Instagram or Facebook).'); return; }
   var old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = 'Making images…'; }
   try{
     try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+    await promoPhotoLoad();
     var qr = null; try{ qr = await promoQrCanvas(promoLink(), 360); }catch(e){}
     var items = promoItems();
     _promoImgs = {};
@@ -9223,6 +9791,43 @@ async function promoSaveImg(key){
   estDownload(await promoBlob(key), 'ARS_Promotion_' + f.label.replace(/\s+/g, '_') + '.png');
 }
 
+/* Self-order page, right after the welcome: a moving hand shows the 2 taps - "tap an item to add qty",
+   then "tap Voucher to get your voucher & QR". Any tap ends it. */
+function pubCoach(){
+  try{ if(localStorage.getItem('ars_pub_coached')) return; }catch(e){}   // first visit on this phone only
+  var row = document.querySelector('#publicPrevBody tr[data-sn]');
+  var btn = ['estViewBtn2', 'estViewBtn'].map(function(i){ return document.getElementById(i); }).filter(function(el){ return el && el.getBoundingClientRect().width > 0; })[0];
+  if(!row) return;
+  // the Voucher button appears at the bottom once an item is added; until then point at that place
+  var btnBox = btn ? btn : { getBoundingClientRect: function(){ var w = window.innerWidth, h = window.innerHeight; return { left: w - 130, top: h - 70, width: 110, height: 44, bottom: h - 26 }; } };
+  if(!document.getElementById('pubCoachCss')){
+    var st = document.createElement('style'); st.id = 'pubCoachCss';
+    st.textContent = '@keyframes pcTap{0%,100%{transform:translate(-30%,0) scale(1)}50%{transform:translate(-30%,6px) scale(.86)}}' +
+      '@keyframes pcRing{0%{transform:translate(-50%,-50%) scale(.4);opacity:.9}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}';
+    document.head.appendChild(st);
+  }
+  try{ localStorage.setItem('ars_pub_coached', '1'); }catch(e){}
+  var lay = document.createElement('div'); lay.id = 'pubCoach';
+  lay.style.cssText = 'position:fixed; inset:0; z-index:39000; pointer-events:none;';
+  lay.innerHTML = '<div id="pcRing" style="position:fixed; width:54px; height:54px; border-radius:50%; border:3px solid #ffd34d; animation:pcRing 1s ease-out infinite; transition:left .7s, top .7s;"></div>' +
+    '<div id="pcHand" style="position:fixed; font-size:44px; line-height:1; filter:drop-shadow(0 3px 4px rgba(0,0,0,.4)); animation:pcTap 1s ease-in-out infinite; transition:left .7s, top .7s;">\uD83D\uDC46</div>' +
+    '<div id="pcTip" style="position:fixed; left:50%; transform:translateX(-50%); max-width:86%; padding:9px 14px; border-radius:12px; background:#7a1414; color:#fff8e6; border:1.5px solid #ffd34d; font-size:13px; font-weight:800; text-align:center; box-shadow:0 6px 16px rgba(0,0,0,.35); transition:top .5s;"></div>';
+  document.body.appendChild(lay);
+  var end = function(){ if(lay.parentNode) lay.remove(); document.removeEventListener('pointerdown', end, true); clearTimeout(t1); clearTimeout(t2); };
+  document.addEventListener('pointerdown', end, true);
+  var point = function(el, tip, above){
+    var r = el.getBoundingClientRect(), x = r.left + Math.min(r.width * 0.35, 120), y = r.top + r.height / 2;
+    var ring = document.getElementById('pcRing'), hand = document.getElementById('pcHand'), t = document.getElementById('pcTip');
+    if(!ring) return;
+    ring.style.left = x + 'px'; ring.style.top = y + 'px';
+    hand.style.left = x + 'px'; hand.style.top = (y + 4) + 'px';
+    t.innerHTML = tip;
+    t.style.top = above ? Math.max(8, r.top - 70) + 'px' : (r.bottom + 54) + 'px';
+  };
+  point(row, '\u2795 Tap an item to add qty', false);
+  var t1 = setTimeout(function(){ point(btnBox, '\uD83E\uDDFE Then tap ' + (btn ? 'here' : '"Voucher" at the bottom') + ' to get your voucher &amp; QR', true); }, 2800);
+  var t2 = setTimeout(end, 6000);
+}
 /* ---------------- INIT ---------------- */
 resetPriceChangeBaseline();
 if(isPublicPriceRequest()){
