@@ -732,17 +732,37 @@
 (function(){ try{ var h = location.hash || '', q = location.search || '';
   if(/^#?\/?(price|pricelist|order|selforder|self-order)(\b|=|$)/i.test(h) || /[?&](price|pricelist|order|selforder)(=|&|$)/i.test(q)) document.documentElement.className += ' pub-mode'; }catch(e){} })();</script>
 <style>.pub-mode #loginScreen, .pub-mode #app, .pub-mode #adminScreen, .pub-mode #a2hsBar, .pub-mode #a2hsHelp { display:none !important; }</style>
+<script>
+/* If the app script fails (or the downloaded file is incomplete), say so on the login screen instead of leaving it blank. */
+window.addEventListener('error', function(e){ try{
+  var el = document.getElementById('loginError'); if(!el || window.__errShown) return; window.__errShown = 1;
+  el.textContent = 'App error: ' + String(e && e.message || 'unknown') + ' @' + (e && e.lineno || '?') + ':' + (e && e.colno || '?');
+}catch(_){} });
+/* Login tapped but the app code never started: tell the user the file on this phone is incomplete. */
+function __appNotLoaded(){
+  var el = document.getElementById('loginError'); if(!el) return;
+  var whole = !!document.getElementById('appEndMark');
+  el.textContent = whole
+    ? 'The app did not start on this phone. Close this tab and open the file again.'
+    : 'This phone opened only PART of the file (it is incomplete). Save the file again with a NEW name, or open the website link.';
+}
+</script>
 </head>
 <body translate="no" class="notranslate">
 
 <!-- ================= LOGIN ================= -->
 <div id="loginScreen">
   <div class="login-card">
-    <div class="login-shop-title" id="loginShopTitle"></div>
-    <div class="login-shop-sub" id="loginShopSub"></div>
-    <input id="loginId" type="text" placeholder="User ID" autocomplete="off">
-    <input id="loginPin" type="password" inputmode="numeric" placeholder="PIN">
-    <button class="login-btn" id="loginBtn" onclick="attemptLogin()">Login</button>
+    <svg viewBox="0 0 100 100" width="64" height="64" style="display:block; margin:0 auto 6px;" aria-hidden="true">
+      <rect width="100" height="100" rx="22" fill="#7a1414" stroke="#ffd34d" stroke-width="3"/>
+      <path d="M50 15 L54.5 25.5 L65 21 L60.5 31.5 L71 36 L60.5 40.5 L65 51 L54.5 46.5 L50 57 L45.5 46.5 L35 51 L39.5 40.5 L29 36 L39.5 31.5 L35 21 L45.5 25.5 Z" fill="#ffd34d"/>
+      <text x="50" y="82" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#fff8ea" text-anchor="middle">ARS</text>
+    </svg>
+    <div class="login-shop-title" id="loginShopTitle">A.R.S பட்டாசுக் கடை</div>
+    <div class="login-shop-sub" id="loginShopSub">A.R.S CRACKERS SHOP</div>
+    <input id="loginId" type="text" placeholder="User ID" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter') document.getElementById('loginPin').focus()">
+    <input id="loginPin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off" onkeydown="if(event.key==='Enter'){ if(window.attemptLogin) attemptLogin(); else __appNotLoaded(); }">
+    <button class="login-btn" id="loginBtn" onclick="if(window.attemptLogin) attemptLogin(); else __appNotLoaded();">Login</button>
     <div class="login-error" id="loginError"></div>
   </div>
 </div>
@@ -827,6 +847,11 @@
       <span id="billCount"></span>
     </div>
     <div class="bill-meta" style="padding-top:2px;"><span>Seller: <b id="billSeller"></b></span><span id="billBranchTag" style="font-size:10.5px; color:#8a6a44; font-weight:700;"></span></div>
+    <div class="bill-meta" style="padding-top:6px; align-items:center;">
+      <span>Customer Name</span>
+      <span><input type="text" id="billCustomerName" placeholder="Name (optional)" maxlength="40"
+        style="width:150px; padding:5px 7px; border-radius:7px; border:1px solid var(--line); text-align:right; font-size:12px;"></span>
+    </div>
     <div class="bill-meta" style="padding-top:6px; align-items:center;">
       <span>Customer Phone</span>
       <span><input type="tel" id="billCustomerPhone" placeholder="10-digit number (optional)"
@@ -923,8 +948,9 @@
     <button id="adminTabSalesBtn" class="active" onclick="setAdminTab('sales')">&#128202; Sales<span class="notif-badge hidden" id="salesTabBadge">0</span></button>
     <button id="adminTabReportsBtn" onclick="setAdminTab('reports')">&#128202; Reports</button>
     <button id="adminTabBranchBtn" onclick="setAdminTab('branch')">&#127968; Branches</button>
-    <button id="adminTabItemsBtn" onclick="setAdminTab('items')">&#128176; Price List</button>
+    <button id="adminTabItemsBtn" onclick="setAdminTab('items')">&#128176; Price Edit</button>
     <button id="adminTabChangesBtn" onclick="setAdminTab('changes')">&#128221; Price Changes</button>
+    <button id="adminTabCustomersBtn" onclick="setAdminTab('customers')">&#129489; Customers</button>
     <button id="adminTabLoginsBtn" onclick="setAdminTab('logins')">&#128272; Login History</button>
     <button id="adminTabUpiBtn" onclick="setAdminTab('upi')">&#128241; UPI Details</button>
     <button id="adminTabAccountsBtn" onclick="setAdminTab('accounts')">&#128100; Accounts</button>
@@ -1122,6 +1148,13 @@
 </div>
 
 <!-- ============ Customer estimate (mark-up) voucher ============ -->
+<div id="salesHistOverlay" style="display:none; position:fixed; inset:0; z-index:31000; background:var(--paper); flex-direction:column;">
+  <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:linear-gradient(90deg,#4a0d0d,#7a1414); color:#fff8e6;">
+    <button onclick="shBack()" style="background:rgba(255,255,255,0.14); border:1.5px solid #e0b24a; color:#fff8e6; border-radius:10px; padding:7px 12px; font-weight:800; font-size:14px; cursor:pointer;">&#8592; Back</button>
+    <div id="salesHistTitle" style="flex:1; min-width:0; font-weight:800; font-size:15px; text-align:center; padding-right:70px;"></div>
+  </div>
+  <div id="salesHistBody" style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:12px;"></div>
+</div>
 <div id="estVoucherOverlay" style="display:none; position:fixed; inset:0; z-index:30500; background:rgba(0,0,0,0.55); overflow-y:auto; padding:12px;">
   <div style="max-width:400px; margin:0 auto;">
     <div id="estVoucherBody" style="background:#fff; border-radius:6px; overflow:hidden;"></div>
@@ -1155,11 +1188,15 @@
 </div>
 
 <div id="plEditOverlay" style="display:none; position:fixed; inset:0; z-index:45; background:#f0f0f0; flex-direction:column;">
-  <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; background:#fff8ea; border-bottom:1px solid #e6d3b0;">
-    <button onclick="closePriceEditor()" style="background:none; border:none; font-size:14px; font-weight:800; color:var(--maroon); cursor:pointer; padding:6px 8px;">&#8592; Back</button>
-    <div style="font-weight:800; font-size:14px; color:var(--maroon); text-align:center; line-height:1.2;">Price List<div style="font-size:10.5px; font-weight:600; color:#8a6a44;">Tap an item to edit</div></div>
-    <button onclick="openPriceListPDFPreview()" title="PDF preview / share" style="background:#fff8e6; border:1.5px solid var(--maroon); border-radius:8px; padding:6px 9px; font-size:14px; cursor:pointer;">&#128196; PDF</button>
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:#fff8ea; border-bottom:1px solid #e6d3b0;">
+    <button onclick="adminPriceViewSet('list')" title="List view (all options)" style="background:#fff8e6; border:1.5px solid var(--maroon); border-radius:8px; padding:6px 11px; font-size:16px; cursor:pointer; color:var(--maroon); font-weight:800;">&#9776;</button>
+    <div onclick="plePickBranch()" style="flex:1; min-width:0; text-align:center; cursor:pointer; font-weight:800; font-size:14px; color:var(--maroon); line-height:1.2;">Price Edit <span id="pleBranchTag" style="font-size:11.5px; font-weight:800; color:#8a6a44;"></span><div style="font-size:10.5px; font-weight:600; color:#8a6a44;">Tap an item to edit</div></div>
+    <span style="display:flex; gap:6px;">
+      <button id="pleCatBtn" onclick="pleCatToggle()" title="Edit categories" style="background:#fff8e6; border:1.5px solid var(--maroon); border-radius:8px; padding:6px 10px; font-size:15px; cursor:pointer;">&#9998;&#65039;</button>
+      <button onclick="openPriceListPDFPreview()" title="PDF preview / share" style="background:#fff8e6; border:1.5px solid var(--maroon); border-radius:8px; padding:6px 9px; font-size:14px; cursor:pointer;">&#128196;</button>
+    </span>
   </div>
+  <div id="pleCatPanel" style="display:none; flex:1; overflow:auto; padding:10px 12px 20px; background:#fffaf0;"><button onclick="pleCatToggle()" style="background:none; border:none; color:var(--maroon); font-weight:800; font-size:14px; padding:4px 2px 8px; cursor:pointer;">&#8592; Back to Price Edit</button><div id="pleCatInner"></div></div>
   <div id="plEditBody" style="flex:1; overflow:auto; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y; padding:8px; text-align:center;"></div>
   <div id="plEditSheet" style="display:none; background:#fff; border-top:3px solid #e08a00; padding:10px 12px; box-shadow:0 -4px 14px rgba(0,0,0,.25);"></div>
 </div>
@@ -1300,29 +1337,16 @@ ensureSerials();
 function saveCatalog(){ ensureSerials(); saveJSON('ars_catalog', {categories: CATEGORIES, codeSeq: CODESEQ}); }
 
 document.getElementById('billShopTitle').textContent = SHOP.name_ta;
-document.getElementById('billPhone').textContent = 'Branch: Thanneerpandhal  •  Ph: ' + SHOP.phones.join(' / ');
+document.getElementById('billPhone').textContent = 'Branch: Thanneerpandhal  •  Ph: ' + fmtPhones(SHOP.phones.join(' / '));
 document.getElementById('loginShopTitle').textContent = SHOP.name_ta;
 document.getElementById('loginShopSub').textContent = SHOP.name_en;
 document.getElementById('shopNameBig').innerHTML = SHOP.name_ta + '<small>' + SHOP.name_en + '</small>';
 
+/* Accounts (ID, name, role, PIN) are NOT stored in this file. They come only from the Firebase
+   server (Admin -> Accounts), and a copy is kept on each phone after a successful login. */
 function seedUsers(){
-  let users = loadJSON('ars_users', null);
-  if(!users){
-    users = {
-      ravi:    {pin:'8760', role:'admin',  name:'Ravi'},
-      sri:     {pin:'9842', role:'admin',  name:'Sridhar'},
-      seller1: {pin:'1111', role:'seller', name:'Seller One'},
-      seller2: {pin:'2222', role:'seller', name:'Seller Two'},
-      seller3: {pin:'3333', role:'seller', name:'Seller Three'},
-      seller4: {pin:'4444', role:'seller', name:'Seller Four'},
-      seller5: {pin:'5555', role:'seller', name:'Seller Five'},
-      seller6: {pin:'6666', role:'seller', name:'Seller Six'},
-      seller7: {pin:'7777', role:'seller', name:'Seller Seven'},
-      seller8: {pin:'8888', role:'seller', name:'Seller Eight'}
-    };
-    saveJSON('ars_users', users);
-  }
-  return users;
+  var users = loadJSON('ars_users', null);
+  return (users && typeof users === 'object') ? users : {};
 }
 function seedInventory(){
   let inv = loadJSON('ars_inventory', null);
@@ -1353,38 +1377,6 @@ function seedUpiSettings(){
 }
 
 let USERS = seedUsers();
-// One-time migration: if an existing install still has the untouched OLD
-// default admin account (username "Ravi", pin "123456", never changed),
-// rename it to the new default login instead of leaving two separate admin
-// accounts around. If the admin has already changed the PIN or added other
-// accounts, this is left alone — only the exact untouched default is migrated.
-if(USERS['Ravi'] && USERS['Ravi'].pin === '123456' && USERS['Ravi'].role === 'admin' && !USERS['ravi']){
-  USERS['ravi'] = { pin:'8760', role:'admin', name:'Ravi' };
-  delete USERS['Ravi'];
-  saveJSON('ars_users', USERS);
-}
-// Additive-only migration: existing installs that were seeded with fewer
-// default sellers get the extra ones added, but ONLY when the username is
-// entirely missing — never overwrites a seller3+ account that already
-// exists (e.g. if the admin repurposed that username for someone else).
-// Also adds the second admin account 'sri' to existing single-admin installs.
-(function addMissingDefaultSellers(){
-  const extras = {
-    seller3: {pin:'3333', role:'seller', name:'Seller Three'},
-    seller4: {pin:'4444', role:'seller', name:'Seller Four'},
-    seller5: {pin:'5555', role:'seller', name:'Seller Five'},
-    seller6: {pin:'6666', role:'seller', name:'Seller Six'},
-    seller7: {pin:'7777', role:'seller', name:'Seller Seven'},
-    seller8: {pin:'8888', role:'seller', name:'Seller Eight'}
-  };
-  let added = false;
-  Object.keys(extras).forEach(u => {
-    if(!USERS[u]){ USERS[u] = extras[u]; added = true; }
-  });
-  // Add second admin 'sri' if not present
-  if(!USERS['sri']){ USERS['sri'] = {pin:'9842', role:'admin', name:'Sridhar'}; added = true; }
-  if(added) saveJSON('ars_users', USERS);
-})();
 let INV = seedInventory();
 
 let DISCOUNT = seedDiscount();
@@ -1586,6 +1578,7 @@ function fbRefreshUI(what){
       if(pub && pub.style.display === 'block') paintPublicPrices();
       try{ paintPublicPreview(); paintPublicEst(); }catch(e){}
     } else if(what === 'sales'){
+      if(_shStack.length){ try{ shPaint(); }catch(e){} }
       if(adminOpen){ if(adminTab === 'sales' || adminTab === 'reports') renderAdmin(); }
       else if(appOpen && activeTab === 'history') render();
       refreshNotifBadges();
@@ -1731,15 +1724,7 @@ function applyRemoteUsers(r){
   var hasAdmin = Object.keys(users).some(function(id){ return users[id] && users[id].role === 'admin'; });
   if(!hasAdmin) return;
   USERS = users;
-  // The server list can be older than this app version. Keep the required second admin:
-  // if fewer than 2 admins came back and 'sri' is missing, add it and send it to the server.
-  var adminCnt = Object.keys(USERS).filter(function(id){ return USERS[id] && USERS[id].role === 'admin'; }).length;
-  if(adminCnt < 2 && !USERS['sri']){
-    USERS['sri'] = { pin:'9842', role:'admin', name:'Sridhar' };
-    saveJSON('ars_users', USERS);
-  } else {
-    _rawSaveJSON('ars_users', USERS);
-  }
+  _rawSaveJSON('ars_users', USERS);
   fbRefreshUI('accounts');
   try{ enforceSessionAgainstUsers(); }catch(e){}
 }
@@ -1856,6 +1841,9 @@ function mergeRemoteSales(list){
       }
       existing.status = remote.status; changed = true;
     }
+    if(existing && !_fbUnsentSales[remote.id] && ((existing.buyerPhone || '') !== (remote.buyerPhone || '') || (existing.buyerName || '') !== (remote.buyerName || ''))){
+      existing.buyerPhone = remote.buyerPhone || null; existing.buyerName = remote.buyerName || null; changed = true;   // a customer edit made by the admin
+    }
   });
   if(!changed) return;
   if(newBills.length && typeof session !== 'undefined' && session && session.role === 'admin'){
@@ -1958,6 +1946,110 @@ function fbApplyMeta(meta){
   }
 }
 
+/* ================= CUSTOMER VISITS & ESTIMATES (self-order page) =================
+   No login for customers: each customer phone gets a random visitor id, kept on that phone.
+   The self-order page records (in "visitors/<id>" and the daily totals "visitStats/<date>"):
+     - a visit: the first time it creates the visitor, later opens add to the same visitor's count
+       (at most one visit per 30 minutes, so refreshing the page is not counted again)
+     - an estimate (EST): when the customer opens a voucher with a new set of items
+     - the optional name / mobile / "send me offers" choice typed on the voucher
+   The estimate QR carries the visitor id, so the bill the seller makes from it is linked back
+   (sale.estVid) - visit -> estimate -> bill is one full cycle for the same customer. */
+const CUST_VISIT_GAP_MS = 30 * 60 * 1000;
+const SELF_ORDER_URL = 'https://ars-crackers.github.io/billing_app/#price';
+function custVid(){
+  var v = '';
+  try{ v = localStorage.getItem('ars_vid') || ''; }catch(e){}
+  if(!/^v[a-z0-9]{6,14}$/.test(v)){
+    v = 'v' + Date.now().toString(36).slice(-6) + Math.random().toString(36).slice(2, 6);
+    try{ localStorage.setItem('ars_vid', v); }catch(e){}
+  }
+  return v;
+}
+function custDay(d){ d = d || new Date(); var p = function(x){ return (x < 10 ? '0' : '') + x; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+var _custNet = 0, _custNetTimer = null;
+/* A customer phone stays offline between saves (so it never keeps a server connection open). */
+function custNetRun(work){
+  if(!_fbDb) return Promise.resolve();
+  _custNet++; clearTimeout(_custNetTimer);
+  try{ _fbDb.goOnline(); }catch(e){}
+  var p;
+  try{ p = Promise.resolve(work()); }catch(e){ p = Promise.resolve(); }
+  return fbTimeout(p, 12000, 'Save').catch(function(){}).then(function(){
+    _custNet = Math.max(0, _custNet - 1);
+    if(!_custNet) _custNetTimer = setTimeout(function(){ if(!_custNet && _fbReadOnly){ try{ _fbDb.goOffline(); }catch(e){} } }, 800);
+  });
+}
+function custStatInc(field){
+  return _fbDb.ref('visitStats/' + custDay() + '/' + field).transaction(function(c){ return (c || 0) + 1; });
+}
+function custTrackVisit(){
+  if(!_fbDb) return Promise.resolve();
+  var last = 0;
+  try{ last = Number(localStorage.getItem('ars_vis_last')) || 0; }catch(e){}
+  if(Date.now() - last < CUST_VISIT_GAP_MS) return Promise.resolve();
+  try{ localStorage.setItem('ars_vis_last', String(Date.now())); }catch(e){}
+  var vid = custVid(), now = new Date().toISOString();
+  return _fbDb.ref('visitors/' + vid).transaction(function(cur){
+    if(!cur) return { vid: vid, first: now, last: now, visits: 1, est: 0 };
+    cur.visits = (cur.visits || 0) + 1; cur.last = now;
+    return cur;
+  }).then(function(r){
+    var v = (r && r.snapshot && r.snapshot.val()) || {};
+    return Promise.all([custStatInc('visits'), v.visits === 1 ? custStatInc('newVisitors') : null]);
+  }).catch(function(){});
+}
+/* Approximate town of the customer phone, from its internet address (looked up once a week, never the exact location).
+   Only "Town, State" is stored - the IP address itself is not kept. Two free services, the second used if the first fails. */
+function custAreaLookup(){
+  var cached = null;
+  try{ cached = JSON.parse(localStorage.getItem('ars_area') || 'null'); }catch(e){}
+  if(cached && cached.area && Date.now() - (cached.at || 0) < 7 * 864e5) return Promise.resolve(cached.area);
+  function get(url, pick){
+    return fbTimeout(fetch(url, { cache: 'no-store' }).then(function(r){ if(!r.ok) throw new Error('http ' + r.status); return r.json(); }), 6000, 'Area').then(pick);
+  }
+  function clean(city, region){ var a = [city, region].map(function(x){ return String(x || '').trim(); }).filter(Boolean); return a.length ? a.join(', ').slice(0, 60) : ''; }
+  return get('https://get.geojs.io/v1/ip/geo.json', function(j){ return clean(j.city, j.region); })
+    .catch(function(){ return get('https://ipapi.co/json/', function(j){ return clean(j.city, j.region); }); })
+    .then(function(area){ if(area){ try{ localStorage.setItem('ars_area', JSON.stringify({ area: area, at: Date.now() })); }catch(e){} } return area || ''; })
+    .catch(function(){ return ''; });
+}
+function custTrackArea(){
+  if(!_fbDb) return Promise.resolve();
+  return custAreaLookup().then(function(area){
+    if(!area) return null;
+    return _fbDb.ref('visitors/' + custVid() + '/area').set(area).catch(function(){});
+  });
+}
+/* Voucher opened: count one estimate per new set of items (opening the same voucher again is not counted twice). */
+function custTrackEstimate(){
+  if(!_fbReadOnly || !_fbDb) return;
+  var seg = estPayload().split('|'), items = seg[1] || '';
+  if(!items) return;
+  var lastItems = '';
+  try{ lastItems = localStorage.getItem('ars_est_counted') || ''; }catch(e){}
+  var isNew = items !== lastItems;
+  if(isNew){ try{ localStorage.setItem('ars_est_counted', items); }catch(e){} }
+  custSaveProfile(isNew, Number(seg[2]) || 0);
+}
+function custSaveProfile(addEst, total){
+  if(!_fbReadOnly || !_fbDb) return;
+  var vid = custVid(), now = new Date().toISOString(), cu = estCustClean(), opt = !!(_estCust && _estCust.optin) && !!cu.mobile;
+  custNetRun(function(){
+    return _fbDb.ref('visitors/' + vid).transaction(function(cur){
+      cur = cur || { vid: vid, first: now, last: now, visits: 1, est: 0 };
+      if(addEst){ cur.est = (cur.est || 0) + 1; cur.estLast = now; if(total) cur.estTotal = total; }
+      if(cu.name) cur.name = cu.name;
+      if(cu.mobile) cur.mobile = cu.mobile;
+      cur.optin = opt;
+      return cur;
+    }).then(function(){ return addEst ? custStatInc('estimates') : null; });
+  });
+}
+/* Seller side: the visitor id from a scanned estimate QR, kept per bill tab until that bill is saved. */
+var _scanVids = loadJSON('ars_scan_vid', {}) || {};
+function scanVidSet(tab, vid){ if(vid) _scanVids[tab] = vid; else delete _scanVids[tab]; _rawSaveJSON('ars_scan_vid', _scanVids); }
+
 /* ================= CONNECT ================= */
 function initFirebase(opts){
   if(opts && opts.readOnly) _fbReadOnly = true;
@@ -1989,6 +2081,7 @@ function initFirebase(opts){
       _fbDb.ref(FB_DOCS.pricelist.path).once('value')
         .then(function(s){ fbOnDocValue('pricelist', s.val()); })
         .catch(fbNoteError)
+        .then(function(){ return fbTimeout(custTrackVisit().then(custTrackArea), 12000, 'Visit').catch(function(){}); })   // count this visit (+ town), then disconnect
         .then(function(){ setTimeout(_custOff, 400); });
       setTimeout(_custOff, 15000);
       return;
@@ -2180,7 +2273,7 @@ function priceSnapshot(){
       var inv = INV[ci + '_' + ii] || {};
       var co = (CATNAMES && CATNAMES[ci]) || {};
       snap[idn] = {
-        serial: (Number(item.sn) > 0 ? Number(item.sn) : n), code: item.code || '', base: base,
+        serial: (Number(item.sn) > 0 ? Number(item.sn) : n), code: item.code || '', base: base, catId: cat.en || '',
         ta: (inv.name_ta && String(inv.name_ta).trim()) ? inv.name_ta : item.ta,
         en: (inv.name_en && String(inv.name_en).trim()) ? inv.name_en : item.en,
         cat: (co.name_en && String(co.name_en).trim()) ? co.name_en : cat.en,
@@ -2191,9 +2284,20 @@ function priceSnapshot(){
   });
   return snap;
 }
+/* Category names as shown (by the category's original name), so renaming a category is logged as "Cat Rename". */
+function catSnapshot(){
+  var m = {};
+  CATEGORIES.forEach(function(cat, ci){
+    var co = (CATNAMES && CATNAMES[ci]) || {};
+    m[cat.en || ('#' + ci)] = { ta: (co.name_ta && String(co.name_ta).trim()) ? co.name_ta : cat.ta, en: (co.name_en && String(co.name_en).trim()) ? co.name_en : cat.en };
+  });
+  return m;
+}
+var _catBaseline = null;
 function resetPriceChangeBaseline(){
   clearTimeout(_priceDiffTimer); _priceDiffTimer = null; _pendingPriceSource = null;
   try{ _priceBaseline = priceSnapshot(); }catch(e){ _priceBaseline = null; }
+  try{ _catBaseline = catSnapshot(); }catch(e){ _catBaseline = null; }
 }
 function schedulePriceChangeDiff(){
   if(_fbReadOnly) return;
@@ -2205,21 +2309,39 @@ function flushPriceChangeDiff(){
   if(!_priceDiffTimer) return;
   clearTimeout(_priceDiffTimer); _priceDiffTimer = null;
   var source = _pendingPriceSource; _pendingPriceSource = null;
-  var before = _priceBaseline, after;
+  var before = _priceBaseline, after, catBefore = _catBaseline, catAfter = null;
   try{ after = priceSnapshot(); }catch(e){ return; }
-  _priceBaseline = after;
+  try{ catAfter = catSnapshot(); }catch(e){}
+  _priceBaseline = after; _catBaseline = catAfter;
   if(!before) return;
 
   var changes = [];
   function add(type, it, oldV, newV){ changes.push({ type: type, serial: it.serial, code: it.code || '', ta: it.ta, en: it.en, cat: it.cat, old: oldV, new: newV, unit: it.unit || 'box' }); }
   var removed = Object.keys(before).filter(function(k){ return !after[k]; });
   var added = Object.keys(after).filter(function(k){ return !before[k]; });
+  // The same permanent item code = the same item: a rename (or a move / price edit) must not look like "removed" + "added".
+  removed = removed.filter(function(rk){
+    var b = before[rk]; if(!b.code) return true;
+    var i = added.findIndex(function(ak){ return after[ak].code && after[ak].code === b.code; });
+    if(i === -1) return true;
+    var a = after[added.splice(i, 1)[0]];
+    if(b.catId !== a.catId) add('moved', a, b.cat, a.cat);
+    if(b.price !== a.price) add('price', a, b.price, a.price);
+    if(b.unit !== a.unit) add('unit', a, b.unit, a.unit);
+    if(b.ta !== a.ta || b.en !== a.en) add('name', a, b.ta + ' / ' + b.en, a.ta + ' / ' + a.en);
+    return false;
+  });
+  // Category renamed (shown name changed, same category): logged once as "Cat Rename"
+  if(catBefore && catAfter) Object.keys(catAfter).forEach(function(k){
+    var cb = catBefore[k], ca = catAfter[k];
+    if(cb && (cb.ta !== ca.ta || cb.en !== ca.en)) changes.push({ type: 'catrename', serial: '', code: '', ta: ca.ta, en: ca.en, cat: ca.en, catKey: k, old: cb.ta + ' / ' + cb.en, new: ca.ta + ' / ' + ca.en, unit: '' });
+  });
   // An item that left one category and appeared in another was MOVED, not deleted + created.
   removed = removed.filter(function(rk){
     var i = added.findIndex(function(ak){ return after[ak].base === before[rk].base; });
     if(i === -1) return true;
     var ak = added.splice(i, 1)[0];
-    if(before[rk].cat !== after[ak].cat) add('moved', after[ak], before[rk].cat, after[ak].cat);
+    if(before[rk].catId !== after[ak].catId) add('moved', after[ak], before[rk].cat, after[ak].cat);
     if(before[rk].price !== after[ak].price) add('price', after[ak], before[rk].price, after[ak].price);
     return false;
   });
@@ -2390,6 +2512,17 @@ async function undoChange(changeId){
     resetPriceChangeBaseline();
     updateName(it2.k, 'name_ta', oldTa);
     updateName(it2.k, 'name_en', oldEn);
+    return _afterUndoRefresh();
+  }
+  if(c.type === 'catrename'){
+    var ci0 = -1; CATEGORIES.forEach(function(cat, i){ if(cat.en === c.catKey) ci0 = i; });
+    if(ci0 < 0){ alert('Category not found. The catalog may have changed since this entry.'); return; }
+    var pp = String(c.old || '').split(' / '), oTa = pp[0], oEn = pp.slice(1).join(' / ');
+    if(!confirm('Restore the old category name?\n' + oTa + ' / ' + oEn)) return;
+    resetPriceChangeBaseline();
+    if(!CATNAMES) CATNAMES = {};
+    CATNAMES[ci0] = { name_ta: oTa, name_en: oEn };
+    saveJSON('ars_catnames', CATNAMES);
     return _afterUndoRefresh();
   }
   if(c.type === 'moved'){
@@ -2764,7 +2897,15 @@ function setAdminItemsBranch(id){ adminItemsBranch = id; renderAdmin(); }
 /* Branch details: title (heading on its price list and bills), name, owner, contact number.
    Anything left blank falls back to the shop's own title / phone numbers. */
 function branchTitle(b){ return (b && b.title && String(b.title).trim()) || ''; }
-function branchPhoneText(b){ return (b && b.phone && String(b.phone).trim()) || ((typeof SHOP !== 'undefined' && SHOP.phones) ? SHOP.phones.join(' / ') : ''); }
+/* Indian mobile numbers are always shown with the country code: "+91 98765 43210" style ("+91 9876543210"). */
+function fmtPhones(t){
+  return String(t == null ? '' : t).replace(/(^|[^\d+])(?:\+?\s*91[\s-]*|0)?([6-9]\d{4})[\s-]?(\d{5})(?!\d)/g, '$1+91 $2$3');
+}
+/* The same text with every +91 number made tappable (opens the phone's dialler, ready to call). */
+function telLinks(htmlText){
+  return String(htmlText).replace(/\+91 ([6-9]\d{9})/g, '<a href="tel:+91$1" style="display:inline-block; margin-top:4px; padding:5px 12px; border-radius:14px; background:#1b3a78; color:#fff; font-size:12.5px; font-weight:800; text-decoration:none;">\uD83D\uDCDE +91 $1</a>');
+}
+function branchPhoneText(b){ return fmtPhones((b && b.phone && String(b.phone).trim()) || ((typeof SHOP !== 'undefined' && SHOP.phones) ? SHOP.phones.join(' / ') : '')); }
 function branchOfSale(sale){ return (sale && sale.branchId && BRANCHES[sale.branchId]) || (sale && !sale.branchId && BRANCHES.main) || BRANCHES[activeBranchId] || BRANCHES.main || null; }
 function adminScope(){
   try{ if(session && session.role === 'admin'){ var u = USERS[session.id]; return (u && u.branch) || ''; } }catch(e){}
@@ -2916,7 +3057,7 @@ async function fetchLatestUsers(){
   initFirebase();
   if(!_fbDb) throw new Error('no db');
   // a local, not-yet-uploaded account change must win over the server copy
-  if(_fbDirty.users){ fbPushDoc('users'); return 'local'; }
+  if(_fbDirty.users && Object.keys(USERS).length){ fbPushDoc('users'); return 'local'; }
   const snap = await fbTimeout(_fbDb.ref('users').once('value'), 10000, 'Users');
   const remote = snap.val();
   if(fbCanon(remote) === undefined){ return 'empty'; }   // nothing on server yet - this phone's list is the first
@@ -2925,25 +3066,29 @@ async function fetchLatestUsers(){
 }
 async function attemptLogin(){
   if(_loginBusy) return;
-  const id = document.getElementById('loginId').value.trim();
-  const pin = document.getElementById('loginPin').value.trim();
   const err = document.getElementById('loginError');
   const btn = document.getElementById('loginBtn');
+  const idRaw = document.getElementById('loginId').value.trim();
+  const pin = document.getElementById('loginPin').value.trim();
+  if(!idRaw || !pin){ err.textContent = 'Enter your User ID and PIN. / ID மற்றும் PIN உள்ளிடவும்.'; return; }
   _loginBusy = true;
   err.textContent = 'Checking… / சரிபார்க்கிறது…';
   if(btn) btn.disabled = true;
   try{
-    let state;
-    try{ state = await fetchLatestUsers(); }
+    // Always check against the newest account list on the server, so a removed account or changed PIN takes effect.
+    try{ await fetchLatestUsers(); }
     catch(e){
-      err.textContent = 'Internet needed to login. Please connect and try again. / உள்நுழைய இணையம் தேவை.';
+      err.textContent = navigator.onLine
+        ? 'Could not reach the server. Please try again. / சர்வரை அணுக முடியவில்லை, மீண்டும் முயற்சிக்கவும்.'
+        : 'Internet needed to login. / உள்நுழைய இணையம் தேவை.';
       return;
     }
+    if(!Object.keys(USERS).length){ err.textContent = 'No accounts found on the server. Ask the admin. / கணக்குகள் இல்லை.'; return; }
+    // the ID is matched without caring about capital letters (phone keyboards often capitalise the first letter)
+    let id = idRaw;
+    if(!USERS[id]){ const low = idRaw.toLowerCase(); id = Object.keys(USERS).filter(function(k){ return k.toLowerCase() === low; })[0] || idRaw; }
     const u = USERS[id];
-    if(!u || u.pin !== pin){
-      err.textContent = 'Invalid ID / PIN.';
-      return;
-    }
+    if(!u || String(u.pin) !== pin){ err.textContent = 'Invalid ID / PIN. / தவறான ID / PIN.'; return; }
     err.textContent = '';
     session = {id, name:u.name, role:u.role, pin:u.pin};
     saveJSON('ars_session', session);
@@ -2984,6 +3129,7 @@ function enforceSessionAgainstUsers(){
   }
 }
 function hideAdminIfOpen(){
+  try{ pleDockHide(); }catch(e){}
   if(!document.getElementById('adminScreen').classList.contains('hidden')){
     document.getElementById('adminScreen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
@@ -3020,6 +3166,7 @@ function closeConfirm(result){
 }
 
 async function logout(){
+  closeQtySheets();
   const ok = await showConfirm('Logout? / வெளியேறவா?');
   if(!ok) return;
   session = null;
@@ -3227,6 +3374,7 @@ async function clearCart(){
     if(!ok) return;
   }
   cart = {}; 
+  scanVidSet(activeBillingTab, null);
   activeCat = 'ALL';
   saveCart(); 
   buildCatNav();   // keep the chip highlight in step with the reset filter
@@ -3361,7 +3509,7 @@ function _qtySheetSync(sh, sig, priceHtml, c){
 function billSheetPaint(){
   var sh = document.getElementById('billQtySheet');
   if(!sh){ sh = document.createElement('div'); sh.id = 'billQtySheet'; sh.style.cssText = 'display:none; position:fixed; left:0; right:0; z-index:40; background:#fff; border-top:3px solid #1e7a3c; padding:10px 14px; box-shadow:0 -4px 14px rgba(0,0,0,.25);'; document.body.appendChild(sh); }
-  if(!_billTableOn || _billSheetSn == null || (activeTab !== 'billing1' && activeTab !== 'billing2')){ sh.style.display = 'none'; sh.removeAttribute('data-sig'); return; }
+  if(!_billTableOn || _billSheetSn == null || (activeTab !== 'billing1' && activeTab !== 'billing2') || document.getElementById('app').classList.contains('hidden')){ sh.style.display = 'none'; sh.removeAttribute('data-sig'); return; }
   var e = _billSerialMap()[_billSheetSn];
   if(!e){ sh.style.display = 'none'; return; }
   var nm = getItemName(e.ci, e.ii), price = getPrice(e.ci, e.ii), c = cart[key(e.ci, e.ii)] || 0, unit = getUnit(e.ci, e.ii);
@@ -3500,6 +3648,7 @@ function render(){
 
 /* ---------------- BILL MODAL ---------------- */
 function openBill(preserveEntries){
+  closeQtySheets();
   if(branchHoldBlocksBilling()) return;
   lastCompletedSale = null;
   // Enable pinch zoom in/out while bill preview is open
@@ -3532,6 +3681,7 @@ function openBill(preserveEntries){
     document.getElementById('billDiscPercentInput').value = 0;
     document.getElementById('billPaidInput').value = '';
     document.getElementById('billCustomerPhone').value = '';
+    var _bn = document.getElementById('billCustomerName'); if(_bn) _bn.value = '';
   }
   // Re-derive the paid amount from the discount % against the new subtotal.
   paidManuallyEdited = false;
@@ -3641,6 +3791,7 @@ function buildPendingSaleForPrint(){
     subtotal: t.subtotal, discount: t.discount, discountPercent: t.percent,
     total: t.grand, paidAmount: t.paidAmount,
     buyerPhone: (document.getElementById('billCustomerPhone').value || '').trim(),
+    buyerName: ((document.getElementById('billCustomerName') || {}).value || '').trim(),
     status: 'confirmed'
   };
 }
@@ -3826,10 +3977,36 @@ function estClear(){
 /* ---- Estimate QR: "ARS2|<item code>x<qty>,...|<total>" - the hidden permanent item codes, so an order still
    matches the right items after serial numbers change. (Old "ARS1|" vouchers, which hold serial numbers, still scan.) ---- */
 var _estQrFor = '', _estQrUrl = '';
+/* Optional customer name + mobile, typed on the voucher screen and carried inside the QR ("|C<name>~<mobile>"). */
+var _estCust = { name: '', mobile: '' };
+try{ _estCust = JSON.parse(localStorage.getItem('ars_est_cust') || '{}') || { name: '', mobile: '' }; }catch(e){ _estCust = { name: '', mobile: '' }; }
+function estCustClean(){
+  var nm = String(_estCust.name || '').replace(/[\r\n|]/g, ' ').trim().slice(0, 40);
+  var ph = String(_estCust.mobile || '').replace(/\D/g, '');
+  if(ph.length === 12 && ph.indexOf('91') === 0) ph = ph.slice(2);
+  if(ph.length !== 10) ph = '';
+  return { name: nm, mobile: ph };
+}
+var _estCustTimer = null;
+function estCustChanged(){
+  _estCust = { name: (document.getElementById('estCustName') || {}).value || '', mobile: (document.getElementById('estCustMobile') || {}).value || '', optin: !!(document.getElementById('estCustOptin') || {}).checked };
+  try{ localStorage.setItem('ars_est_cust', JSON.stringify(_estCust)); }catch(e){}
+  clearTimeout(_estCustTimer);
+  _estCustTimer = setTimeout(function(){
+    custSaveProfile(false);
+    estEnsureQr().then(function(){
+      var o = document.getElementById('estVoucherOverlay');
+      if(o && o.style.display === 'block'){ estScreenPaint(); }
+    });
+  }, 450);
+}
 function estPayload(){
   var parts = [], tot = 0;
   estItems().forEach(function(it){ var c = _estQty[it.k] || 0; if(c > 0){ parts.push((it.code || it.s) + 'x' + c); tot += c * it.price; } });
-  return parts.length ? 'ARS2|' + parts.join(',') + '|' + tot : '';
+  if(!parts.length) return '';
+  var cu = estCustClean(), tail = '';
+  if(cu.name || cu.mobile) tail = '|C' + encodeURIComponent(cu.name).replace(/~/g, '%7E') + '~' + cu.mobile;
+  return 'ARS2|' + parts.join(',') + '|' + tot + tail + '|V' + custVid();
 }
 async function estEnsureQr(){
   var txt = estPayload();
@@ -3849,7 +4026,7 @@ async function estEnsureQr(){
     return !!_estQrUrl;
   }catch(e){ _estQrFor = ''; _estQrUrl = ''; return false; }
 }
-function estVoucherHtml(){
+function estVoucherHtml(forScreen){
   var items = estItems(), b = plBranchId(), br = BRANCHES[b] || {};
   var rows = '', n = 0, tq = 0, total = 0;
   var vCat = null;
@@ -3870,7 +4047,7 @@ function estVoucherHtml(){
   var ref = 'EST-' + String(now.getFullYear()).slice(2) + pad(now.getMonth() + 1) + pad(now.getDate()) + '-' + pad(now.getHours()) + pad(now.getMinutes());
   var when = now.toLocaleString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
   var title = branchTitle(br) || SHOP.name_ta;
-  var qrBlock = (_estQrUrl && _estQrFor === estPayload()) ? '<div style="text-align:center; padding:8px 0 4px; border-top:1px dashed #c9d3e6;"><img src="' + _estQrUrl + '" style="width:120px; height:120px;" alt="QR"><div style="font-size:9.5px; color:#44557a; margin-top:2px;">Show this QR at the counter &bull; கடையில் QR காட்டவும்</div></div>' : '';
+  var qrBlock = forScreen ? '<div id="estQrSlot"></div>' : ((_estQrUrl && _estQrFor === estPayload()) ? '<div style="text-align:center; padding:8px 0 4px; border-top:1px dashed #c9d3e6;"><img src="' + _estQrUrl + '" style="width:120px; height:120px;" alt="QR"><div style="font-size:9.5px; color:#44557a; margin-top:2px;">Show this QR at the counter &bull; கடையில் QR காட்டவும்</div></div>' : '');
   return '<div style="width:360px; box-sizing:border-box; background:#f4f8ff; border:3px double #1b3a78; font-family:\'Segoe UI\',\'Noto Sans Tamil\',Arial,sans-serif; color:#10213f;">' +
     '<div style="background:#1b3a78; color:#fff; text-align:center; padding:9px 8px 7px;">' +
       '<div style="font-size:17px; font-weight:800;">' + estEsc(title) + '</div>' +
@@ -3881,13 +4058,14 @@ function estVoucherHtml(){
       '<div style="font-size:10.5px; font-weight:700; color:#b3261e; margin-top:5px;">மதிப்பீட்டு சீட்டு — முறையான பில் அல்ல &nbsp;|&nbsp; NOT A BILL</div>' +
     '</div>' +
     '<div style="display:flex; justify-content:space-between; padding:2px 10px 6px; font-size:10px; color:#44557a;"><span>Ref: <b>' + ref + '</b></span><span>' + when + '</span></div>' +
+    (function(){ var cu = estCustClean(); return (cu.name || cu.mobile) ? '<div style="padding:0 10px 6px; font-size:11px; color:#10213f;">Customer: <b>' + estEsc(cu.name) + '</b>' + (cu.mobile ? ' &nbsp;&#128222; ' + estEsc(fmtPhones(cu.mobile)) : '') + '</div>' : ''; })() +
     '<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><colgroup><col style="width:28px;"><col><col style="width:34px;"><col style="width:52px;"><col style="width:62px;"></colgroup>' +
       '<thead><tr style="background:#dce7fb;"><th style="padding:5px 4px; font-size:9.5px; text-align:left;">#</th><th style="padding:5px 4px; font-size:9.5px; text-align:left;">Item</th><th style="padding:5px 4px; font-size:9.5px;">Qty</th><th style="padding:5px 4px; font-size:9.5px; text-align:right;">Rate &#8377;</th><th style="padding:5px 4px; font-size:9.5px; text-align:right;">Amount &#8377;</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>' +
     '<div style="display:flex; justify-content:space-between; align-items:center; padding:9px 10px 4px; border-top:2px solid #1b3a78; margin-top:2px;"><span style="font-size:11px; color:#44557a;">' + n + ' item' + (n > 1 ? 's' : '') + ' • qty ' + tq + '</span><span style="font-size:11px; font-weight:800;">ESTIMATED TOTAL</span></div>' +
     '<div style="text-align:right; padding:0 10px 4px; font-size:24px; font-weight:800; color:#1b3a78;">&#8377;' + total.toLocaleString('en-IN') + '</div>' +
     '<div style="margin:0 10px 8px; padding:6px 10px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:9px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border:1px solid #f0c969; color:#7a1414; font-size:12.5px; font-weight:800; text-align:center;"><span style="font-size:20px; vertical-align:middle;">&#127873;</span> <div style="display:inline-block; vertical-align:middle; text-align:left;"><div style="font-size:13.5px; font-weight:800;">தீபாவளிச் சிறப்புச் சலுகை!</div><div style="font-size:11.5px; font-weight:700; line-height:1.35; margin-top:1px;">கடையின் Self-Order QR-ஐ ஸ்கேன் செய்து, நவம்பர் 04, 2026 வரை கூடுதல் 10% முதல் 20% வரை தள்ளுபடி பெறுங்கள்!</div></div></div>' + qrBlock +
-    '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + estEsc(branchPhoneText(br)) + '</div>' +
+    '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + (forScreen ? telLinks(estEsc(branchPhoneText(br))) : estEsc(branchPhoneText(br))) + '</div>' +
   '</div>';
 }
 /* ---- Seller: read a customer's estimate QR (camera or photo) and add its items to the current bill ---- */
@@ -3982,6 +4160,18 @@ async function scanHandle(txt){
   _scanStop(); _scanBusy = true;
   var add = [], skipped = 0, subtotal = 0, qtySum = 0;
   var _seg = String(txt).slice(5).split('|'), qrTotal = (_seg.length > 1 && /^\d+$/.test(_seg[1])) ? Number(_seg[1]) : null;
+  var _cust = null, _vid = '';
+  for(var _si = 2; _v2 && _si < _seg.length; _si++){
+    var _sg = _seg[_si] || '';
+    if(_sg.charAt(0) === 'C'){
+      var _cp = _sg.slice(1).split('~'), _cnm = '';
+      try{ _cnm = decodeURIComponent(_cp[0] || ''); }catch(e){ _cnm = _cp[0] || ''; }
+      _cust = { name: _cnm.slice(0, 40), mobile: /^\d{10}$/.test(_cp[1] || '') ? _cp[1] : '' };
+    } else if(_sg.charAt(0) === 'V' && /^v[a-z0-9]{6,14}$/.test(_sg.slice(1))){
+      _vid = _sg.slice(1);
+    }
+  }
+
   _seg[0].split(',').forEach(function(pr){
     var m = /^(\d+)x(\d+)$/.exec(pr.trim()); if(!m){ return; }
     var sn = Number(m[1]), q = Math.min(9999, Number(m[2]));
@@ -4005,6 +4195,12 @@ async function scanHandle(txt){
   else if(qrTotal === subtotal && !skipped) scanToast('\u2705 MATCH \u2022 ' + inr(subtotal) + '\n' + base, 'green');
   else scanToast('\u26A0\uFE0F MISMATCH \u2022 Customer ' + inr(qrTotal) + ' vs Shop ' + inr(subtotal) + ' (diff ' + inr(Math.abs(subtotal - qrTotal)) + ')' + (skipped ? '\n' + skipped + ' item(s) not found in this branch' : '') + '\nPrices changed since the customer made the estimate \u2014 please check.', 'red');
   saveCart(); render();
+  if(_vid) scanVidSet(activeBillingTab, _vid);              // this bill came from a customer's self-estimate
+  if(_cust && (_cust.name || _cust.mobile)){                // fill the bill's customer fields (never overwrite what the seller already typed)
+    var _bn = document.getElementById('billCustomerName'), _bp = document.getElementById('billCustomerPhone');
+    if(_bn && !_bn.value.trim() && _cust.name) _bn.value = _cust.name;
+    if(_bp && !_bp.value.trim() && _cust.mobile) _bp.value = _cust.mobile;
+  }
 }
 var _estHistPushed = false, _estPopping = false;
 /* The voucher is drawn 360px wide (that width is also used for the saved image). On a narrow or zoomed phone screen it is
@@ -4021,13 +4217,89 @@ function estVoucherFit(){
   }catch(e){}
 }
 window.addEventListener('resize', function(){ var o = document.getElementById('estVoucherOverlay'); if(o && o.style.display === 'block') estVoucherFit(); });
+/* ---- On-screen voucher, bottom part side by side:
+   left  = "Keep in touch" (name + mobile, optional)
+   right = QR code (hidden until "Get QR code" is tapped - works with or without the details) ---- */
+var _estQrShown = false, _estQrFailed = false, _estEditing = true;
+function estScreenPaint(){
+  var body = document.getElementById('estVoucherBody'); if(!body) return;
+  body.innerHTML = estVoucherHtml(true);
+  estQrSlotPaint();
+  estVoucherFit();
+}
+function estQrSlotPaint(){
+  var slot = document.getElementById('estQrSlot'); if(!slot) return;
+  var cu = estCustClean(), left, right;
+  if(_estEditing){
+    left = '<div style="font-size:11.5px; font-weight:800; color:#1b3a78; margin-bottom:5px;">🤝 Keep in touch / தொடர்பில் இருங்கள்</div>' +
+      '<input type="text" id="estCustName" maxlength="40" placeholder="Name / பெயர்" value="' + estEsc(_estCust.name || '') + '" style="width:100%; box-sizing:border-box; padding:8px 7px; border:1px solid #9db4e0; border-radius:8px; font-size:12.5px; margin-bottom:5px;">' +
+      '<input type="tel" id="estCustMobile" maxlength="14" inputmode="numeric" placeholder="Mobile / கைபேசி" value="' + estEsc(_estCust.mobile || '') + '" style="width:100%; box-sizing:border-box; padding:8px 7px; border:1px solid #9db4e0; border-radius:8px; font-size:12.5px; margin-bottom:6px;">' +
+      '<button onclick="estSaveDetails()" style="width:100%; padding:9px 4px; border:none; border-radius:9px; background:#1b3a78; color:#fff; font-weight:800; font-size:12.5px; cursor:pointer;">Save / சேமி</button>' +
+      '<div style="font-size:9.5px; color:#44557a; margin-top:4px;">Optional / விருப்பம்</div>';
+  } else {
+    left = '<div style="font-size:11.5px; font-weight:800; color:#1e7a3c; margin-bottom:4px;">✅ Keep in touch</div>' +
+      '<div style="font-size:12.5px; font-weight:700; color:#10213f;">' + estEsc(cu.name || '-') + '</div>' +
+      '<div style="font-size:12px; color:#44557a;">' + (cu.mobile ? '📞 ' + estEsc(cu.mobile) : '') + '</div>' +
+      '<a href="#" onclick="_estEditing=true; estQrSlotPaint(); estVoucherFit(); return false;" style="display:inline-block; margin-top:6px; font-size:11px; color:#1b3a78;">✎ Edit</a>';
+  }
+  if(!_estQrShown){
+    right = '<button onclick="estShowQr()" style="width:100%; height:120px; border:2px dashed #1e7a3c; border-radius:10px; background:#eef7ee; color:#1e7a3c; font-weight:800; font-size:13px; cursor:pointer; line-height:1.4;">▦<br>Get QR code<br><span style="font-size:11px;">QR பெறவும்</span></button>';
+  } else if(_estQrUrl && _estQrFor === estPayload()){
+    right = '<img src="' + _estQrUrl + '" style="width:120px; height:120px; display:block; margin:0 auto;" alt="QR"><div style="font-size:9px; color:#44557a; margin-top:2px;">Show at the counter<br>கடையில் காட்டவும்</div>';
+  } else if(_estQrFailed){
+    right = '<div style="font-size:11px; color:#b3261e; padding:10px 0;">QR not ready (check internet). Show this voucher at the counter.</div>';
+  } else {
+    right = '<div style="font-size:12px; color:#44557a; padding:40px 0;">Preparing QR…</div>';
+  }
+  slot.innerHTML = '<div style="display:flex; gap:10px; align-items:flex-start; border-top:1px dashed #c9d3e6; padding:10px 10px 8px;">' +
+    '<div style="flex:1; min-width:0; text-align:left;">' + left + '</div>' +
+    '<div style="flex:0 0 128px; text-align:center;">' + right + '</div></div>';
+}
+/* Reads the name / mobile boxes (if open). Returns false if a mobile was typed but is not 10 digits. */
+function estReadDetails(){
+  if(!_estEditing) return true;
+  var nmEl = document.getElementById('estCustName'), mbEl = document.getElementById('estCustMobile');
+  if(!nmEl || !mbEl) return true;
+  var d = mbEl.value.replace(/\D/g, ''); if(d.length === 12 && d.indexOf('91') === 0) d = d.slice(2);
+  if(d && d.length !== 10){ alert('Enter a 10-digit mobile number, or leave it empty. / 10 இலக்க எண்ணை உள்ளிடவும்.'); return false; }
+  var nm = nmEl.value.trim();
+  if(nm === (_estCust.name || '') && d === (_estCust.mobile || '')) return true;
+  _estCust = { name: nm, mobile: d, optin: !!d };          // giving a mobile under "Keep in touch" = agreed to be contacted
+  try{ localStorage.setItem('ars_est_cust', JSON.stringify(_estCust)); }catch(e){}
+  custSaveProfile(false);
+  return true;
+}
+function estRefreshQr(){
+  if(!_estQrShown){ estScreenPaint(); return; }
+  _estQrFailed = false;
+  estScreenPaint();
+  estEnsureQr().then(function(){
+    _estQrFailed = !(_estQrUrl && _estQrFor === estPayload());
+    if(document.getElementById('estVoucherOverlay').style.display === 'block') estScreenPaint();
+  });
+}
+function estSaveDetails(){
+  if(!estReadDetails()) return;
+  var cu = estCustClean();
+  _estEditing = !(cu.name || cu.mobile);
+  estRefreshQr();
+}
+function estShowQr(){
+  if(!estReadDetails()) return;                        // details typed but not saved are taken too
+  var cu = estCustClean();
+  if(cu.name || cu.mobile) _estEditing = false;
+  _estQrShown = true;
+  estRefreshQr();
+}
 function openEstVoucher(){
   var t = estTotals();
   if(!t.lines){ alert('Add at least one item first. / முதலில் பொருட்களை சேர்க்கவும்.'); return; }
-  document.getElementById('estVoucherBody').innerHTML = estVoucherHtml();
+  _estQrShown = false; _estQrFailed = false;           // QR stays hidden until "Get QR code" is tapped
+  _estEditing = !(estCustClean().name || estCustClean().mobile);
+  custTrackEstimate();
   document.getElementById('estVoucherOverlay').style.display = 'block';
-  estVoucherFit();
-  estEnsureQr().then(function(changed){ if(changed && document.getElementById('estVoucherOverlay').style.display === 'block'){ document.getElementById('estVoucherBody').innerHTML = estVoucherHtml(); estVoucherFit(); } });
+  estScreenPaint();
+  estEnsureQr().then(function(changed){ if(changed && document.getElementById('estVoucherOverlay').style.display === 'block'){ estScreenPaint(); } });
   // one history step (made by this tap), so the phone's Back key closes the voucher instead of leaving the page
   try{ if(!_estHistPushed){ history.pushState({ estVoucher: true }, ''); _estHistPushed = true; } }catch(e){}
 }
@@ -4161,7 +4433,58 @@ function tzApply(st, body, sc, mul, fx, fy){
   if(fx == null){ fx = body.clientWidth / 2; fy = body.clientHeight / 2; }
   var cx = (body.scrollLeft + fx) / oz, cy = (body.scrollTop + fy) / oz;
   st.mul = mul; sc.style.zoom = nz;
+  body.style.scrollSnapType = (st.mode !== 'all' && Math.abs(mul - 1) < 0.02) ? 'x proximity' : 'none';
   body.scrollLeft = cx * nz - fx; body.scrollTop = cy * nz - fy;
+}
+
+/* ---- table view modes ---- */
+function tzMode(st){ if(!st.mode) st.mode = 'col'; return st.mode; }
+function tzMeasure(sc){
+  var z0 = sc.style.zoom; sc.style.zoom = 1;
+  var cols = sc.querySelectorAll('.tz-col'), r = sc.getBoundingClientRect(), W0 = r.width || sc.offsetWidth || 794, info = { W0: W0, cw: W0 / 3, gap: 0, pad: 0 };
+  if(cols.length >= 2){
+    var a = cols[0].getBoundingClientRect(), b = cols[1].getBoundingClientRect();
+    info.cw = a.width; info.pad = a.left - r.left; info.gap = b.left - a.right;
+  }
+  sc.style.zoom = z0; return info;
+}
+function tzLayout(st, body, sc){
+  var pg = sc.firstElementChild; if(pg){ pg.style.padding = '4px'; pg.style.minHeight = '0'; }
+  var mode = tzMode(st), I = tzMeasure(sc), bw = Math.max(240, (body.clientWidth || window.innerWidth) - 2);
+  var vis = function(k){ return k * I.cw + (k - 1) * I.gap + 2 * I.pad; };
+  var zFor = function(k){ return bw / vis(k); };
+  var fit = zFor(3), base = zFor(mode === 'all' ? 3 : (mode === 'two' ? 2 : 1));
+  st.base = base; st.minMul = Math.min(1, fit / base);
+  sc.style.zoom = st.base * st.mul; sc.style.margin = '0';
+  sc.querySelectorAll('.tz-col').forEach(function(c){ c.style.scrollSnapAlign = 'start'; });
+  body.style.scrollSnapType = (mode !== 'all' && Math.abs(st.mul - 1) < 0.02) ? 'x proximity' : 'none';
+  body.style.overscrollBehaviorX = 'contain';
+}
+function tzSetMode(st, body, mode, tapX){
+  var sc = body.firstElementChild; if(!sc) return;
+  var I = tzMeasure(sc), oldZ = st.base * st.mul, cx = (body.scrollLeft + (tapX != null ? tapX : body.clientWidth / 2)) / oldZ;
+  st.mode = mode; st.mul = 1;
+  tzLayout(st, body, sc);
+  var z = st.base, step = I.cw + I.gap;
+  if(mode === 'all') body.scrollLeft = 0;
+  else { var idx = Math.max(0, Math.min(2, Math.floor((cx - I.pad) / step))); body.scrollLeft = (I.pad + idx * step) * z - (mode === 'col' ? I.pad * z : 0); }
+}
+function tzBar(body, st){
+  var bar = body._tzBar;
+  if(!bar || !bar.parentNode){
+    bar = document.createElement('div'); body._tzBar = bar;
+    bar.style.cssText = 'display:flex; align-items:center; gap:5px; padding:4px 6px; background:#fff3d6; border-bottom:1px solid #e0c58a; flex:0 0 auto;';
+    var opts = [['col', '▮ 1 Column'], ['two', '▮▮ 2 Columns'], ['all', '▦ Full page']];
+    opts.forEach(function(o){
+      var b = document.createElement('button'); b.type = 'button'; b.setAttribute('data-m', o[0]); b.textContent = o[1];
+      b.style.cssText = 'flex:1 1 0; min-width:0; padding:6px 2px; border-radius:9px; font-weight:800; font-size:12px; border:1.5px solid #7a1414; cursor:pointer;';
+      b.onclick = function(){ if(st.isOpen && st.isOpen() && st.close){ st.close(); } tzSetMode(st, body, o[0]); };
+      bar.appendChild(b);
+    });
+    body.parentNode.insertBefore(bar, body);
+  }
+  var m = tzMode(st);
+  bar.querySelectorAll('button').forEach(function(b){ var on = b.getAttribute('data-m') === m; b.style.background = on ? '#7a1414' : '#fff'; b.style.color = on ? '#fff' : '#7a1414'; });
 }
 function tzBind(st, body){
   if(body._pinchBound) return; body._pinchBound = true;
@@ -4185,7 +4508,21 @@ function tzBind(st, body){
       tzApply(st, body, sc, st.pinch.m * (dist(e.touches) / st.pinch.d), fx, fy);
     }
   }, { passive: false });
-  body.addEventListener('touchend', function(e){ if(e.touches.length < 2) st.pinch = null; }, { passive: true });
+  var lastTap = 0, lx = 0, ly = 0;
+  body.addEventListener('touchend', function(e){
+    if(e.touches.length < 2) st.pinch = null;
+    if(e.touches.length === 0 && e.changedTouches.length === 1){
+      var t = e.changedTouches[0], now = Date.now();
+      if(Math.abs(t.clientX - sx) < 12 && Math.abs(t.clientY - sy) < 12){
+        if(now - lastTap < 320 && Math.abs(t.clientX - lx) < 30 && Math.abs(t.clientY - ly) < 30){
+          lastTap = 0;
+          // double-tap: fit the tapped column to the screen; double-tap again (while one column fits) -> whole page
+          var br = body.getBoundingClientRect(), one = (tzMode(st) === 'col' && Math.abs(st.mul - 1) < 0.02);
+          tzSetMode(st, body, one ? 'all' : 'col', t.clientX - br.left);
+        } else { lastTap = now; lx = t.clientX; ly = t.clientY; }
+      }
+    }
+  }, { passive: true });
 }
 /* body = scroll container; st = zoom state; qtyOf(sn) -> quantity; onTap(sn) */
 function tzPaint(body, scaleId, st, qtyOf, onTap, curOf){
@@ -4202,11 +4539,10 @@ function tzPaint(body, scaleId, st, qtyOf, onTap, curOf){
     if(cur){ tr.style.background = '#ffd966'; tr.style.outline = '2px solid #e08a00'; tr.style.outlineOffset = '-2px'; }
   });
   sc.onclick = function(e){ var tr = e.target.closest && e.target.closest('tr[data-sn]'); if(tr) onTap(Number(tr.getAttribute('data-sn'))); };
-  // Order-taking view: text is shown at a comfortable reading size, so the sheet grows wider and
-  // taller than one phone screen (scroll, or pinch two fingers to zoom out). Only the PDF keeps the compact A4 text size.
-  var fit = Math.min(1, Math.max(240, (body.clientWidth || window.innerWidth) - 16) / (sc.offsetWidth || 794));
-  st.base = Math.max(fit, 1.75); st.minMul = fit / st.base;
-  sc.style.zoom = st.base * st.mul; sc.style.margin = '0 auto';
+  // View modes (the setting bar above the table): 1 Column = one whole column fills the screen width (easiest to read and
+  // add quantities, swipe sideways to the next column), 2 Columns, or Full page. Double-tap the table to flip between
+  // 1 Column and Full page; two-finger pinch still zooms freely.
+  tzLayout(st, body, sc);
   body.scrollTop = keepT; body.scrollLeft = keepL;
   tzBind(st, body);
 }
@@ -4432,6 +4768,53 @@ function _pleMap(){
   CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(isItemInBranch(ci, ii, bid)) m[itemSerialNo(ci, ii)] = { ci: ci, ii: ii }; }); });
   return m;
 }
+/* Admin "Price Edit" tab: opens on the print-list format (tap an item to edit). Two icons only - the list view (every option)
+   and category edit. The list view has everything else (search, filters, New, Excel, branch views). */
+var adminPriceView = 'edit';
+function adminPriceViewSet(v, catEdit){
+  adminPriceView = v;
+  if(v === 'list' && catEdit) catEditOpen = true;
+  renderAdmin();
+  if(v === 'list' && catEdit){ var p = document.getElementById('catEditPanel'); if(p && p.scrollIntoView) p.scrollIntoView({ behavior:'smooth', block:'start' }); }
+}
+var pleCatOpen = false;
+function pleCatApply(){
+  var panel = document.getElementById('pleCatPanel'), body = document.getElementById('plEditBody'), sh = document.getElementById('plEditSheet'), btn = document.getElementById('pleCatBtn');
+  if(!panel || !body) return;
+  if(btn){ btn.style.background = pleCatOpen ? 'var(--maroon)' : '#fff8e6'; btn.style.color = pleCatOpen ? '#fff8e6' : ''; }
+  var inner = document.getElementById('pleCatInner');
+  if(pleCatOpen){
+    var cur = (document.getElementById('catSelect') || {}).value || '';
+    inner.innerHTML = catEditInnerHtml();
+    if(cur){ var sel = document.getElementById('catSelect'); if(sel){ sel.value = cur; renderCatEdit(cur); } }
+    panel.style.display = 'block'; body.style.display = 'none'; if(sh) sh.style.display = 'none';
+  } else {
+    panel.style.display = 'none'; if(inner) inner.innerHTML = ''; body.style.display = '';
+    plePaint();
+  }
+}
+function pleCatToggle(){ pleCatOpen = !pleCatOpen; _pleSn = null; pleCatApply(); }
+function plePickBranch(){
+  pickPriceBranch().then(function(b){ if(!b) return; _plBranch = b; _pleSn = null; pleDockUpdate(); plePaint(); });
+}
+function pleBranchLabel(){ var b = BRANCHES[plBranchId()]; return b ? '\u2022 ' + (b.short || b.name || b.id) + ' \u25BE' : ''; }
+function pleDockUpdate(){ var t = document.getElementById('pleBranchTag'); if(t) t.textContent = pleBranchLabel(); }
+function pleDockHide(){
+  var ov = document.getElementById('plEditOverlay'); if(!ov) return;
+  if(ov.parentNode !== document.body) document.body.appendChild(ov);
+  ov.style.display = 'none';
+  pleCatOpen = false; var _ci = document.getElementById('pleCatInner'); if(_ci) _ci.innerHTML = '';
+}
+function pleDockShow(main){
+  var ov = document.getElementById('plEditOverlay'); if(!ov) return;
+  main.innerHTML = ''; main.appendChild(ov);
+  ov.style.position = 'relative'; ov.style.inset = 'auto'; ov.style.zIndex = '1'; ov.style.display = 'flex';
+  try{ window.scrollTo(0, 0); }catch(e){}
+  var top = ov.getBoundingClientRect().top;
+  ov.style.height = Math.max(380, window.innerHeight - top - 8) + 'px';
+  if(!_plBranch) _plBranch = adminItemsBranch || '';
+  _pleSn = null; pleCatOpen = false; pleDockUpdate(); pleCatApply();
+}
 async function openPriceEditor(){
   var pbid = await pickPriceBranch(); if(!pbid) return;
   _plBranch = pbid; _pleSn = null;
@@ -4543,6 +4926,7 @@ function completeSale(paymentMethod, splitDetails){
     }
   }));
   const buyerPhone = document.getElementById('billCustomerPhone').value.trim();
+  const buyerName = ((document.getElementById('billCustomerName') || {}).value || '').trim();
   const finalMethod = paymentMethod || 'cash';
   // Never record more cash/UPI than the bill total (paid > total = change given back)
   const _effectivePaid = Math.min(paidAmount || grand, grand);
@@ -4558,11 +4942,14 @@ function completeSale(paymentMethod, splitDetails){
     paymentMethod: finalMethod,
     cashAmount, upiAmount,
     buyerPhone: buyerPhone || null,
+    buyerName: buyerName || null,
+    estVid: _scanVids[activeBillingTab] || null,
     status: 'confirmed',
     branchId: activeBranchId || 'main'
   };
   SALES.push(newSale);
   saveJSON('ars_sales', SALES);
+  scanVidSet(activeBillingTab, null);
   lastCompletedSale = newSale;
   pushSaleToFirebase(newSale);   // live-sync this bill to every other device
   
@@ -4718,7 +5105,7 @@ function buildWhatsAppBillText(sale){
   const lines = [];
   lines.push('\uD83E\uDDFE *' + SHOP.name_ta + '*');
   lines.push('*Bill #' + no + '(' + method + ')*');
-  lines.push('\uD83D\uDCDE Ph: ' + (SHOP.phones[0] || ''));
+  lines.push('\uD83D\uDCDE Ph: ' + fmtPhones(SHOP.phones[0] || ''));
   if(sale.sellerName) lines.push('Seller: ' + sale.sellerName);
   lines.push('Bill Value: ' + inr(sale.subtotal));
   if(sale.discount > 0) lines.push('Discount: -' + inr(sale.discount));
@@ -4927,7 +5314,8 @@ function renderHistoryList(){
           : '';
     let itemsHtml = s.items.map(it=>`<div><span>${it.en} x${it.qty}</span><span>₹${(it.qty*it.price).toLocaleString('en-IN')}</span></div>`).join('');
     if(s.discount>0) itemsHtml += `<div class="sd-disc"><span>Discount${s.discountPercent?' ('+s.discountPercent+'%)':''}</span><span>-₹${s.discount.toLocaleString('en-IN')}</span></div>`;
-    if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${s.buyerPhone}</span></div>`;
+    if(s.buyerName) itemsHtml += `<div><span>Customer</span><span>${custEsc(s.buyerName)}</span></div>`;
+    if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${fmtPhones(s.buyerPhone)}</span></div>`;
     if(s.paidAmount) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
     html += `<div class="sale-card">
         <div class="sale-card-top" onclick="toggleSaleDetail('h-${s.id}')">
@@ -5582,8 +5970,25 @@ async function generatePriceListPDFVector(){
     lay.lines.forEach(function(ln, i){
       var base = yTop - (i + 1) * lay.lh + lay.lh * 0.28;
       var x0 = align === 'center' ? x + (maxW - ln.w) / 2 : align === 'right' ? x + maxW - ln.w : x;
-      ln.items.forEach(function(it){ drawRuns(it.w.runs, x0 + it.x, base, it.w.size, _plHex(it.w.color)); });
+      ln.items.forEach(function(it, k){
+        drawRuns(it.w.runs, x0 + it.x, base, it.w.size, _plHex(it.w.color));
+        // a mobile number in the soft PDF is tappable: opens the phone's dialler ("+91" word included in the tap area)
+        var txt = it.w.runs.map(function(r){ return r.t; }).join('').replace(/[^\d]/g, '');
+        if(/^[6-9]\d{9}$/.test(txt)){
+          var prev = ln.items[k - 1], prevTxt = prev ? prev.w.runs.map(function(r){ return r.t; }).join('') : '';
+          var xs = x0 + (prevTxt === '+91' ? prev.x : it.x), xe = x0 + it.x + wOf(it.w.runs, it.w.size);
+          addTelLink(xs - 1, base - it.w.size * 0.3, xe + 1, base + it.w.size * 1.0, 'tel:+91' + txt);
+        }
+      });
     });
+  };
+  var addTelLink = function(x1, y1, x2, y2, uri){
+    try{
+      var annot = pdf.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: [x1, y1, x2, y2], Border: [0, 0, 0], A: { Type: 'Action', S: 'URI', URI: L.PDFString.of(uri) } });
+      var ref = pdf.context.register(annot);
+      var annots = page.node.lookup(L.PDFName.of('Annots'));
+      if(annots && annots.push) annots.push(ref); else page.node.set(L.PDFName.of('Annots'), pdf.context.obj([ref]));
+    }catch(e){}
   };
   var rrPath = function(w, h, r){ return 'M ' + r + ' 0 L ' + (w - r) + ' 0 Q ' + w + ' 0 ' + w + ' ' + r + ' L ' + w + ' ' + (h - r) + ' Q ' + w + ' ' + h + ' ' + (w - r) + ' ' + h + ' L ' + r + ' ' + h + ' Q 0 ' + h + ' 0 ' + (h - r) + ' L 0 ' + r + ' Q 0 0 ' + r + ' 0 Z'; };
 
@@ -5612,10 +6017,10 @@ async function generatePriceListPDFVector(){
 
   // measure one row at scale s
   var measure = function(r, s){
-    var pad = 1.7 * s;
+    var pad = 1.25 * s;
     if(r.k === 'cat'){ var sz = 8.8 * s; return { h: sz * 1.25 + 2.6 * s + 1.2 * s, sz: sz }; }
     var serialW = 17 * s, priceW = 44 * s, nameW = colW - serialW - priceW - 4 * s;
-    var lay = layout([{ t: r.ta, bold: true, size: 8.7 * s, color: '#1a1a1a' }, { t: '(' + r.en + ')', bold: false, size: 6.9 * s, color: '#444444' }], nameW);
+    var lay = layout([{ t: r.ta, bold: true, size: 9.7 * s, color: '#000000' }, { t: '(' + r.en + ')', bold: false, size: 6.7 * s, color: '#333333' }], nameW);
     var hh = Math.max(lay.lines.length * lay.lh, 11 * s) + 2 * pad;
     return { h: hh, lay: lay, serialW: serialW, priceW: priceW, nameW: nameW, pad: pad };
   };
@@ -5685,7 +6090,7 @@ async function generatePriceListPDFVector(){
         // name (Tamil bold + English in brackets)
         drawLines(m.lay, x0 + 3 * s + 2 * rad + 3 * s, y - (m.h - m.lay.lines.length * m.lay.lh) / 2, m.nameW, 'left');
         // price
-        var psz = 8.7 * s, pr = runsOf('₹' + Number(r.price).toLocaleString('en-IN'), true), pw = wOf(pr, psz);
+        var psz = 9.5 * s, pr = runsOf('₹' + Number(r.price).toLocaleString('en-IN'), true), pw = wOf(pr, psz);
         drawRuns(pr, x0 + colW - 3 * s - pw, cy - psz * 0.34, psz, _plHex(maroon));
         page.drawLine({ start: { x: x0, y: y - m.h }, end: { x: x0 + colW, y: y - m.h }, thickness: 0.4, color: _plHex('#e6e6e6') });
       }
@@ -5860,7 +6265,7 @@ function buildPriceListTableHTML(noQr){
       <tr><td colspan="3" style="padding:3px 4px 2px; border-bottom:1.5px solid #7a1414; color:#7a1414; font-weight:800; font-size:9.5px;">${item.no}. ${item.en}${item.cont ? ' <span style="font-weight:600; font-size:8.5px; color:#999;">&hellip;</span>' : ''}</td></tr>` : `
       <tr data-sn="${item.s}" style="background:${(noQr && idx % 2 === 1) ? '#fdf3f1' : '#ffffff'};">
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; vertical-align:middle;">${snDot(item.s, 14, 7.5)}</td>
-        <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-size:${noQr ? 10.2 : 9}px; font-weight:800; line-height:1.2; color:#1a1a1a; vertical-align:middle;">${item.ta} <span style="color:${noQr ? '#777' : '#444'}; font-size:${noQr ? 7 : 8}px;${noQr ? '' : ' font-weight:600;'}">(${item.en})</span></td>
+        <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-size:${noQr ? 10.2 : 10}px; font-weight:800; line-height:1.2; color:#1a1a1a; vertical-align:middle;">${item.ta} <span style="color:${noQr ? '#777' : '#444'}; font-size:${noQr ? 7 : 8}px;${noQr ? '' : ' font-weight:600;'}">(${item.en})</span></td>
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-weight:800; color:#7a1414; font-size:9px; text-align:right; white-space:nowrap; vertical-align:middle;">₹${item.price.toLocaleString('en-IN')}</td>
       </tr>`).join('');
     return `<table style="width:100%; border-collapse:collapse; table-layout:fixed;">
@@ -5895,9 +6300,9 @@ function buildPriceListTableHTML(noQr){
       ${_hdrHtml}
       <!-- 3 ruled table columns, side by side -->
       <div style="display:flex; flex-direction:row; align-items:flex-start; gap:4mm; border:1px solid #ddd; margin-top:5px;">
-        <div style="flex:1 1 0; min-width:0; border-right:1px solid #ddd;">${renderColTable(cols[0])}</div>
-        <div style="flex:1 1 0; min-width:0; border-right:1px solid #ddd;">${renderColTable(cols[1])}</div>
-        <div style="flex:1 1 0; min-width:0;">${renderColTable(cols[2])}</div>
+        <div class="tz-col" style="flex:1 1 0; min-width:0; border-right:1px solid #ddd;">${renderColTable(cols[0])}</div>
+        <div class="tz-col" style="flex:1 1 0; min-width:0; border-right:1px solid #ddd;">${renderColTable(cols[1])}</div>
+        <div class="tz-col" style="flex:1 1 0; min-width:0;">${renderColTable(cols[2])}</div>
       </div>
       </div>
     </div>
@@ -5939,13 +6344,92 @@ async function sharePriceListPDF(triggerEl){
 function applyAdminTabAccess(){
   var sc = adminScope();
   var allowed = sc ? { sales:1, items:1, branch:1 } : null;
-  [['sales','Sales'],['reports','Reports'],['branch','Branch'],['items','Items'],['changes','Changes'],['logins','Logins'],['upi','Upi'],['accounts','Accounts'],['backup','Backup']].forEach(function(t){
+  [['sales','Sales'],['reports','Reports'],['branch','Branch'],['items','Items'],['changes','Changes'],['customers','Customers'],['logins','Logins'],['upi','Upi'],['accounts','Accounts'],['backup','Backup']].forEach(function(t){
     var b = document.getElementById('adminTab' + t[1] + 'Btn');
     if(b) b.style.display = (allowed && !allowed[t[0]]) ? 'none' : '';
   });
   if(allowed && !allowed[adminTab]) adminTab = 'sales';
 }
+
+/* ---- Admin Sales: Item History and Seller History open as their own full screens. The phone's Back key steps back one level
+   (seller detail -> seller list -> Sales tab); the on-screen Back button does the same. ---- */
+var _shStack = [];
+function _shSales(){ return SALES.filter(function(x){ return saleInBranch(x, salesFilters.branch) && isCountedSale(x); }); }
+function _shAgg(list){
+  var map = new Map(), qty = 0, disc = 0, tot = 0;
+  list.forEach(function(x){
+    disc += (x.discount || 0); tot += (x.total || 0);
+    x.items.forEach(function(it){
+      qty += it.qty;
+      var cur = map.get(it.en) || { ta: it.ta, qty: 0, revenue: 0 };
+      cur.qty += it.qty; cur.revenue += it.qty * it.price; map.set(it.en, cur);
+    });
+  });
+  var rows = Array.from(map.entries()).sort(function(a, b){ return b[1].qty - a[1].qty; });
+  var billed = tot + disc;
+  return { qty: qty, disc: disc, tot: tot, pct: billed > 0 ? Math.round(disc / billed * 1000) / 10 : 0, rows: rows };
+}
+function _shRowsHtml(rows){
+  if(!rows.length) return '<div class="empty-admin">No items sold yet.</div>';
+  return rows.map(function(r){ var en = r[0], d = r[1];
+    return '<div class="price-row"><div class="pr-name"><div class="pr-ta">' + estEsc(d.ta) + '</div><div class="pr-en">' + estEsc(en) + '</div></div>' +
+      '<div class="pr-right"><div class="pr-price">' + d.qty + ' sold</div><div style="font-size:9.5px;color:var(--ink-soft);">&#8377;' + d.revenue.toLocaleString('en-IN') + '</div></div></div>'; }).join('');
+}
+function _shStats(a){
+  var c = function(v, l){ return '<div class="stat-card"><div class="sv">' + v + '</div><div class="sl">' + l + '</div></div>'; };
+  return '<div class="stat-grid" style="margin-bottom:10px;">' + c(a.qty, 'Items Sold (Qty)') + c('&#8377;' + a.disc.toLocaleString('en-IN'), 'Discount Given (' + a.pct + '%)') + c('&#8377;' + a.tot.toLocaleString('en-IN'), 'Total Sales Amount') + '</div>';
+}
+function openSalesHist(view, sid){
+  _shStack.push({ v: view, sid: sid || '' });
+  document.getElementById('salesHistOverlay').style.display = 'flex';
+  try{ history.pushState({ salesHist: true }, ''); }catch(e){}
+  shPaint();
+}
+function shBack(){ if(!_shStack.length) return; try{ history.back(); }catch(e){ shPop(); } }
+function shPop(){
+  _shStack.pop();
+  if(!_shStack.length){ document.getElementById('salesHistOverlay').style.display = 'none'; return; }
+  shPaint();
+}
+function shPaint(){
+  var top = _shStack[_shStack.length - 1]; if(!top) return;
+  var body = document.getElementById('salesHistBody'), title = document.getElementById('salesHistTitle'), keep = body.scrollTop;
+  var sales = _shSales(), h = '';
+  var btns = function(pr, pdf){ return '<span style="display:flex; gap:6px;"><button onclick="' + pr + '" title="Print 80mm" style="background:#0b5fd8; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">&#128424; Print</button><button onclick="' + pdf + '" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">' + SHARE_ICON_SVG_SM + 'PDF</button></span>'; };
+  var br = salesFilters.branch && BRANCHES[salesFilters.branch] ? ' • ' + BRANCHES[salesFilters.branch].short : '';
+  if(top.v === 'items'){
+    var a = _shAgg(sales);
+    title.textContent = '📦 Item History' + br;
+    lastOverallItemsSummary = { statRows: [ { label: 'Total Items Sold (Qty)', value: String(a.qty) }, { label: 'Total Discount Given', value: '₹' + a.disc.toLocaleString('en-IN') }, { label: 'Total Sales Amount', value: '₹' + a.tot.toLocaleString('en-IN') } ], itemRows: a.rows };
+    h = _shStats(a) + '<div class="history-head-row"><div class="section-title" style="margin:0;">Items Sold (All Sellers)</div>' + btns('printOverallItemsSold()', 'shareOverallItemsSoldPDF()') + '</div>' + _shRowsHtml(a.rows);
+  } else if(top.v === 'sellers'){
+    title.textContent = '👤 Seller History' + br;
+    var by = new Map();
+    SALES.filter(function(x){ return saleInBranch(x, salesFilters.branch); }).forEach(function(x){
+      var e = by.get(x.sellerId) || { name: x.sellerName, bills: 0, tot: 0 };
+      e.name = x.sellerName; e.bills++; if(isCountedSale(x)) e.tot += (x.total || 0); by.set(x.sellerId, e);
+    });
+    var list = Array.from(by.entries()).sort(function(a, b){ return b[1].tot - a[1].tot; });
+    h = '<div class="section-title" style="margin-top:0;">Tap a seller to see their history</div>' + (list.length ? list.map(function(r){
+      return '<div class="price-row" style="cursor:pointer;" onclick="openSalesHist(\'seller\', this.getAttribute(\'data-id\'))" data-id="' + estEsc(r[0]) + '"><div class="pr-name"><div class="pr-ta" style="font-size:15px;">' + estEsc(r[1].name) + '</div><div class="pr-en">' + r[1].bills + ' bill' + (r[1].bills > 1 ? 's' : '') + '</div></div><div class="pr-right"><div class="pr-price">&#8377;' + r[1].tot.toLocaleString('en-IN') + '</div><div style="font-size:11px; color:var(--maroon); font-weight:800;">View &#8250;</div></div></div>';
+    }).join('') : '<div class="empty-admin">No sellers yet.</div>');
+  } else {
+    var mine = sales.filter(function(x){ return x.sellerId === top.sid; });
+    var nm = (SALES.filter(function(x){ return x.sellerId === top.sid; })[0] || {}).sellerName || top.sid;
+    var a2 = _shAgg(mine);
+    title.textContent = '👤 ' + nm + br;
+    lastSellerSummary = { sellerName: nm + br, qty: a2.qty, discount: a2.disc, discPct: a2.pct, totalSales: a2.tot, itemRows: a2.rows };
+    h = _shStats(a2) + '<div class="history-head-row"><div class="section-title" style="margin:0;">Items Sold by ' + estEsc(nm) + '</div>' + btns('printSellerSummary()', 'shareSellerSummaryPDF()') + '</div>' + _shRowsHtml(a2.rows);
+  }
+  body.innerHTML = h; body.scrollTop = keep;
+}
+/* The item qty panels belong to the bill / self-order table views only: close them whenever another screen opens. */
+function closeQtySheets(){
+  try{ _billSheetSn = null; var a = document.getElementById('billQtySheet'); if(a){ a.style.display = 'none'; a.removeAttribute('data-sig'); } }catch(e){}
+  try{ _pubSheetSn = null; var b = document.getElementById('pubQtySheet'); if(b) b.style.display = 'none'; }catch(e){}
+}
 function showAdmin(){
+  closeQtySheets();
   applyAdminTabAccess();
   document.getElementById('app').classList.add('hidden');
   document.getElementById('adminScreen').classList.remove('hidden');
@@ -5953,6 +6437,7 @@ function showAdmin(){
   if(adminTab === 'sales') markSalesSeen();
 }
 function hideAdmin(){
+  try{ pleDockHide(); }catch(e){}
   document.getElementById('adminScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   render();
@@ -5981,6 +6466,7 @@ function setAdminTab(t){
   document.getElementById('adminTabSalesBtn').classList.toggle('active', t==='sales');
   document.getElementById('adminTabItemsBtn').classList.toggle('active', t==='items');
   document.getElementById('adminTabChangesBtn').classList.toggle('active', t==='changes');
+  document.getElementById('adminTabCustomersBtn').classList.toggle('active', t==='customers');
   document.getElementById('adminTabLoginsBtn').classList.toggle('active', t==='logins');
   document.getElementById('adminTabReportsBtn').classList.toggle('active', t==='reports');
   document.getElementById('adminTabUpiBtn').classList.toggle('active', t==='upi');
@@ -6253,7 +6739,7 @@ function buildBankReportHTML(type, periodKey){
       <div class="bkr-head">
         <div class="bkr-shop-ta">${SHOP.name_ta}</div>
         <div class="bkr-shop-en">${SHOP.name_en}</div>
-        <div class="bkr-addr">Branch: Thanneerpandhal, Puthur &nbsp;&bull;&nbsp; Phone: ${SHOP.phones.join(' / ')}</div>
+        <div class="bkr-addr">Branch: Thanneerpandhal, Puthur &nbsp;&bull;&nbsp; Phone: ${fmtPhones(SHOP.phones.join(' / '))}</div>
       </div>
 
       <div class="bkr-title">BUSINESS INCOME STATEMENT</div>
@@ -6431,6 +6917,13 @@ function renderAdmin(){
   SALES = loadJSON('ars_sales', []);
   const _scope = adminScope();
   if(_scope){ salesFilters.branch = _scope; adminItemsBranch = _scope; if(!{ sales:1, items:1, branch:1 }[adminTab]) adminTab = 'sales'; }
+  var _dockOn = (adminTab === 'items' && !_scope && adminPriceView === 'edit');
+  if(_dockOn){
+    var _o = document.getElementById('plEditOverlay');
+    if(_o && _o.parentNode === main && _o.style.display !== 'none'){ if(pleCatOpen) pleCatApply(); else plePaint(); return; }   // already open: just refresh it
+    pleDockShow(main); return;
+  }
+  pleDockHide();   // the Price Edit view is put back in only when it is the open tab
   if(adminTab === 'items' && _scope){ renderScopedItems(main, _scope); return; }
 
   if(adminTab === 'sales'){
@@ -6470,6 +6963,10 @@ function renderAdmin(){
         <button onclick="downloadSalesReportBankFormat()" style="width:100%; padding:12px; background:#1e7a3c; color:#fff; border:none; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer;">📊 Export Sales Report (Bank Format PDF)</button>
       </div>
 
+      <div style="display:flex; gap:8px; margin:0 0 14px;">
+        <button onclick="openSalesHist('items')" style="flex:1; padding:12px 6px; background:#fff8e6; color:var(--maroon); border:1.5px solid var(--maroon); border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;">&#128230; Item History</button>
+        <button onclick="openSalesHist('sellers')" style="flex:1; padding:12px 6px; background:#fff8e6; color:var(--maroon); border:1.5px solid var(--maroon); border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;">&#128100; Seller History</button>
+      </div>
       <div class="section-title" style="margin-top:0;">Filter by Seller / Bill No / Customer No</div>
       <div class="filter-bar">
         <div class="filter-field">
@@ -6502,58 +6999,7 @@ function renderAdmin(){
     if(salesFilters.phone){
       html += `<div style="font-size:11.5px; color:#8a6a44; margin:0 2px;">Customer ${salesFilters.phone}</div>` + customerSummaryHtml(filteredSales);
     }
-    if(salesFilters.seller){
-      const sellerName = (sellerNames.get(salesFilters.seller) || salesFilters.seller) + (salesFilters.branch && BRANCHES[salesFilters.branch] ? ' — ' + BRANCHES[salesFilters.branch].short : '');
-      const sellerConfirmedSales = filteredSales.filter(s => isCountedSale(s));
-      const sellerItemMap = new Map(); // en -> {ta, qty, revenue}
-      let sellerTotalQty = 0, sellerTotalDiscount = 0, sellerTotalSales = 0;
-      sellerConfirmedSales.forEach(s => {
-        sellerTotalDiscount += (s.discount||0);
-        sellerTotalSales += (s.total||0);
-        s.items.forEach(it => {
-          sellerTotalQty += it.qty;
-          const cur = sellerItemMap.get(it.en) || { ta: it.ta, qty:0, revenue:0 };
-          cur.qty += it.qty;
-          cur.revenue += it.qty * it.price;
-          sellerItemMap.set(it.en, cur);
-        });
-      });
-      const sellerItemRows = [...sellerItemMap.entries()].sort((a,b)=>b[1].qty - a[1].qty);
-      const sellerBilledValue = sellerTotalSales + sellerTotalDiscount;
-      const sellerDiscPct = sellerBilledValue > 0 ? Math.round((sellerTotalDiscount / sellerBilledValue) * 1000) / 10 : 0;
-
-      lastSellerSummary = {
-        sellerName, qty: sellerTotalQty, discount: sellerTotalDiscount,
-        discPct: sellerDiscPct, totalSales: sellerTotalSales, itemRows: sellerItemRows
-      };
-
-      html += `<div class="seller-summary-sticky">
-          <div class="history-head-row" style="margin-bottom:8px;">
-            <div class="section-title" style="margin:0;">Seller Summary — ${sellerName}</div>
-            <button onclick="printSellerSummary()" title="Print 80mm" style="background:#0b5fd8; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700; margin-right:6px;">&#128424; Print</button>
-            <button onclick="shareSellerSummaryPDF()" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF</button>
-          </div>
-          <div class="stat-grid" style="margin-bottom:6px;">
-            <div class="stat-card"><div class="sv">${sellerTotalQty}</div><div class="sl">Items Sold (Qty)</div></div>
-            <div class="stat-card"><div class="sv">₹${sellerTotalDiscount.toLocaleString('en-IN')}</div><div class="sl">Discount Given (${sellerDiscPct}%)</div></div>
-            <div class="stat-card"><div class="sv">₹${sellerTotalSales.toLocaleString('en-IN')}</div><div class="sl">Total Sales Amount</div></div>
-          </div>
-        </div>
-        <div class="section-title" style="margin-top:6px;">Items Sold by ${sellerName}</div>`;
-      if(sellerItemRows.length===0){
-        html += `<div class="empty-admin">No items sold by this seller yet.</div>`;
-      } else {
-        sellerItemRows.forEach(([en, d]) => {
-          html += `<div class="price-row">
-              <div class="pr-name"><div class="pr-ta">${d.ta}</div><div class="pr-en">${en}</div></div>
-              <div class="pr-right"><div class="pr-price">${d.qty} sold</div><div style="font-size:9.5px;color:var(--ink-soft);">₹${d.revenue.toLocaleString('en-IN')}</div></div>
-            </div>`;
-        });
-      }
-    } else {
-      lastSellerSummary = null;
-    }
-
+    lastSellerSummary = null;
     if(salesFilters.billNo){
       const billMatchedSales = filteredSales;
       const billConfirmedSales = billMatchedSales.filter(s => isCountedSale(s));
@@ -6609,45 +7055,7 @@ function renderAdmin(){
       lastBillItemsSummary = null;
     }
 
-    if(!salesFilters.seller && !salesFilters.billNo && !salesFilters.phone){
-      const overallItemMap = new Map(); // en -> {ta, qty, revenue}
-      confirmedSales.forEach(s => {
-        s.items.forEach(it => {
-          const cur = overallItemMap.get(it.en) || { ta: it.ta, qty:0, revenue:0 };
-          cur.qty += it.qty;
-          cur.revenue += it.qty * it.price;
-          overallItemMap.set(it.en, cur);
-        });
-      });
-      const overallItemRows = [...overallItemMap.entries()].sort((a,b)=>b[1].qty - a[1].qty);
-
-      lastOverallItemsSummary = {
-        statRows: [
-          { label: 'Total Items Sold (Qty)', value: String(totalItemsSold) },
-          { label: 'Total Discount Given', value: '₹' + totalDiscountGiven.toLocaleString('en-IN') },
-          { label: 'Total Sales Amount', value: '₹' + totalRevenue.toLocaleString('en-IN') }
-        ],
-        itemRows: overallItemRows
-      };
-
-      html += `<div class="history-head-row" style="margin-top:6px;">
-          <div class="section-title" style="margin:0;">Items Sold (All Sellers, Overall)</div>
-          <button onclick="printOverallItemsSold()" title="Print 80mm" style="background:#0b5fd8; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700; margin-right:6px;">&#128424; Print</button>
-            <button onclick="shareOverallItemsSoldPDF()" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF</button>
-        </div>`;
-      if(overallItemRows.length===0){
-        html += `<div class="empty-admin">No items sold yet.</div>`;
-      } else {
-        overallItemRows.forEach(([en, d]) => {
-          html += `<div class="price-row">
-              <div class="pr-name"><div class="pr-ta">${d.ta}</div><div class="pr-en">${en}</div></div>
-              <div class="pr-right"><div class="pr-price">${d.qty} sold</div><div style="font-size:9.5px;color:var(--ink-soft);">₹${d.revenue.toLocaleString('en-IN')}</div></div>
-            </div>`;
-        });
-      }
-    } else {
-      lastOverallItemsSummary = null;
-    }
+    lastOverallItemsSummary = null;
 
     html += `<div class="history-head-row">
         <div class="section-title" style="margin:0;">Sales Records (latest first)${filteredSales.length!==SALES.length ? ' — '+filteredSales.length+' of '+SALES.length+' shown' : ''}</div>
@@ -6668,12 +7076,13 @@ function renderAdmin(){
             : '<span class="status-badge confirmed">Confirmed</span>';
         let itemsHtml = s.items.map(it=>`<div><span>${it.en} x${it.qty}</span><span>₹${it.qty*it.price}</span></div>`).join('');
         if(s.discount>0) itemsHtml += `<div class="sd-disc"><span>Discount${s.discountPercent?' ('+s.discountPercent+'%)':''}</span><span>-₹${s.discount}</span></div>`;
-        if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${s.buyerPhone}</span></div>`;
+        if(s.buyerName) itemsHtml += `<div><span>Customer</span><span>${custEsc(s.buyerName)}</span></div>`;
+    if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${fmtPhones(s.buyerPhone)}</span></div>`;
         if(s.paidAmount) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
         const isNew = new Date(s.time).getTime() > lastSeen;
         html += `<div class="sale-card">
             <div class="sale-card-top" onclick="toggleSaleDetail('${s.id}')">
-              <div><div class="sc-seller">#${s.billNo || '-'} &middot; ${isNew ? '<span class="new-tag">NEW</span> ' : ''}${s.sellerName} ${statusBadge}</div>
+              <div><div class="sc-seller">#${s.billNo || '-'} &middot; ${isNew ? '<span class="new-tag">NEW</span> ' : ''}<span style="text-decoration:underline dotted; cursor:pointer;" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${s.sellerName}</span> ${statusBadge}</div>
               <div class="sc-time">${dt}</div></div>
               <div class="sc-total">₹${s.total.toLocaleString('en-IN')}</div>
             </div>
@@ -6707,9 +7116,9 @@ function renderAdmin(){
       </div>
 
       <div class="history-head-row pl-sticky-head">
-        <div class="section-title" style="margin:0;">Price List</div>
+        <div class="section-title" style="margin:0;">Price List <span style="font-size:11px; font-weight:700; color:#8a6a44;">(all options)</span></div>
         <span style="display:flex; gap:6px; flex-wrap:wrap;">
-          <button onclick="openPriceEditor()" title="Price List - tap an item to edit" class="icon-btn-sm" style="background:#fff8e6; border:1.5px solid var(--maroon);">&#128065;&#65039;</button>
+          <button onclick="adminPriceViewSet('edit')" title="Price Edit - print list format" class="icon-btn-sm" style="background:#fff8e6; border:1.5px solid var(--maroon);">&#9638;</button>
           <button onclick="sharePriceListPDF(this)" title="Share Price List PDF" class="icon-btn-sm" style="background:#7a1414; color:#fff;">&#128228;</button>
           <button onclick="exportPriceListExcel()" title="Export Price List as Excel" class="icon-btn-sm">&#128202;</button>
           <button onclick="triggerPriceListImport()" title="Import Price List from Excel" class="icon-btn-sm">&#128193;</button>
@@ -6777,25 +7186,7 @@ function renderAdmin(){
     if(shown === 0) html += `<div class="empty-admin">${adminItemsBranch ? 'No items with a different price or stock in this branch. All other items are the same as Normal price.' : 'No items found.'}</div>`;
     html += `</div>
 
-      <div id="catEditPanel" style="display:${catEditOpen ? 'block' : 'none'};">
-      <div class="section-title" style="margin-top:30px;">Customize Category Names</div>
-      <div class="add-seller-card" style="margin-bottom:14px;">
-        <label class="field-label">Select Category</label>
-        <select id="catSelect" onchange="renderCatEdit(this.value)" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:10px;">
-          <option value="">-- Choose a category --</option>
-          ${CATEGORIES.map((c, idx) => `<option value="${idx}">${idx + 1}. ${c.ta} (${c.en})</option>`).join('')}
-        </select>
-        <div id="catEditForm"></div>
-      </div>
-      <div class="section-title">Add New Category</div>
-      <div class="add-seller-card">
-        <label class="field-label">Category Name (Tamil)</label>
-        <input type="text" id="newCatTa" placeholder="எ.கா. சிறிய வெடி" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:7px;">
-        <label class="field-label">Category Name (English)</label>
-        <input type="text" id="newCatEn" placeholder="e.g. Mini Crackers" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:7px;">
-        <button onclick="addNewCategory()" style="width:100%; padding:11px; background:var(--maroon); color:#fff8e6; border:none; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer;">+ Add New Category</button>
-      </div>
-      <div id="catAddStatus" style="margin-top:10px; text-align:center; font-size:12px; color:var(--green); font-weight:700;"></div>
+      <div id="catEditPanel" style="display:${catEditOpen ? 'block' : 'none'};">${catEditInnerHtml()}
       </div>`;
     main.innerHTML = html;
     // Restore preview toggle and panel state after re-render
@@ -6829,14 +7220,15 @@ function renderAdmin(){
         if(c.type === 'price'){ what = 'Price ' + rupee(c.old) + ' &rarr; <b>' + rupee(c.new) + '</b>'; color = (Number(c.new) > Number(c.old)) ? '#b3261e' : '#1e7a3c'; }
         else if(c.type === 'unit'){ what = 'Unit ' + esc(c.old) + ' &rarr; <b>' + esc(c.new) + '</b>'; }
         else if(c.type === 'name'){ what = 'Renamed from ' + esc(c.old); }
+        else if(c.type === 'catrename'){ what = 'Category renamed from ' + esc(c.old) + ' &rarr; <b>' + esc(c.new) + '</b>'; color = '#00796b'; }
         else if(c.type === 'moved'){ what = 'Moved ' + esc(c.old) + ' &rarr; <b>' + esc(c.new) + '</b>'; }
         else if(c.type === 'added'){ what = '<b>New item</b> at ' + rupee(c.new); color = '#1e7a3c'; }
         else if(c.type === 'removed'){ what = '<b>Removed</b> (was ' + rupee(c.old) + ')'; color = '#b3261e'; }
         else { what = esc(c.type); }
-        const canUndo = (c.type === 'price' && c.old != null && c.new != null) || c.type === 'unit' || c.type === 'name' || c.type === 'moved' || c.type === 'added' || c.type === 'removed';
+        const canUndo = (c.type === 'price' && c.old != null && c.new != null) || c.type === 'unit' || c.type === 'name' || c.type === 'catrename' || c.type === 'moved' || c.type === 'added' || c.type === 'removed';
         html += `<div class="sale-card" style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
             <div style="flex:1; min-width:0;">
-              <div style="font-weight:800; font-size:13px;">${c.serial ? '#' + esc(c.serial) + ' &middot; ' : ''}${esc(c.ta)} <span style="font-size:10.5px; font-weight:600; color:#8a6a44;">${esc(c.en)}</span>${c.type === 'added' ? _badge('New', '#0b5fd8') : c.type === 'removed' ? _badge('Removed', '#6b4b2a') : c.type === 'price' ? (Number(c.new) > Number(c.old) ? _badge('Price up', '#b3261e') : _badge('Price down', '#1e7a3c')) : _badge('Updated', '#c98a00')}</div>
+              <div style="font-weight:800; font-size:13px;">${c.serial ? '#' + esc(c.serial) + ' &middot; ' : ''}${esc(c.ta)} <span style="font-size:10.5px; font-weight:600; color:#8a6a44;">${esc(c.en)}</span>${c.type === 'added' ? _badge('New', '#0b5fd8') : c.type === 'removed' ? _badge('Removed', '#6b4b2a') : c.type === 'name' ? _badge('Rename', '#7b3fa0') : c.type === 'catrename' ? _badge('Cat Rename', '#00796b') : c.type === 'price' ? (Number(c.new) > Number(c.old) ? _badge('Price up', '#b3261e') : _badge('Price down', '#1e7a3c')) : _badge('Updated', '#c98a00')}</div>
               <div style="font-size:9px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; color:var(--ember); margin-top:2px;">${esc(c.cat)}</div>
               <div style="margin-top:5px; font-size:13px; color:${color};">${what}</div>
               <div class="sc-time" style="margin-top:4px;">${dt} &middot; ${esc(c.by || 'System')}${c.source ? ' &middot; ' + esc(c.source) : ''}</div>
@@ -6848,6 +7240,8 @@ function renderAdmin(){
     }
     main.innerHTML = html;
 
+  } else if(adminTab === 'customers'){
+    renderCustomersTab(main);
   } else if(adminTab === 'logins'){
     LOGIN_HISTORY = loadJSON('ars_login_history', []);
     const loginsList = [...LOGIN_HISTORY].reverse();
@@ -7010,7 +7404,7 @@ function renderAdmin(){
             <label class="field-label">Branch owner</label>
             <input type="text" id="brOwner" value="${(br.owner || '').replace(/"/g, '&quot;')}" placeholder="Owner name" style="${_fld}">
             <label class="field-label">Contact number</label>
-            <input type="tel" id="brPhone" inputmode="tel" value="${(br.phone || '').replace(/"/g, '&quot;')}" placeholder="${SHOP.phones.join(' / ')}" style="${_fld}">
+            <input type="tel" id="brPhone" inputmode="tel" value="${(br.phone || '').replace(/"/g, '&quot;')}" placeholder="${fmtPhones(SHOP.phones.join(' / '))}" style="${_fld}">
             <button onclick="saveBranchDetails('${bid}')" style="width:100%; padding:10px; background:var(--maroon); color:#fff8e6; border:none; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer;">Save details</button>
             <div style="font-size:10.5px; color:#8a6a44; margin-top:6px;">Owner is kept here only &mdash; it is not printed on the price list.</div>
           </div>
@@ -7084,7 +7478,8 @@ function renderAdmin(){
 
   } else if(adminTab === 'backup'){
     main.innerHTML = `<div class="backup-card" style="background:#eef7ee; border-color:#2e7d32;">
-        <div class="section-title" style="margin-top:0; color:#2e7d32;">&#128190; Google Sheet Backup (manual)</div>
+        <div class="section-title" style="margin-top:0; margin-bottom:0; color:#2e7d32; display:flex; align-items:center; justify-content:space-between;"><span>&#128190; Google Sheet Backup (manual)</span><button onclick="bkEyeToggle('sheet')" title="Show / hide" style="width:auto; margin:0; padding:4px 10px; background:#fff; border:1px solid #2e7d32; border-radius:8px; font-size:16px; cursor:pointer;">${_bkShow.sheet?'&#128065;':'&#128584;'}</button></div>
+        <div style="display:${_bkShow.sheet?'block':'none'}; margin-top:10px;">
         <label class="field-label">Apps Script code</label>
         <textarea readonly onclick="this.select()" style="width:100%; height:96px; font-family:monospace; font-size:10px; padding:8px; border-radius:6px; border:1px solid #2e7d32; margin-bottom:10px;">${SHEET_BACKUP_SCRIPT}</textarea>
         <label class="field-label">Apps Script Web App URL</label>
@@ -7095,9 +7490,11 @@ function renderAdmin(){
           style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); margin-bottom:10px; font-size:13px;">
         <button onclick="saveSheetBackupFromUI()" style="width:100%; padding:11px; background:#2e7d32; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">&#128190; Save to Google Sheet Now</button>
         <div class="empty-admin" style="text-align:left; padding:8px 4px 0; font-size:11.5px;" id="sheetBackupStatus">${backupStatusText()}</div>
+        </div>
       </div>
       <div class="backup-card" style="background:#fff3e0; border-color:#e8710a;">
-        <div class="section-title" style="margin-top:0; color:#b45309;">&#128293; Live Cloud Sync &amp; Backup (Firebase)</div>
+        <div class="section-title" style="margin-top:0; margin-bottom:0; color:#b45309; display:flex; align-items:center; justify-content:space-between;"><span>&#128293; Live Cloud Sync &amp; Backup (Firebase)</span><button onclick="bkEyeToggle('fb')" title="Show / hide" style="width:auto; margin:0; padding:4px 10px; background:#fff; border:1px solid #e8710a; border-radius:8px; font-size:16px; cursor:pointer;">${_bkShow.fb?'&#128065;':'&#128584;'}</button></div>
+        <div style="display:${_bkShow.fb?'block':'none'}; margin-top:10px;">
         <label class="field-label">Firebase config</label>
         <textarea id="fbConfigInput" placeholder='{ "apiKey": "...", "databaseURL": "https://xxx.firebaseio.com", ... }'
           style="width:100%; height:110px; padding:10px; border-radius:8px; border:1px solid var(--line); font-family:monospace; font-size:11px; margin-bottom:10px;">${FB_CONFIG ? JSON.stringify(FB_CONFIG, null, 1) : ''}</textarea>
@@ -7105,6 +7502,7 @@ function renderAdmin(){
         <div class="empty-admin" style="text-align:left; padding:8px 4px 0; font-size:11.5px;" id="fbStatus">${firebaseStatusText()}</div>
         <button onclick="testFirebaseConnection()" style="width:100%; padding:11px; margin-top:10px; background:#fff; color:#b45309; border:2px solid #e8710a; border-radius:8px; font-weight:700; cursor:pointer;">&#128268; Test Connection</button>
         <div class="empty-admin" style="text-align:left; padding:8px 4px 0; font-size:12px; line-height:1.6;" id="fbTestResult"></div>
+        </div>
       </div>
       <div class="backup-card" style="background:#ffe2e2; border-color:#ffb3a8; margin-top:20px;">
         <div class="section-title" style="margin-top:0; color:var(--danger);">⚠️ Reset Data</div>
@@ -7117,6 +7515,260 @@ function renderAdmin(){
   }
 }
 
+var _bkShow = { sheet:false, fb:false };
+/* ================= ADMIN: CUSTOMERS =================
+   Price-list views, self-estimates (EST) and bills, per customer:
+   visitors (from the self-order page) + bills (customer name / mobile, and bills made from a scanned estimate). */
+var _custQ = '', _custShown = [], _custFilter = 'all';
+var _visitors = loadJSON('ars_visitors_cache', {}) || {}, _vstats = loadJSON('ars_vstats_cache', {}) || {}, _visLoadedAt = 0, _visLoading = false;
+function custEsc(t){ return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+function custDigits(t){ return String(t || '').replace(/\D/g, '').slice(-10); }
+async function custLoadVisitors(force){
+  if(_visLoading || !_fbDb) return;
+  if(!force && Date.now() - _visLoadedAt < 60000) return;
+  _visLoading = true;
+  try{
+    var r = await fbTimeout(Promise.all([_fbDb.ref('visitors').once('value'), _fbDb.ref('visitStats').once('value')]), 15000, 'Customers');
+    _visitors = r[0].val() || {}; _vstats = r[1].val() || {};
+    _visLoadedAt = Date.now();
+    _rawSaveJSON('ars_visitors_cache', _visitors); _rawSaveJSON('ars_vstats_cache', _vstats);
+  }catch(e){ fbNoteError(e); }
+  _visLoading = false;
+  if(!document.getElementById('adminScreen').classList.contains('hidden') && adminTab === 'customers') renderAdmin();
+}
+function custRows(){
+  var rows = {}, order = [], vidPhone = {};
+  function row(key){
+    if(!rows[key]){ rows[key] = { key: key, area: '', name: '', phone: '', visits: 0, est: 0, bills: 0, estBills: 0, total: 0, first: '', last: '', optin: false, ids: [], vids: [] }; order.push(key); }
+    return rows[key];
+  }
+  function seen(r, t){ t = String(t || ''); if(!t) return; if(!r.first || t < r.first) r.first = t; if(t > r.last) r.last = t; }
+  Object.keys(_visitors).forEach(function(k){
+    var v = _visitors[k]; if(!v) return;
+    var vid = v.vid || k, ph = custDigits(v.mobile);
+    if(ph) vidPhone[vid] = ph;
+    if(!ph && !v.name && !(v.est > 0)) return;              // only browsed, no details: counted in the totals above only
+    var r = row(ph ? 'p' + ph : 'v' + vid);
+    r.visits += (v.visits || 0); r.est += (v.est || 0);
+    if(v.name && !r.name) r.name = v.name;
+    if(ph) r.phone = ph;
+    if(v.optin) r.optin = true;
+    if(v.area && !r.area) r.area = v.area;
+    r.vids.push(vid); seen(r, v.first); seen(r, v.last);
+  });
+  SALES.forEach(function(x){
+    var ph = custDigits(x.buyerPhone) || (x.estVid && vidPhone[x.estVid]) || '', nm = String(x.buyerName || '').trim();
+    var key = ph ? 'p' + ph : (x.estVid ? 'v' + x.estVid : (nm ? 'n' + nm.toLowerCase() : ''));
+    if(!key) return;
+    var r = row(key);
+    if(nm && !r.name) r.name = nm;
+    if(ph && !r.phone) r.phone = ph;
+    r.ids.push(x.id); seen(r, x.time);
+    if(isCountedSale(x)){ r.bills++; r.total += (x.total || 0); if(x.estVid) r.estBills++; }
+  });
+  return order.map(function(k){ return rows[k]; }).sort(function(a, b){ return String(b.last).localeCompare(String(a.last)); });
+}
+function custTags(r){
+  var t = [];
+  var repeat = r.visits >= 2 || r.bills >= 2;
+  t.push(repeat ? ['REPEAT', '#6a1b9a'] : ['NEW', '#1565c0']);
+  if(r.est > 0) t.push(['EST', '#b45309']);
+  if(r.bills > 0) t.push([r.estBills > 0 ? 'EST → BILLED' : 'BILLED', '#1e7a3c']);
+  if(r.est > 0 && r.bills === 0) t.push(['FOLLOW UP', '#b3261e']);
+  if(r.optin) t.push(['KEEP IN TOUCH', '#0b7285']);
+  return t.map(function(x){ return '<span style="display:inline-block; padding:1px 6px; margin:0 3px 3px 0; border-radius:8px; background:' + x[1] + '; color:#fff; font-size:9.5px; font-weight:800; letter-spacing:.3px;">' + x[0] + '</span>'; }).join('');
+}
+function custStats(){
+  var today = custDay(), vs = _vstats || {}, td = vs[today] || {};
+  var vids = Object.keys(_visitors), views = 0, repeat = 0, estCust = 0, estTot = 0, newToday = 0;
+  vids.forEach(function(k){ var v = _visitors[k] || {}; views += (v.visits || 0); if((v.visits || 0) >= 2) repeat++; if((v.est || 0) > 0) estCust++; estTot += (v.est || 0); if(String(v.first || '').slice(0, 10) === today) newToday++; });
+  var billedVids = {}, billedToday = 0;
+  SALES.forEach(function(x){ if(x.estVid && isCountedSale(x)){ billedVids[x.estVid] = 1; if(custDay(new Date(x.time)) === today) billedToday++; } });
+  var cycle = Object.keys(billedVids).length;
+  return { today: today, td: td, uniq: vids.length, views: views, repeat: repeat, estCust: estCust, estTot: estTot, newToday: newToday, cycle: cycle, billedToday: billedToday };
+}
+function custStatBox(label, val, sub, col){
+  return '<div style="flex:1 1 30%; min-width:92px; background:#fff; border:1px solid #ecd9b0; border-radius:10px; padding:7px 8px; text-align:center;"><div style="font-size:19px; font-weight:800; color:' + (col || 'var(--maroon)') + ';">' + val + '</div><div style="font-size:10.5px; font-weight:700; color:#5b4630;">' + label + '</div>' + (sub ? '<div style="font-size:9.5px; color:#8a6a44;">' + sub + '</div>' : '') + '</div>';
+}
+function renderCustomersTab(main){
+  if(_fbDb) custLoadVisitors(false);
+  var st = custStats(), conv = st.estCust ? Math.round(st.cycle * 100 / st.estCust) : 0;
+  var days = [], vs = _vstats || {};
+  for(var d = 6; d >= 0; d--){
+    var dt = new Date(); dt.setDate(dt.getDate() - d);
+    var k = custDay(dt), o = vs[k] || {}, billed = 0;
+    SALES.forEach(function(x){ if(x.estVid && isCountedSale(x) && custDay(new Date(x.time)) === k) billed++; });
+    days.push('<tr><td style="padding:3px 4px;">' + dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</td><td style="text-align:center;">' + (o.visits || 0) + '</td><td style="text-align:center;">' + (o.newVisitors || 0) + '</td><td style="text-align:center;">' + (o.estimates || 0) + '</td><td style="text-align:center;">' + billed + '</td></tr>');
+  }
+  var upd = _visLoadedAt ? new Date(_visLoadedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
+  var chips = [['all', 'All'], ['est', 'EST'], ['follow', 'Follow up'], ['billed', 'Billed'], ['repeat', 'Repeat'], ['optin', 'Keep in touch']].map(function(c){
+    var on = _custFilter === c[0];
+    return '<button onclick="_custFilter=\'' + c[0] + '\'; custRepaintList(); custChipPaint();" data-cf="' + c[0] + '" style="padding:5px 10px; border-radius:14px; border:1px solid var(--maroon); background:' + (on ? 'var(--maroon)' : '#fff') + '; color:' + (on ? '#fff8e6' : 'var(--maroon)') + '; font-size:11.5px; font-weight:700; cursor:pointer;">' + c[1] + '</button>';
+  }).join('');
+  main.innerHTML =
+    '<div style="display:flex; justify-content:space-between; align-items:center;"><div class="section-title" style="margin:0;">&#129489; Customers</div>' +
+      '<button onclick="custLoadVisitors(true)" style="padding:5px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; font-size:11.5px; font-weight:700; cursor:pointer;">&#8635; ' + upd + '</button></div>' +
+    '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:10px 0 5px;">TODAY</div>' +
+    '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
+      custStatBox('Price list views', st.td.visits || 0) + custStatBox('New visitors', st.td.newVisitors || 0, '', '#1565c0') +
+      custStatBox('Estimates (EST)', st.td.estimates || 0, '', '#b45309') + custStatBox('Bills from EST', st.billedToday, 'full cycle', '#1e7a3c') + '</div>' +
+    '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:12px 0 5px;">ALL TIME</div>' +
+    '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
+      custStatBox('Customers', st.uniq, st.views + ' views') + custStatBox('Repeat visitors', st.repeat, '2+ visits', '#6a1b9a') +
+      custStatBox('Made EST', st.estCust, st.estTot + ' estimates', '#b45309') + custStatBox('EST → Bill', st.cycle, conv + '% of EST', '#1e7a3c') + '</div>' +
+    '<table style="width:100%; border-collapse:collapse; font-size:11.5px; margin:10px 0 4px; background:#fff; border:1px solid #ecd9b0; border-radius:8px;"><thead><tr style="background:#fbeed2;"><th style="text-align:left; padding:4px;">Day</th><th>Views</th><th>New</th><th>EST</th><th>Billed</th></tr></thead><tbody>' + days.join('') + '</tbody></table>' +
+    '<div style="font-size:10px; color:#8a6a44; margin-bottom:10px;">A phone is counted once per visit (refreshing within 30 min is not counted again). Views are counted from this version on.</div>' +
+    custAreaTable() +
+    '<button onclick="promoOpen()" style="width:100%; padding:11px; border:none; border-radius:10px; background:#1e7a3c; color:#fff; font-weight:800; font-size:13.5px; cursor:pointer; margin-bottom:10px;">&#128227; Send WhatsApp offer to customers</button>' +
+    '<div id="promoPanel"></div>' +
+    '<input type="text" id="custSearch" value="' + custEsc(_custQ) + '" placeholder="Search name or mobile" oninput="_custQ = this.value; custRepaintList()" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' +
+    '<div id="custChips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">' + chips + '</div>' +
+    '<div id="custList"></div>';
+  custRepaintList();
+}
+/* Which towns the price-list visitors come from (all visitors, including those who gave no name / mobile). */
+function custAreaTable(){
+  var m = {}, billedVid = {};
+  SALES.forEach(function(x){ if(x.estVid && isCountedSale(x)) billedVid[x.estVid] = 1; });
+  Object.keys(_visitors).forEach(function(k){
+    var v = _visitors[k] || {}, a = v.area || 'Unknown';
+    var o = m[a] || (m[a] = { area: a, people: 0, views: 0, est: 0, billed: 0 });
+    o.people++; o.views += (v.visits || 0); if((v.est || 0) > 0) o.est++; if(billedVid[v.vid || k]) o.billed++;
+  });
+  var list = Object.keys(m).map(function(k){ return m[k]; }).sort(function(a, b){ return b.people - a.people; });
+  if(!list.length) return '';
+  var more = list.length > 8 ? '<div style="font-size:10px; color:#8a6a44; padding:0 4px 8px;">+ ' + (list.length - 8) + ' more towns</div>' : '';
+  return '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:4px 0 5px;">VISITORS BY TOWN</div>' +
+    '<table style="width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:10px; background:#fff; border:1px solid #ecd9b0;"><thead><tr style="background:#fbeed2;"><th style="text-align:left; padding:4px;">Town</th><th>People</th><th>Views</th><th>EST</th><th>Billed</th></tr></thead><tbody>' +
+    list.slice(0, 8).map(function(o){ return '<tr><td style="padding:3px 4px;">\uD83D\uDCCD ' + custEsc(o.area) + '</td><td style="text-align:center;">' + o.people + '</td><td style="text-align:center;">' + o.views + '</td><td style="text-align:center;">' + o.est + '</td><td style="text-align:center;">' + o.billed + '</td></tr>'; }).join('') +
+    '</tbody></table>' + more;
+}
+function custChipPaint(){
+  document.querySelectorAll('#custChips button').forEach(function(b){ var on = b.getAttribute('data-cf') === _custFilter; b.style.background = on ? 'var(--maroon)' : '#fff'; b.style.color = on ? '#fff8e6' : 'var(--maroon)'; });
+}
+function custFiltered(){
+  var all = custRows(), q = _custQ.toLowerCase().trim(), qd = q.replace(/\D/g, '');
+  return all.filter(function(r){
+    if(q && !((r.name || '').toLowerCase().indexOf(q) >= 0 || (qd && r.phone.indexOf(qd) >= 0))) return false;
+    if(_custFilter === 'est') return r.est > 0;
+    if(_custFilter === 'follow') return r.est > 0 && r.bills === 0;
+    if(_custFilter === 'billed') return r.bills > 0;
+    if(_custFilter === 'repeat') return r.visits >= 2 || r.bills >= 2;
+    if(_custFilter === 'optin') return r.optin && !!r.phone;
+    return true;
+  });
+}
+function custRepaintList(){
+  var box = document.getElementById('custList'); if(!box) return;
+  _custShown = custFiltered();
+  if(!_custShown.length){ box.innerHTML = '<div class="empty-admin">No customers here yet. Customers appear when they type a name / mobile on their estimate, make an estimate, or a seller types them on a bill.</div>'; return; }
+  box.innerHTML = '<div style="font-size:11px; color:#8a6a44; margin-bottom:6px;">' + _custShown.length + ' customer' + (_custShown.length === 1 ? '' : 's') + '</div>' + _custShown.map(function(g, i){
+    var last = g.last ? new Date(g.last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '-';
+    var wa = g.phone ? '<a href="https://wa.me/91' + g.phone + '" target="_blank" rel="noopener" style="text-decoration:none; padding:7px 10px; border-radius:8px; background:#1e7a3c; color:#fff; font-weight:700; font-size:12px;">WhatsApp</a>' : '';
+    return '<div style="background:#fff; border:1px solid #ecd9b0; border-radius:10px; padding:9px 10px; margin-bottom:8px;">' +
+      '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;"><div style="min-width:0;"><div style="font-weight:800; font-size:14px;">' + custEsc(g.name || (g.phone ? 'Customer' : 'Customer (no mobile)')) + '</div><div style="font-size:12.5px; color:#44557a;">' + (g.phone ? '📞 ' + custEsc(fmtPhones(g.phone)) : 'No mobile') + (g.area ? ' \u2022 \uD83D\uDCCD ' + custEsc(g.area) : '') + '</div><div style="margin-top:4px;">' + custTags(g) + '</div></div>' +
+      '<div style="text-align:right; font-size:11.5px; white-space:nowrap;"><b>₹' + g.total.toLocaleString('en-IN') + '</b><br>' + g.visits + ' visit' + (g.visits === 1 ? '' : 's') + ' • ' + g.est + ' EST<br>' + g.bills + ' bill' + (g.bills === 1 ? '' : 's') + '<br><span style="color:#8a6a44;">' + last + '</span></div></div>' +
+      '<div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">' + wa +
+      '<button onclick="custEditToggle(' + i + ')" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:12px; cursor:pointer;">&#9998; Edit</button>' +
+      '<button onclick="custDelete(' + i + ')" style="padding:7px 10px; border-radius:8px; border:1px solid #b3261e; background:#fff; color:#b3261e; font-weight:700; font-size:12px; cursor:pointer;">&#128465; Delete</button></div>' +
+      '<div id="custEd' + i + '" style="display:none; margin-top:8px;"><input type="text" id="custEdName' + i + '" value="' + custEsc(g.name) + '" placeholder="Name" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px; font-size:13px;">' +
+      '<input type="tel" id="custEdPhone' + i + '" value="' + custEsc(g.phone) + '" placeholder="10-digit mobile" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px; font-size:13px;">' +
+      '<button onclick="custSave(' + i + ')" style="width:100%; padding:9px; border:none; border-radius:8px; background:var(--maroon); color:#fff8e6; font-weight:800; cursor:pointer;">Save</button></div></div>';
+  }).join('');
+}
+function custEditToggle(i){ var e = document.getElementById('custEd' + i); if(e) e.style.display = (e.style.display === 'none') ? 'block' : 'none'; }
+function custSave(i){
+  var g = _custShown[i]; if(!g) return;
+  var nm = document.getElementById('custEdName' + i).value.trim(), ph = document.getElementById('custEdPhone' + i).value.replace(/\D/g, '');
+  if(ph.length === 12 && ph.indexOf('91') === 0) ph = ph.slice(2);
+  if(ph && ph.length !== 10){ alert('Enter a 10-digit mobile number, or leave it empty.'); return; }
+  if(!nm && !ph){ alert('Enter a name or a mobile number, or use Delete.'); return; }
+  custApply(g, nm, ph);
+}
+async function custDelete(i){
+  var g = _custShown[i]; if(!g) return;
+  var ok = await showConfirm('Delete the saved details of ' + (g.name || g.phone || 'this customer') + '?\nBills and visit counts stay; only the name and mobile are removed.');
+  if(ok) custApply(g, '', '');
+}
+function custApply(g, nm, ph){
+  var set = {}; (g.ids || []).forEach(function(id){ set[id] = 1; });
+  SALES = loadJSON('ars_sales', []) || SALES;
+  var changed = [];
+  SALES.forEach(function(x){ if(!set[x.id]) return; x.buyerName = nm || null; x.buyerPhone = ph || null; changed.push(x); });
+  if(changed.length){ saveJSON('ars_sales', SALES); changed.forEach(function(x){ pushSaleToFirebase(x); }); }   // reaches every phone through the normal bill sync
+  (g.vids || []).forEach(function(vid){
+    var v = _visitors[vid] || (_visitors[vid] = { vid: vid });
+    v.name = nm || null; v.mobile = ph || null; if(!ph) v.optin = false;
+    if(_fbDb) _fbDb.ref('visitors/' + vid).update({ name: nm || null, mobile: ph || null, optin: ph ? !!v.optin : false }).catch(fbNoteError);
+  });
+  _rawSaveJSON('ars_visitors_cache', _visitors);
+  renderAdmin();
+}
+
+/* ---- WhatsApp offers ----
+   WhatsApp lets a normal phone send to ONE chat per tap (sending to many people in one go needs the paid
+   WhatsApp Business API). So this prepares the message and the list, and each tap opens the next customer's chat
+   with the message already typed - tap Send in WhatsApp, come back, tap Next. */
+var _promo = { list: [], i: 0, who: 'optin', msg: '' };
+function promoDefaultMsg(){
+  var link = /^https?:/.test(location.protocol) ? priceLinkFor('') : SELF_ORDER_URL;
+  return '🎆 ' + SHOP.name_ta + ' — ' + SHOP.name_en + '\n\nவணக்கம் {name}! தீபாவளி சிறப்புச் சலுகை — கடையின் Self-Order மூலம் கூடுதல் 10% முதல் 20% வரை தள்ளுபடி.\n\n📋 Price list & self-order: ' + link + '\n📞 ' + fmtPhones(SHOP.phones[0] || '');
+}
+function promoRecipients(who){
+  return custRows().filter(function(r){
+    if(!r.phone) return false;
+    if(who === 'optin') return r.optin;
+    if(who === 'follow') return r.est > 0 && r.bills === 0;
+    if(who === 'billed') return r.bills > 0;
+    return true;
+  });
+}
+function promoOpen(){
+  var box = document.getElementById('promoPanel'); if(!box) return;
+  if(box.innerHTML){ box.innerHTML = ''; return; }
+  if(!_promo.msg) _promo.msg = promoDefaultMsg();
+  _promo.list = promoRecipients(_promo.who); _promo.i = 0;
+  promoPaint();
+}
+function promoPaint(){
+  var box = document.getElementById('promoPanel'); if(!box) return;
+  var opts = [['optin', 'Keep in touch (agreed)'], ['follow', 'EST, not billed (follow up)'], ['billed', 'Bought before'], ['all', 'All with mobile']].map(function(o){
+    var n = promoRecipients(o[0]).length;
+    return '<option value="' + o[0] + '"' + (_promo.who === o[0] ? ' selected' : '') + '>' + o[1] + ' (' + n + ')</option>';
+  }).join('');
+  var L = _promo.list, i = _promo.i, cur = L[i];
+  var step = !L.length ? '<div class="empty-admin" style="padding:8px 0;">No customers with a mobile number in this group.</div>'
+    : (i >= L.length ? '<div style="padding:10px; text-align:center; font-weight:800; color:#1e7a3c;">✅ Done — ' + L.length + ' customer' + (L.length === 1 ? '' : 's') + '</div><button onclick="_promo.i=0; promoPaint()" style="width:100%; padding:9px; border-radius:8px; border:1px solid var(--line); background:#fff; font-weight:700; cursor:pointer;">Start again</button>'
+    : '<div style="font-size:12px; color:#5b4630; margin:6px 0;">' + (i + 1) + ' of ' + L.length + ': <b>' + custEsc(cur.name || 'Customer') + '</b> • ' + cur.phone + '</div>' +
+      '<div style="display:flex; gap:6px;"><button onclick="promoSend()" style="flex:1; padding:12px; border:none; border-radius:10px; background:#1e7a3c; color:#fff; font-weight:800; font-size:14px; cursor:pointer;">Send on WhatsApp &#10140;</button>' +
+      '<button onclick="_promo.i++; promoPaint()" style="padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:#fff; font-weight:700; cursor:pointer;">Skip</button></div>');
+  box.innerHTML = '<div style="background:#eef7ee; border:1px solid #2e7d32; border-radius:10px; padding:10px; margin-bottom:10px;">' +
+    '<label class="field-label">Send to</label><select onchange="_promo.who=this.value; _promo.list=promoRecipients(this.value); _promo.i=0; promoPaint()" style="width:100%; padding:9px; border-radius:8px; border:1px solid var(--line); margin-bottom:8px; font-size:13px;">' + opts + '</select>' +
+    '<label class="field-label">Message ({name} = customer name)</label><textarea oninput="_promo.msg=this.value" style="width:100%; height:120px; padding:8px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; margin-bottom:4px;">' + custEsc(_promo.msg) + '</textarea>' +
+    step +
+    '<div style="display:flex; gap:6px; margin-top:8px;"><button onclick="promoVcf()" style="flex:1; padding:8px; border-radius:8px; border:1px solid #2e7d32; background:#fff; color:#2e7d32; font-weight:700; font-size:12px; cursor:pointer;">&#11015; Contacts file (.vcf)</button>' +
+    '<button onclick="promoCopy(this)" style="flex:1; padding:8px; border-radius:8px; border:1px solid #2e7d32; background:#fff; color:#2e7d32; font-weight:700; font-size:12px; cursor:pointer;">&#128203; Copy numbers</button></div>' +
+    '<div style="font-size:10.5px; color:#44557a; margin-top:6px; line-height:1.5;">WhatsApp opens one chat per tap with the message ready — tap Send there, come back, tap the next. For one-tap sending to everyone: save the contacts file, then make a <b>Broadcast list</b> in WhatsApp (customers who saved your number receive it). Send offers only to customers who agreed, so WhatsApp does not block your number.</div></div>';
+}
+function promoSend(){
+  var cur = _promo.list[_promo.i]; if(!cur) return;
+  var text = (_promo.msg || '').replace(/\{name\}/g, cur.name || '');
+  window.open('https://wa.me/91' + cur.phone + '?text=' + encodeURIComponent(text), '_blank');
+  _promo.i++;
+  setTimeout(promoPaint, 300);
+}
+function promoVcf(){
+  var L = _promo.list; if(!L.length){ alert('No customers in this group.'); return; }
+  var v = L.map(function(r){ var nm = (r.name || 'Customer ' + r.phone.slice(-4)) + ' (ARS)'; return 'BEGIN:VCARD\r\nVERSION:3.0\r\nFN:' + nm + '\r\nTEL;TYPE=CELL:+91' + r.phone + '\r\nEND:VCARD'; }).join('\r\n');
+  estDownload(new Blob([v], { type: 'text/vcard' }), 'ARS_Customers.vcf');
+}
+function promoCopy(btn){
+  var t = _promo.list.map(function(r){ return '+91' + r.phone; }).join('\n');
+  var done = function(){ var o = btn.innerHTML; btn.innerHTML = '✓ Copied ' + _promo.list.length; setTimeout(function(){ btn.innerHTML = o; }, 1800); };
+  try{ navigator.clipboard.writeText(t).then(done, function(){ prompt('Copy the numbers:', t); }); }catch(e){ prompt('Copy the numbers:', t); }
+}
+
+function bkEyeToggle(k){ _bkShow[k] = !_bkShow[k]; renderAdmin(); }
 async function saveSheetBackupFromUI(){
   var url = document.getElementById('sheetBackupUrlInput').value.trim();
   if(url && !/\/exec\s*$/.test(url)){
@@ -7589,7 +8241,7 @@ async function exportPriceListExcel(){
 
     const headerRow1 = SHOP.name_ta + '   |   ' + SHOP.name_en;
     const headerRow2 = SHOP.address_ta + '  |  ' + SHOP.address_en;
-    const headerRow3 = 'Phone: ' + SHOP.phones.join(' / ') + ' ';
+    const headerRow3 = 'Phone: ' + fmtPhones(SHOP.phones.join(' / ')) + ' ';
 
     const dataStartRow = 6; // 1-indexed Excel row where item data begins
     const aoa = [
@@ -7950,6 +8602,29 @@ async function renameUserId(oldId, newIdRaw){
   renderAdmin();
 }
 
+/* Category names + add-new-category form (used by the List view and directly inside Price Edit). */
+function catEditInnerHtml(){
+  return `
+      <div class="section-title" style="margin-top:30px;">Customize Category Names</div>
+      <div class="add-seller-card" style="margin-bottom:14px;">
+        <label class="field-label">Select Category</label>
+        <select id="catSelect" onchange="renderCatEdit(this.value)" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:10px;">
+          <option value="">-- Choose a category --</option>
+          ${CATEGORIES.map((c, idx) => `<option value="${idx}">${idx + 1}. ${c.ta} (${c.en})</option>`).join('')}
+        </select>
+        <div id="catEditForm"></div>
+      </div>
+      <div class="section-title">Add New Category</div>
+      <div class="add-seller-card">
+        <label class="field-label">Category Name (Tamil)</label>
+        <input type="text" id="newCatTa" placeholder="எ.கா. சிறிய வெடி" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:7px;">
+        <label class="field-label">Category Name (English)</label>
+        <input type="text" id="newCatEn" placeholder="e.g. Mini Crackers" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:7px;">
+        <button onclick="addNewCategory()" style="width:100%; padding:11px; background:var(--maroon); color:#fff8e6; border:none; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer;">+ Add New Category</button>
+      </div>
+      <div id="catAddStatus" style="margin-top:10px; text-align:center; font-size:12px; color:var(--green); font-weight:700;"></div>
+`;
+}
 function renderCatEdit(idx){
   const form = document.getElementById('catEditForm');
   if(idx === ''){
@@ -8145,7 +8820,7 @@ async function downloadSalesReportBankFormat(){
       <div class="bkr-head">
         <div class="bkr-shop-ta">${SHOP.name_ta}</div>
         <div class="bkr-shop-en">${SHOP.name_en}</div>
-        <div class="bkr-addr">Thanneerpandhal, Puthur, Tamil Nadu &nbsp;&bull;&nbsp; Phone: ${SHOP.phones.join(' / ')}</div>
+        <div class="bkr-addr">Thanneerpandhal, Puthur, Tamil Nadu &nbsp;&bull;&nbsp; Phone: ${fmtPhones(SHOP.phones.join(' / '))}</div>
       </div>
 
       <div class="bkr-title">SALES &amp; REVENUE STATEMENT</div>
@@ -8544,6 +9219,7 @@ function openAddBranchModal(){
 
   window.addEventListener('popstate', function(e){
     // customer estimate voucher: Back closes it (and stays on the price list)
+    if(_shStack.length){ shPop(); return; }   // admin Sales: Item / Seller History screens step back one level
     var _ev = document.getElementById('estVoucherOverlay');
     if(_ev && _ev.style.display === 'block'){ closeEstVoucher(true); return; }
     var _so = document.getElementById('scanOverlay');
@@ -8572,5 +9248,6 @@ function openAddBranchModal(){
   });
 })();
 </script>
+<div id="appEndMark" hidden></div>
 </body>
 </html>
