@@ -1641,6 +1641,12 @@ const FB_DOCS = {
     isEmpty: function(){ return !UPI || !Object.keys(UPI).length; },
     apply: applyRemoteUpi
   },
+  promo: {
+    path: 'settings/promo',
+    get: function(){ return PROMO; },
+    isEmpty: function(){ return !PROMO || !PROMO.headline; },
+    apply: function(r){ if(!r || typeof r !== 'object') return; PROMO = r; PROMO.items = fbToArr(r.items); _rawSaveJSON('ars_promo', PROMO); }
+  },
   branches: {
     path: 'branches',
     get: function(){ return BRANCHES; },
@@ -2594,6 +2600,7 @@ saveJSON = function(key, val){
     }
     else if(key === 'ars_users') fbDocChanged('users');
     else if(key === 'ars_upi') fbDocChanged('upi');
+    else if(key === 'ars_promo') fbDocChanged('promo');
     else if(key === 'ars_branches') fbDocChanged('branches');
     else if(key === 'ars_login_history') fbPushMissing('loginHistory');
     else if(key === 'ars_sales') fbPushMissing('sales');
@@ -5280,7 +5287,7 @@ function renderHistoryList(){
     <div style="font-size:12px; font-weight:700; color:#7a1414; margin-bottom:8px;">&#128196; Price List</div>
     <div style="display:flex; gap:8px;">
       <button onclick="openPriceListPDFPreview()" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:12px 4px; min-height:80px; background:#7a1414; color:#fff; border:none; border-radius:12px; cursor:ppointer;"><span style="font-size:28px; line-height:1;">&#128269;</span><span style="font-size:10px; font-weight:700; text-align:center; line-height:1.2;">Preview &amp;<br>Share</span></button>
-      <button onclick="shareWebLink(this)" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:12px 4px; min-height:80px; background:#1a5276; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:28px; line-height:1;">&#128279;</span><span style="font-size:10px; font-weight:700; text-align:center; line-height:1.2;">Web<br>Link</span></button>
+      <button onclick="openPromoShare()" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:12px 4px; min-height:80px; background:#1a5276; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:28px; line-height:1;">&#128227;</span><span style="font-size:10px; font-weight:700; text-align:center; line-height:1.2;">Promotion<br>Share</span></button>
       <button onclick="openPriceQr()" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:12px 4px; min-height:80px; background:#1e7a3c; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:28px; line-height:1;">&#128290;</span><span style="font-size:10px; font-weight:700; text-align:center; line-height:1.2;">Customer<br>QR</span></button>
     </div>
   </div>`;
@@ -5908,7 +5915,7 @@ async function generatePriceListPDFVector(){
   var pdf = await L.PDFDocument.create();
   pdf.registerFontkit(window.fontkit);
   var F = await _plFonts(pdf);
-  var W = 595.28, H = 841.89, M = 13;
+  var W = 595.28, H = 841.89, M = 22;   // A4; 22pt (about 8 mm) margins stay inside every printer's printable area, so it prints whole at 100%
   var page = pdf.addPage([W, H]);
   var bid = plBranchId();
   var title = branchTitle(BRANCHES[bid]) || 'A.R.S பட்டாசுக் கடை';
@@ -5937,6 +5944,8 @@ async function generatePriceListPDFVector(){
   var layout = function(segs, maxW){
     var words = [];
     segs.forEach(function(sg){
+      // keep:true = this part (the English name) stays in one piece: beside the Tamil name if it fits, else whole on the next line
+      if(sg.keep){ var all = runsOf(sg.t, sg.bold); if(wOf(all, sg.size) <= maxW){ words.push({ runs: all, size: sg.size, color: sg.color }); return; } }
       sg.t.split(' ').forEach(function(wd, i){ if(wd === '') return; words.push({ runs: runsOf(wd, sg.bold), size: sg.size, color: sg.color }); });
     });
     var lines = [], cur = [], curW = 0, space = function(sz){ return F.laR.widthOfTextAtSize(' ', sz); };
@@ -6017,7 +6026,7 @@ async function generatePriceListPDFVector(){
     var pad = 1.25 * s;
     if(r.k === 'cat'){ var sz = 8.8 * s; return { h: sz * 1.25 + 2.6 * s + 1.2 * s, sz: sz }; }
     var serialW = 17 * s, priceW = 44 * s, nameW = colW - serialW - priceW - 4 * s;
-    var lay = layout([{ t: r.ta, bold: true, size: 9.7 * s, color: '#000000' }, { t: '(' + r.en + ')', bold: false, size: 6.7 * s, color: '#333333' }], nameW);
+    var lay = layout([{ t: r.ta, bold: true, size: 9.7 * s, color: '#000000' }, { t: '(' + r.en + ')', bold: false, size: 6.7 * s, color: '#333333', keep: true }], nameW);
     var hh = Math.max(lay.lines.length * lay.lh, 11 * s) + 2 * pad;
     return { h: hh, lay: lay, serialW: serialW, priceW: priceW, nameW: nameW, pad: pad };
   };
@@ -6172,8 +6181,10 @@ async function generatePriceListPDFRaster(){
       }catch(e){ canvas = null; }
     }
     if(!canvas) throw new Error('Could not draw the price list. Please try again.');
-    // one full A4 page, edge to edge, no white border
-    doc.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH, undefined, 'FAST');
+    // one A4 page with an 8 mm white border, so printers never cut the edges (prints whole at 100% / "actual size")
+    const mg = 8, iw = pdfW - 2 * mg, ih = iw * (canvas.height / canvas.width);
+    const fitH = Math.min(ih, pdfH - 2 * mg), fitW = fitH * (canvas.width / canvas.height);
+    doc.addImage(imgData, 'PNG', (pdfW - fitW) / 2, (pdfH - fitH) / 2, fitW, fitH, undefined, 'FAST');
     return doc;
   } finally {
     host.remove();
@@ -8922,6 +8933,296 @@ function pubWelcomeToast(){
   ov.onclick = fly;                        // a tap skips the wait
   setTimeout(fly, 2000);
 }
+/* ================= PROMOTION SHARE =================
+   Makes ready-to-post promotion images (drawn right here on the phone) in each social media's own size:
+     WhatsApp Status 1080x1920 (9:16) - Instagram post 1080x1350 (4:5) - Facebook post 1200x630 (landscape)
+   with the shop name, the promotion, the featured items + prices, and the self-order QR ("ARS Promotion").
+   The admin picks the promotion type, the text and the featured items (saved on the server for every phone);
+   anyone can tick the formats and share. */
+const PROMO_TYPES = [
+  ['diwali', 'Diwali Special Offer'], ['best', 'Best Sellers'], ['new', 'New Arrivals'],
+  ['kids', 'Kids Special'], ['gift', 'Gift Box Offers'], ['combo', 'Combo Offer']
+];
+const PROMO_FMTS = [
+  { key: 'wa', label: 'WhatsApp Status', icon: '🟢', w: 1080, h: 1920, cols: 2, max: 8 },
+  { key: 'ig', label: 'Instagram', icon: '🟣', w: 1080, h: 1350, cols: 2, max: 6 },
+  { key: 'fb', label: 'Facebook', icon: '🔵', w: 1200, h: 630, cols: 2, max: 4 }
+];
+var PROMO = loadJSON('ars_promo', null) || { type: 'diwali', headline: 'Diwali Special Offer', offer: 'Extra 10% to 20% off with Self-Order — till 04 Nov 2026', items: [] };
+var _promoFmts = loadJSON('ars_promo_fmts', { wa: true, ig: true, fb: true }) || { wa: true, ig: true, fb: true };
+var _promoImgs = {}, _promoPickQ = '';
+function promoLink(){ return /^https?:/.test(location.protocol) ? priceLinkFor('') : SELF_ORDER_URL; }
+function promoIsAdmin(){ return !!(session && session.role === 'admin'); }
+/* Featured items: the admin's picks; if none picked yet, the 6 best sellers (by quantity sold), else the first items. */
+function promoItems(){
+  var bid = plBranchId(), out = [];
+  (PROMO.items || []).forEach(function(code){
+    var h = findItemByCode(code, bid); if(!h) return;
+    var nm = getItemName(h.ci, h.ii);
+    out.push({ code: code, ta: nm.ta, en: nm.en, price: getBranchPrice(h.ci, h.ii, bid) });
+  });
+  if(out.length) return out;
+  var sold = {};
+  (SALES || []).forEach(function(x){ if(!isCountedSale(x)) return; (x.items || []).forEach(function(it){ sold[it.en] = (sold[it.en] || 0) + (it.qty || 0); }); });
+  var all = [];
+  CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){
+    if(!isItemInBranch(ci, ii, bid)) return;
+    var nm = getItemName(ci, ii);
+    all.push({ code: itemCode(ci, ii), ta: nm.ta, en: nm.en, price: getBranchPrice(ci, ii, bid), sold: sold[nm.en] || 0 });
+  }); });
+  all.sort(function(a, b){ return b.sold - a.sold; });
+  return all.slice(0, 6);
+}
+function promoSave(){ saveJSON('ars_promo', PROMO); }
+
+/* ---- the screen ---- */
+function openPromoShare(){
+  var ov = document.getElementById('promoShareOverlay');
+  if(!ov){
+    ov = document.createElement('div'); ov.id = 'promoShareOverlay';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:31500; background:rgba(0,0,0,0.6); overflow-y:auto; padding:12px;';
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'block';
+  _promoImgs = {};
+  promoPaintScreen();
+}
+function closePromoShare(){ var ov = document.getElementById('promoShareOverlay'); if(ov) ov.style.display = 'none'; }
+function promoPaintScreen(){
+  var ov = document.getElementById('promoShareOverlay'); if(!ov) return;
+  var adm = promoIsAdmin(), items = promoItems();
+  var types = PROMO_TYPES.map(function(t){
+    var on = PROMO.type === t[0];
+    return '<button ' + (adm ? 'onclick="promoSetType(\'' + t[0] + '\')"' : 'disabled') + ' style="padding:6px 10px; border-radius:14px; border:1.5px solid #7a1414; background:' + (on ? '#7a1414' : '#fff') + '; color:' + (on ? '#fff8e6' : '#7a1414') + '; font-size:12px; font-weight:700; cursor:pointer;">' + t[1] + '</button>';
+  }).join('');
+  var fmts = PROMO_FMTS.map(function(f){
+    var on = !!_promoFmts[f.key];
+    return '<button onclick="promoToggleFmt(\'' + f.key + '\')" style="flex:1; padding:10px 4px; border-radius:10px; border:2px solid ' + (on ? '#1e7a3c' : '#ccc') + '; background:' + (on ? '#eef7ee' : '#fff') + '; font-size:12px; font-weight:800; color:#10213f; cursor:pointer;">' +
+      '<div style="font-size:18px;">' + (on ? '✅' : '⬜') + '</div>' + f.label + '<div style="font-size:10px; font-weight:600; color:#666;">' + f.w + '×' + f.h + '</div></button>';
+  }).join('');
+  var itemsTxt = items.map(function(it){ return estEsc(it.ta) + ' ₹' + Number(it.price).toLocaleString('en-IN'); }).join(' • ');
+  var html = '<div style="max-width:440px; margin:0 auto; background:#fffaf0; border-radius:14px; overflow:hidden;">' +
+    '<div style="display:flex; align-items:center; justify-content:space-between; background:#7a1414; color:#fff8e6; padding:12px 14px;"><b style="font-size:16px;">📣 Promotion Share</b><button onclick="closePromoShare()" style="background:none; border:none; color:#fff8e6; font-size:22px; cursor:pointer;">×</button></div>' +
+    '<div style="padding:12px 14px;">' +
+      '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin-bottom:6px;">PROMOTION TYPE' + (adm ? '' : ' (set by admin)') + '</div>' +
+      '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">' + types + '</div>' +
+      (adm
+        ? '<label class="field-label">Headline</label><input type="text" maxlength="40" value="' + estEsc(PROMO.headline || '') + '" onchange="PROMO.headline=this.value.trim(); promoSave(); _promoImgs={};" style="width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' +
+          '<label class="field-label">Offer line</label><textarea maxlength="120" onchange="PROMO.offer=this.value.trim(); promoSave(); _promoImgs={};" style="width:100%; box-sizing:border-box; height:56px; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' + estEsc(PROMO.offer || '') + '</textarea>'
+        : '<div style="font-size:13px; font-weight:800; color:#7a1414;">' + estEsc(PROMO.headline || '') + '</div><div style="font-size:12px; color:#44557a; margin-bottom:8px;">' + estEsc(PROMO.offer || '') + '</div>') +
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin:4px 0 6px;"><div style="font-size:11.5px; font-weight:800; color:#5b4630;">FEATURED ITEMS (' + items.length + ')' + ((PROMO.items || []).length ? '' : ' • best sellers') + '</div>' +
+        (adm ? '<button onclick="promoPickOpen()" style="padding:6px 10px; border-radius:8px; border:1px solid #7a1414; background:#fff; color:#7a1414; font-size:12px; font-weight:800; cursor:pointer;">✎ Select items</button>' : '') + '</div>' +
+      '<div style="font-size:12px; color:#333; line-height:1.5; background:#fff; border:1px solid #ecd9b0; border-radius:8px; padding:8px; margin-bottom:8px;">' + (itemsTxt || 'No items') + '</div>' +
+      '<div id="promoPick"></div>' +
+      '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:8px 0 6px;">SHARE TO (tick the formats)</div>' +
+      '<div style="display:flex; gap:6px; margin-bottom:10px;">' + fmts + '</div>' +
+      '<button onclick="promoGenerate(this)" style="width:100%; padding:12px; border:none; border-radius:10px; background:#7a1414; color:#fff8e6; font-weight:800; font-size:14.5px; cursor:pointer;">🎨 Make promotion images</button>' +
+      '<div id="promoOut" style="margin-top:10px;"></div>' +
+    '</div></div>';
+  ov.innerHTML = html;
+  promoPaintOut();
+}
+function promoSetType(t){
+  var f = PROMO_TYPES.filter(function(x){ return x[0] === t; })[0]; if(!f) return;
+  PROMO.type = t; PROMO.headline = f[1]; promoSave(); _promoImgs = {}; promoPaintScreen();
+}
+function promoToggleFmt(k){ _promoFmts[k] = !_promoFmts[k]; _rawSaveJSON('ars_promo_fmts', _promoFmts); promoPaintScreen(); }
+/* admin: choose the featured items */
+function promoPickOpen(){
+  var box = document.getElementById('promoPick'); if(!box) return;
+  if(box.innerHTML){ box.innerHTML = ''; return; }
+  _promoPickQ = '';
+  box.innerHTML = '<div style="background:#fff; border:1px solid #7a1414; border-radius:10px; padding:8px; margin-bottom:8px;">' +
+    '<input type="search" placeholder="Search item…" oninput="_promoPickQ=this.value; promoPickList()" style="width:100%; box-sizing:border-box; padding:8px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:6px;">' +
+    '<div style="font-size:10.5px; color:#8a6a44; margin-bottom:4px;">Tick up to 8 items (WhatsApp shows 8, Instagram 6, Facebook 4).</div>' +
+    '<div id="promoPickList" style="max-height:260px; overflow-y:auto;"></div>' +
+    '<div style="display:flex; gap:6px; margin-top:6px;"><button onclick="PROMO.items=[]; promoSave(); _promoImgs={}; promoPaintScreen();" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:12px; cursor:pointer;">Clear (use best sellers)</button>' +
+    '<button onclick="document.getElementById(\'promoPick\').innerHTML=\'\'; promoPaintScreen();" style="flex:1; padding:8px; border:none; border-radius:8px; background:#1e7a3c; color:#fff; font-weight:800; font-size:12px; cursor:pointer;">Done</button></div></div>';
+  promoPickList();
+}
+function promoPickList(){
+  var box = document.getElementById('promoPickList'); if(!box) return;
+  var bid = plBranchId(), q = _promoPickQ.toLowerCase().trim(), sel = PROMO.items || [], rows = [];
+  CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){
+    if(!isItemInBranch(ci, ii, bid)) return;
+    var nm = getItemName(ci, ii), code = itemCode(ci, ii);
+    if(q && (nm.ta + ' ' + nm.en).toLowerCase().indexOf(q) < 0) return;
+    var on = sel.indexOf(code) >= 0;
+    rows.push('<label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid #f0e6d2; font-size:12.5px; cursor:pointer;"><input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="promoPickToggle(\'' + code + '\', this)" style="width:18px; height:18px;"><span style="flex:1;"><b>' + estEsc(nm.ta) + '</b> <span style="color:#777; font-size:11px;">(' + estEsc(nm.en) + ')</span></span><b style="color:#7a1414;">₹' + Number(getBranchPrice(ci, ii, bid)).toLocaleString('en-IN') + '</b></label>');
+  }); });
+  box.innerHTML = rows.join('') || '<div class="empty-admin">No match.</div>';
+}
+function promoPickToggle(code, cb){
+  var sel = PROMO.items = (PROMO.items || []).slice(), i = sel.indexOf(code);
+  if(cb.checked){ if(sel.length >= 8){ cb.checked = false; alert('Up to 8 items.'); return; } if(i < 0) sel.push(code); }
+  else if(i >= 0) sel.splice(i, 1);
+  promoSave(); _promoImgs = {};
+}
+
+/* ---- drawing ---- */
+var PROMO_FONT = '"Noto Sans Tamil", "Segoe UI", Roboto, Arial, sans-serif';
+function promoFit(ctx, text, maxW, size, minSize, weight){
+  var s = size;
+  for(; s > minSize; s -= 2){ ctx.font = weight + ' ' + s + 'px ' + PROMO_FONT; if(ctx.measureText(text).width <= maxW) break; }
+  ctx.font = weight + ' ' + s + 'px ' + PROMO_FONT;
+  return s;
+}
+function promoWrap(ctx, text, maxW){
+  var words = String(text || '').split(' '), lines = [], cur = '';
+  words.forEach(function(w){ var t = cur ? cur + ' ' + w : w; if(ctx.measureText(t).width > maxW && cur){ lines.push(cur); cur = w; } else cur = t; });
+  if(cur) lines.push(cur);
+  return lines;
+}
+function promoRR(ctx, x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+async function promoQrCanvas(text, size){
+  await ensureQRCodeLib();
+  var box = document.createElement('div'); box.style.cssText = 'position:fixed; left:-9999px; top:0;'; document.body.appendChild(box);
+  new window.QRCode(box, { text: text, width: size, height: size, colorDark: '#000000', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M });
+  await new Promise(function(r){ setTimeout(r, 80); });
+  var cv = box.querySelector('canvas'), im = box.querySelector('img'), src = cv || im;
+  if(im && !cv && !im.complete) await new Promise(function(r){ im.onload = r; setTimeout(r, 500); });
+  box.remove();
+  return src;
+}
+function promoCard(ctx, it, cx, cy, cardW, cardH, u, big){
+  ctx.fillStyle = '#fff8e6'; promoRR(ctx, cx, cy, cardW, cardH, 18 * u); ctx.fill();
+  ctx.strokeStyle = '#ffd34d'; ctx.lineWidth = 3 * u; ctx.stroke();
+  var inner = cardW - 28 * u;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  var ts = promoFit(ctx, it.ta, inner, (big ? 38 : 32) * u, 18 * u, '800');
+  var tl = promoWrap(ctx, it.ta, inner).slice(0, 2);
+  var es = Math.round((big ? 22 : 19) * u), ps = Math.round((big ? 54 : 44) * u);
+  var total = tl.length * ts * 1.22 + 6 * u + es + 14 * u + ps;
+  var y = cy + Math.max(10 * u, (cardH - total) / 2);
+  ctx.fillStyle = '#5a0d0d'; ctx.font = '800 ' + ts + 'px ' + PROMO_FONT;
+  tl.forEach(function(l){ ctx.fillText(l, cx + cardW / 2, y); y += ts * 1.22; });
+  y += 6 * u;
+  ctx.fillStyle = '#666'; promoFit(ctx, it.en, inner, es, 11 * u, '600'); ctx.fillText(it.en, cx + cardW / 2, y); y += es + 14 * u;
+  ctx.fillStyle = '#b3261e'; ctx.font = '800 ' + ps + 'px ' + PROMO_FONT;
+  ctx.fillText('₹' + Number(it.price).toLocaleString('en-IN'), cx + cardW / 2, y);
+}
+function promoQrBar(ctx, qr, x, y, w, h, u, big){
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; promoRR(ctx, x, y, w, h, 22 * u); ctx.fill();
+  var qs = h - 30 * u, qx = x + 15 * u, qy = y + 15 * u;
+  ctx.fillStyle = '#fff'; promoRR(ctx, qx, qy, qs, qs, 12 * u); ctx.fill();
+  if(qr){ try{ ctx.drawImage(qr, qx + 8 * u, qy + 8 * u, qs - 16 * u, qs - 16 * u); }catch(e){} }
+  var tx = qx + qs + 24 * u, tw = x + w - tx - 14 * u, k = qs / 220;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#ffd34d'; promoFit(ctx, 'ARS Promotion', tw, 58 * u * Math.min(1, k * 1.1), 18 * u, '800'); ctx.fillText('ARS Promotion', tx, qy + 10 * k * u);
+  ctx.fillStyle = '#ffffff'; promoFit(ctx, 'Scan for price list & self-order', tw, 30 * u * Math.min(1, k * 1.1), 11 * u, '700'); ctx.fillText('Scan for price list & self-order', tx, qy + 84 * k * u);
+  var ph = '📞 ' + branchPhoneText(BRANCHES[plBranchId()]);
+  ctx.fillStyle = '#ffe7a8'; promoFit(ctx, ph, tw, 30 * u * Math.min(1, k * 1.1), 11 * u, '700'); ctx.fillText(ph, tx, qy + 136 * k * u);
+}
+function promoBg(ctx, W, H, u){
+  var g = ctx.createLinearGradient(0, 0, W > H ? W : 0, H); g.addColorStop(0, '#4a0a0a'); g.addColorStop(0.55, '#7a1414'); g.addColorStop(1, '#a8321d');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  for(var i = 0; i < 70; i++){ ctx.fillStyle = 'rgba(255,211,77,' + (0.08 + (i % 5) * 0.04) + ')'; ctx.beginPath(); ctx.arc((i * 397) % W, (i * 613) % H, (2 + i % 4) * u, 0, Math.PI * 2); ctx.fill(); }
+  ctx.strokeStyle = '#ffd34d'; ctx.lineWidth = 6 * u; promoRR(ctx, 18 * u, 18 * u, W - 36 * u, H - 36 * u, 28 * u); ctx.stroke();
+}
+/* shop name + headline pill + offer, centred in [x, x+w]; returns the y below it */
+function promoHead(ctx, x, w, y, u, sc){
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  var cx = x + w / 2;
+  ctx.fillStyle = '#fff8e6'; var ns = promoFit(ctx, SHOP.name_ta, w, 76 * u * sc, 28 * u, '800'); ctx.fillText(SHOP.name_ta, cx, y); y += ns * 1.22;
+  ctx.fillStyle = '#ffd34d'; ctx.font = '700 ' + 28 * u * sc + 'px ' + PROMO_FONT; ctx.fillText(SHOP.name_en.split('').join(String.fromCharCode(8202)), cx, y); y += 52 * u * sc;
+  var head = (PROMO.headline || 'Special Offer').toUpperCase();
+  var hs = promoFit(ctx, head, w - 70 * u, 60 * u * sc, 22 * u, '800');
+  var hw = Math.min(w, ctx.measureText(head).width + 70 * u), hh = hs * 1.55;
+  ctx.fillStyle = '#ffd34d'; promoRR(ctx, cx - hw / 2, y, hw, hh, hh / 2); ctx.fill();
+  ctx.fillStyle = '#7a1414'; ctx.textBaseline = 'middle'; ctx.fillText(head, cx, y + hh / 2 + 2 * u); ctx.textBaseline = 'top';
+  y += hh + 20 * u * sc;
+  ctx.fillStyle = '#ffffff'; ctx.font = '700 ' + 36 * u * sc + 'px ' + PROMO_FONT;
+  promoWrap(ctx, PROMO.offer || '', w).slice(0, 3).forEach(function(l){ ctx.fillText(l, cx, y); y += 48 * u * sc; });
+  return y;
+}
+async function promoDraw(fmt, items, qr){
+  var W = fmt.w, H = fmt.h, land = W > H;
+  var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  var ctx = cv.getContext('2d');
+  var list = items.slice(0, fmt.max), more = items.length > list.length;
+  if(land){
+    // Facebook landscape: left = shop, offer and QR; right = item cards (2 x 2)
+    var u = H / 760;
+    promoBg(ctx, W, H, u);
+    var pad = 50 * u, leftW = W * 0.42 - pad, rx = pad + leftW + 34 * u, rw = W - pad - rx;
+    promoHead(ctx, pad, leftW, 52 * u, u, 0.86);
+    var barH = 210 * u; promoQrBar(ctx, qr, pad, H - 44 * u - barH, leftW, barH, u, false);
+    var cols = list.length > 1 ? 2 : 1, rowsN = Math.ceil(list.length / cols) || 1, gap = 22 * u;
+    var top = 52 * u, bottom = H - 44 * u - (more ? 40 * u : 0), cardW = (rw - gap * (cols - 1)) / cols, cardH = (bottom - top - gap * (rowsN - 1)) / rowsN;
+    list.forEach(function(it, k){
+      var inRow = Math.min(cols, list.length - Math.floor(k / cols) * cols), x0 = rx + (rw - (inRow * cardW + (inRow - 1) * gap)) / 2;
+      promoCard(ctx, it, x0 + (k % cols) * (cardW + gap), top + Math.floor(k / cols) * (cardH + gap), cardW, cardH, u, false);
+    });
+    if(more){ ctx.fillStyle = '#ffe7a8'; ctx.font = '700 ' + 24 * u + 'px ' + PROMO_FONT; ctx.textAlign = 'center'; ctx.fillText('+ many more items in the shop', rx + rw / 2, H - 76 * u); }
+    return cv;
+  }
+  var u2 = W / 1080, pad2 = 56 * u2, cw = W - 2 * pad2;
+  promoBg(ctx, W, H, u2);
+  var y = promoHead(ctx, pad2, cw, 70 * u2, u2, 1) + 16 * u2;
+  var barH2 = 250 * u2, barY = H - 44 * u2 - barH2;
+  var cols2 = Math.min(fmt.cols, Math.max(1, list.length)), rows2 = Math.ceil(list.length / cols2) || 1, gap2 = 18 * u2;
+  var areaH = barY - 22 * u2 - (more ? 46 * u2 : 0) - y;
+  var cardW2 = (cw - gap2 * (cols2 - 1)) / cols2, cardH2 = Math.min((areaH - gap2 * (rows2 - 1)) / rows2, 300 * u2);
+  var gridH = rows2 * cardH2 + (rows2 - 1) * gap2, gy = y + Math.max(0, (areaH - gridH) / 2);
+  list.forEach(function(it, k){
+    var inRow = Math.min(cols2, list.length - Math.floor(k / cols2) * cols2);          // a last row with fewer cards is centred
+    var rowW = inRow * cardW2 + (inRow - 1) * gap2, x0 = pad2 + (cw - rowW) / 2;
+    promoCard(ctx, it, x0 + (k % cols2) * (cardW2 + gap2), gy + Math.floor(k / cols2) * (cardH2 + gap2), cardW2, cardH2, u2, true);
+  });
+  if(more){ ctx.fillStyle = '#ffe7a8'; ctx.font = '700 ' + 28 * u2 + 'px ' + PROMO_FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText('+ many more items in the shop', W / 2, barY - 52 * u2); }
+  promoQrBar(ctx, qr, pad2, barY, cw, barH2, u2, true);
+  return cv;
+}
+async function promoGenerate(btn){
+  var fmts = PROMO_FMTS.filter(function(f){ return _promoFmts[f.key]; });
+  if(!fmts.length){ alert('Tick at least one format (WhatsApp, Instagram or Facebook).'); return; }
+  var old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = 'Making images…'; }
+  try{
+    try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+    var qr = null; try{ qr = await promoQrCanvas(promoLink(), 360); }catch(e){}
+    var items = promoItems();
+    _promoImgs = {};
+    for(var i = 0; i < fmts.length; i++){
+      var cv = await promoDraw(fmts[i], items, qr);
+      _promoImgs[fmts[i].key] = cv.toDataURL('image/png');
+    }
+  }catch(e){ alert('Could not make the images. ' + ((e && e.message) || '')); }
+  if(btn){ btn.disabled = false; btn.innerHTML = old; }
+  promoPaintOut();
+}
+function promoPaintOut(){
+  var out = document.getElementById('promoOut'); if(!out) return;
+  var keys = PROMO_FMTS.filter(function(f){ return _promoImgs[f.key]; });
+  if(!keys.length){ out.innerHTML = ''; return; }
+  out.innerHTML = keys.map(function(f){
+    return '<div style="background:#fff; border:1px solid #ecd9b0; border-radius:10px; padding:8px; margin-bottom:10px;">' +
+      '<div style="font-size:12.5px; font-weight:800; color:#10213f; margin-bottom:6px;">' + f.icon + ' ' + f.label + ' <span style="font-weight:600; color:#777;">' + f.w + '×' + f.h + '</span></div>' +
+      '<img src="' + _promoImgs[f.key] + '" style="display:block; max-width:100%; max-height:340px; margin:0 auto 8px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.2);">' +
+      '<div style="display:flex; gap:6px;"><button onclick="promoShareImg(\'' + f.key + '\')" style="flex:2; padding:10px; border:none; border-radius:9px; background:#1e7a3c; color:#fff; font-weight:800; font-size:13px; cursor:pointer;">Share to ' + f.label + '</button>' +
+      '<button onclick="promoSaveImg(\'' + f.key + '\')" style="flex:1; padding:10px; border-radius:9px; border:1px solid #1e7a3c; background:#fff; color:#1e7a3c; font-weight:800; font-size:13px; cursor:pointer;">⬇ Save</button></div></div>';
+  }).join('') +
+  '<div style="font-size:10.5px; color:#44557a; line-height:1.5;">The image shows "ARS Promotion" with a QR - scanning it opens the self-order page, without showing the web address. The message sent with it carries the link (WhatsApp, Facebook and Instagram always show links as an address).</div>';
+}
+function promoCaption(){
+  return '🎆 ' + SHOP.name_en + ' — ' + (PROMO.headline || '') + '\n' + (PROMO.offer || '') + '\n\n👉 ARS Promotion: ' + promoLink();
+}
+async function promoBlob(key){ var r = await fetch(_promoImgs[key]); return r.blob(); }
+async function promoShareImg(key){
+  var f = PROMO_FMTS.filter(function(x){ return x.key === key; })[0]; if(!f || !_promoImgs[key]) return;
+  var blob = await promoBlob(key), file = new File([blob], 'ARS_Promotion_' + f.label.replace(/\s+/g, '_') + '.png', { type: 'image/png' });
+  var cap = promoCaption();
+  if(navigator.canShare && navigator.canShare({ files: [file] })){
+    try{ await navigator.share({ files: [file], text: cap, title: 'ARS Promotion' }); return; }catch(e){ if(e && e.name === 'AbortError') return; }
+  }
+  estDownload(blob, file.name);
+  try{ await navigator.clipboard.writeText(cap); }catch(e){}
+  alert('This phone cannot share images directly. The image is saved - open ' + f.label + ' and post it. The message text is copied, paste it with the image.');
+}
+async function promoSaveImg(key){
+  var f = PROMO_FMTS.filter(function(x){ return x.key === key; })[0]; if(!f || !_promoImgs[key]) return;
+  estDownload(await promoBlob(key), 'ARS_Promotion_' + f.label.replace(/\s+/g, '_') + '.png');
+}
+
 /* ---------------- INIT ---------------- */
 resetPriceChangeBaseline();
 if(isPublicPriceRequest()){
