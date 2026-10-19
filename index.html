@@ -1068,6 +1068,7 @@ function __appNotLoaded(){
     <button onclick="_pubShow('add')" style="position:absolute; right:10px; top:calc(10px + env(safe-area-inset-top)); padding:7px 10px; border:1.5px solid #fff8e6; border-radius:9px; background:transparent; color:#fff8e6; font-weight:800; font-size:12px; cursor:pointer;">&#9776; List</button>
     <div style="font-size:19px; font-weight:800; line-height:1.2;" id="ppvTitle"></div>
     <div style="font-size:11px; margin-top:2px; color:var(--gold);" id="ppvStamp"></div>
+    <div id="pubHintTop" style="display:inline-block; margin-top:4px; padding:2px 8px; border-radius:8px; font-size:10.5px; font-weight:700; color:#ffe7a8; line-height:1.4; transition:background .6s;">Welcome to Self Estimation! &nbsp;&#10133; Add qty &rarr; &#129534; Check voucher &rarr; &#9638; Show QR</div>
   </div>
   <div style="flex:1; min-height:0; position:relative; display:flex;">
     <div id="publicPrevBody" style="flex:1; overflow:auto; padding:8px 0 230px; touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch;"></div>
@@ -1113,7 +1114,7 @@ function __appNotLoaded(){
     </div>
     <div id="estFilterBar" style="display:none; margin-top:7px;"></div>
     <div style="display:flex; gap:6px; margin-top:7px; align-items:center;">
-      <div style="flex:1; font-size:11px; color:#8a6a44; line-height:1.3;">Add items with <b>+</b> to make your own <b>estimate voucher</b>.</div>
+      <div id="pubHint" style="flex:1; font-size:11px; color:#7a1414; line-height:1.35; border-radius:8px; padding:3px 6px; transition:background .6s;"><b>Welcome to Self Estimation!</b> &nbsp;<span style="color:#8a6a44;">&#10133; Add qty &rarr; &#129534; Check voucher &rarr; &#9638; Show QR</span></div>
     </div>
   </div>
   <div id="publicPriceBody" style="padding:0 0 90px;"></div>
@@ -1999,27 +2000,17 @@ function custTrackVisit(){
     return Promise.all([custStatInc('visits'), v.visits === 1 ? custStatInc('newVisitors') : null]);
   }).catch(function(){});
 }
-/* Approximate town of the customer phone, from its internet address (looked up once a week, never the exact location).
-   Only "Town, State" is stored - the IP address itself is not kept. Two free services, the second used if the first fails. */
-function custAreaLookup(){
-  var cached = null;
-  try{ cached = JSON.parse(localStorage.getItem('ars_area') || 'null'); }catch(e){}
-  if(cached && cached.area && Date.now() - (cached.at || 0) < 7 * 864e5) return Promise.resolve(cached.area);
-  function get(url, pick){
-    return fbTimeout(fetch(url, { cache: 'no-store' }).then(function(r){ if(!r.ok) throw new Error('http ' + r.status); return r.json(); }), 6000, 'Area').then(pick);
-  }
-  function clean(city, region){ var a = [city, region].map(function(x){ return String(x || '').trim(); }).filter(Boolean); return a.length ? a.join(', ').slice(0, 60) : ''; }
-  return get('https://get.geojs.io/v1/ip/geo.json', function(j){ return clean(j.city, j.region); })
-    .catch(function(){ return get('https://ipapi.co/json/', function(j){ return clean(j.city, j.region); }); })
-    .then(function(area){ if(area){ try{ localStorage.setItem('ars_area', JSON.stringify({ area: area, at: Date.now() })); }catch(e){} } return area || ''; })
-    .catch(function(){ return ''; });
-}
-function custTrackArea(){
+/* The customer's phone + browser (e.g. "SM-A346E \u00B7 Android 14 \u00B7 Chrome 129"), saved on the visitor once per visit.
+   Read from the browser itself - no outside service and no location. */
+function custTrackDevice(){
   if(!_fbDb) return Promise.resolve();
-  return custAreaLookup().then(function(area){
-    if(!area) return null;
-    return _fbDb.ref('visitors/' + custVid() + '/area').set(area).catch(function(){});
-  });
+  return getDeviceInfo().then(function(d){
+    d = d || {};
+    if(!d.model && /iPhone/.test(navigator.userAgent || '')) d.model = 'iPhone';
+    if(!d.model && /iPad/.test(navigator.userAgent || '')) d.model = 'iPad';
+    var dev = { model: d.model || '', os: d.os || '', browser: d.browser || '', screen: d.screen || '', lang: d.language || '' };
+    return _fbDb.ref('visitors/' + custVid()).update({ device: dev, deviceLabel: deviceLabel(dev) || 'Unknown device' }).catch(function(){});
+  }).catch(function(){});
 }
 /* Voucher opened: count one estimate per new set of items (opening the same voucher again is not counted twice). */
 function custTrackEstimate(){
@@ -2081,7 +2072,7 @@ function initFirebase(opts){
       _fbDb.ref(FB_DOCS.pricelist.path).once('value')
         .then(function(s){ fbOnDocValue('pricelist', s.val()); })
         .catch(fbNoteError)
-        .then(function(){ return fbTimeout(custTrackVisit().then(custTrackArea), 12000, 'Visit').catch(function(){}); })   // count this visit (+ town), then disconnect
+        .then(function(){ return fbTimeout(custTrackVisit().then(custTrackDevice), 12000, 'Visit').catch(function(){}); })   // count this visit (+ phone / browser), then disconnect
         .then(function(){ setTimeout(_custOff, 400); });
       setTimeout(_custOff, 15000);
       return;
@@ -7539,7 +7530,7 @@ async function custLoadVisitors(force){
 function custRows(){
   var rows = {}, order = [], vidPhone = {};
   function row(key){
-    if(!rows[key]){ rows[key] = { key: key, area: '', name: '', phone: '', visits: 0, est: 0, bills: 0, estBills: 0, total: 0, first: '', last: '', optin: false, ids: [], vids: [] }; order.push(key); }
+    if(!rows[key]){ rows[key] = { key: key, dev: '', name: '', phone: '', visits: 0, est: 0, bills: 0, estBills: 0, total: 0, first: '', last: '', optin: false, ids: [], vids: [] }; order.push(key); }
     return rows[key];
   }
   function seen(r, t){ t = String(t || ''); if(!t) return; if(!r.first || t < r.first) r.first = t; if(t > r.last) r.last = t; }
@@ -7553,7 +7544,7 @@ function custRows(){
     if(v.name && !r.name) r.name = v.name;
     if(ph) r.phone = ph;
     if(v.optin) r.optin = true;
-    if(v.area && !r.area) r.area = v.area;
+    if(v.deviceLabel && !r.dev) r.dev = v.deviceLabel;
     r.vids.push(vid); seen(r, v.first); seen(r, v.last);
   });
   SALES.forEach(function(x){
@@ -7626,21 +7617,22 @@ function renderCustomersTab(main){
     '<div id="custList"></div>';
   custRepaintList();
 }
-/* Which towns the price-list visitors come from (all visitors, including those who gave no name / mobile). */
+/* Which phones / browsers the price-list visitors use (all visitors, including those who gave no name / mobile). */
 function custAreaTable(){
   var m = {}, billedVid = {};
   SALES.forEach(function(x){ if(x.estVid && isCountedSale(x)) billedVid[x.estVid] = 1; });
   Object.keys(_visitors).forEach(function(k){
-    var v = _visitors[k] || {}, a = v.area || 'Unknown';
+    var v = _visitors[k] || {}, d = v.device || {};
+    var a = d.model || (d.os ? d.os + (d.browser ? ' \u00B7 ' + d.browser : '') : '') || 'Unknown device';
     var o = m[a] || (m[a] = { area: a, people: 0, views: 0, est: 0, billed: 0 });
     o.people++; o.views += (v.visits || 0); if((v.est || 0) > 0) o.est++; if(billedVid[v.vid || k]) o.billed++;
   });
   var list = Object.keys(m).map(function(k){ return m[k]; }).sort(function(a, b){ return b.people - a.people; });
   if(!list.length) return '';
-  var more = list.length > 8 ? '<div style="font-size:10px; color:#8a6a44; padding:0 4px 8px;">+ ' + (list.length - 8) + ' more towns</div>' : '';
-  return '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:4px 0 5px;">VISITORS BY TOWN</div>' +
-    '<table style="width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:10px; background:#fff; border:1px solid #ecd9b0;"><thead><tr style="background:#fbeed2;"><th style="text-align:left; padding:4px;">Town</th><th>People</th><th>Views</th><th>EST</th><th>Billed</th></tr></thead><tbody>' +
-    list.slice(0, 8).map(function(o){ return '<tr><td style="padding:3px 4px;">\uD83D\uDCCD ' + custEsc(o.area) + '</td><td style="text-align:center;">' + o.people + '</td><td style="text-align:center;">' + o.views + '</td><td style="text-align:center;">' + o.est + '</td><td style="text-align:center;">' + o.billed + '</td></tr>'; }).join('') +
+  var more = list.length > 8 ? '<div style="font-size:10px; color:#8a6a44; padding:0 4px 8px;">+ ' + (list.length - 8) + ' more</div>' : '';
+  return '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:4px 0 5px;">VISITORS BY PHONE</div>' +
+    '<table style="width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:10px; background:#fff; border:1px solid #ecd9b0;"><thead><tr style="background:#fbeed2;"><th style="text-align:left; padding:4px;">Phone</th><th>People</th><th>Views</th><th>EST</th><th>Billed</th></tr></thead><tbody>' +
+    list.slice(0, 8).map(function(o){ return '<tr><td style="padding:3px 4px;">\uD83D\uDCF1 ' + custEsc(o.area) + '</td><td style="text-align:center;">' + o.people + '</td><td style="text-align:center;">' + o.views + '</td><td style="text-align:center;">' + o.est + '</td><td style="text-align:center;">' + o.billed + '</td></tr>'; }).join('') +
     '</tbody></table>' + more;
 }
 function custChipPaint(){
@@ -7666,7 +7658,7 @@ function custRepaintList(){
     var last = g.last ? new Date(g.last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '-';
     var wa = g.phone ? '<a href="https://wa.me/91' + g.phone + '" target="_blank" rel="noopener" style="text-decoration:none; padding:7px 10px; border-radius:8px; background:#1e7a3c; color:#fff; font-weight:700; font-size:12px;">WhatsApp</a>' : '';
     return '<div style="background:#fff; border:1px solid #ecd9b0; border-radius:10px; padding:9px 10px; margin-bottom:8px;">' +
-      '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;"><div style="min-width:0;"><div style="font-weight:800; font-size:14px;">' + custEsc(g.name || (g.phone ? 'Customer' : 'Customer (no mobile)')) + '</div><div style="font-size:12.5px; color:#44557a;">' + (g.phone ? '📞 ' + custEsc(fmtPhones(g.phone)) : 'No mobile') + (g.area ? ' \u2022 \uD83D\uDCCD ' + custEsc(g.area) : '') + '</div><div style="margin-top:4px;">' + custTags(g) + '</div></div>' +
+      '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;"><div style="min-width:0;"><div style="font-weight:800; font-size:14px;">' + custEsc(g.name || (g.phone ? 'Customer' : 'Customer (no mobile)')) + '</div><div style="font-size:12.5px; color:#44557a;">' + (g.phone ? '📞 ' + custEsc(fmtPhones(g.phone)) : 'No mobile') + '</div>' + (g.dev ? '<div style="font-size:11px; color:#8a6a44;">\uD83D\uDCF1 ' + custEsc(g.dev) + '</div>' : '') + '<div style="margin-top:4px;">' + custTags(g) + '</div></div>' +
       '<div style="text-align:right; font-size:11.5px; white-space:nowrap;"><b>₹' + g.total.toLocaleString('en-IN') + '</b><br>' + g.visits + ' visit' + (g.visits === 1 ? '' : 's') + ' • ' + g.est + ' EST<br>' + g.bills + ' bill' + (g.bills === 1 ? '' : 's') + '<br><span style="color:#8a6a44;">' + last + '</span></div></div>' +
       '<div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">' + wa +
       '<button onclick="custEditToggle(' + i + ')" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:12px; cursor:pointer;">&#9998; Edit</button>' +
@@ -8897,11 +8889,39 @@ window.addEventListener('storage', (e) => {
   }
 });
 
+/* Self-order page: on opening, a full-screen welcome with the 3 steps for 2 seconds, which then shrinks and
+   flies up into the header hint line (where the same steps stay as small text). Once per browser session. */
+function pubWelcomeToast(){
+  try{ if(sessionStorage.getItem('ars_pub_welcomed')) return; sessionStorage.setItem('ars_pub_welcomed', '1'); }catch(e){}
+  var ov = document.createElement('div');
+  ov.id = 'pubWelcome';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:40000; display:flex; align-items:center; justify-content:center; background:rgba(40,6,6,0.82); transition:background .6s;';
+  ov.innerHTML = '<div id="pubWelcomeCard" style="width:calc(100% - 40px); max-width:360px; box-sizing:border-box; background:linear-gradient(160deg,#7a1414,#a8321d); color:#fff8e6; border:2px solid #ffd34d; border-radius:18px; padding:26px 20px; text-align:center; box-shadow:0 12px 30px rgba(0,0,0,0.45); transform-origin:top left; transition:transform .7s cubic-bezier(.5,0,.2,1), opacity .7s;">' +
+      '<div style="font-size:34px;">\uD83C\uDF86</div>' +
+      '<div style="font-size:21px; font-weight:800; margin:6px 0 14px;">Welcome to Self Estimation!</div>' +
+      '<div style="font-size:14px; font-weight:700; color:#ffe7a8; line-height:2;">\u2795 Add qty<br>\u2193<br>\uD83E\uDDFE Check voucher<br>\u2193<br>\u25A6 Show QR at the counter</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+  var done = false, finish = function(){ if(done) return; done = true; if(ov.parentNode) ov.remove(); ['pubHintTop', 'pubHint'].forEach(function(i){ var h = document.getElementById(i); if(h){ h.style.background = 'rgba(255,211,77,0.45)'; setTimeout(function(){ h.style.background = 'transparent'; }, 1000); } }); };
+  var fly = function(){
+    var card = document.getElementById('pubWelcomeCard'), hint = ['pubHintTop', 'pubHint'].map(function(i){ return document.getElementById(i); }).filter(function(el){ return el && el.getBoundingClientRect().width > 0; })[0];
+    if(!card || !hint){ finish(); return; }
+    var c = card.getBoundingClientRect(), h = hint.getBoundingClientRect();
+    var sc = Math.max(0.08, Math.min(h.width / c.width, 1));
+    card.style.transform = 'translate(' + (h.left - c.left) + 'px,' + (h.top - c.top) + 'px) scale(' + sc + ')';
+    card.style.opacity = '0.15';
+    ov.style.background = 'rgba(40,6,6,0)';
+    setTimeout(finish, 750);
+  };
+  ov.onclick = fly;                        // a tap skips the wait
+  setTimeout(fly, 2000);
+}
 /* ---------------- INIT ---------------- */
 resetPriceChangeBaseline();
 if(isPublicPriceRequest()){
   // Opened from a scanned QR: show only the price list, never the login.
   showPublicPriceList();
+  pubWelcomeToast();
   initFirebase({readOnly:true});   // live prices from the server; never accounts or bills, never writes
 } else {
   // Connect before login, so an account or price added on another phone is
