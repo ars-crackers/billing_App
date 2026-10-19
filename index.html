@@ -4525,8 +4525,13 @@ function tzPaint(body, scaleId, st, qtyOf, onTap, curOf){
     tr.style.cursor = 'pointer';
     if(c > 0){
       tr.style.background = '#a9e0bd'; tr.style.fontWeight = '800';
-      // qty badge at the end of the item name (not in the narrow price cell, where it pushed the price out of view)
-      var nc = tr.children[1]; if(nc) nc.insertAdjacentHTML('beforeend', ' <span style="display:inline-block; padding:0 5px; border-radius:7px; background:#14632f; color:#fff; font-size:9px; line-height:1.4; white-space:nowrap;">&times;' + c + '</span>');
+      // qty badge on the same line, just left of the price. It is laid over the gap (not inside the price width), so the
+      // price is never pushed out of view; the name cell keeps that gap free.
+      var pc = tr.lastElementChild, nc = tr.children[1];
+      if(pc){
+        pc.innerHTML = '<span style="position:relative; display:inline-block;"><span style="position:absolute; right:100%; top:50%; transform:translateY(-50%); margin-right:4px; padding:0 5px; border-radius:7px; background:#14632f; color:#fff; font-size:9px; line-height:1.45; white-space:nowrap;">&times;' + c + '</span>' + pc.innerHTML + '</span>';
+        if(nc) nc.style.paddingRight = (14 + String(c).length * 6) + 'px';
+      }
     }
     if(cur){ tr.style.background = '#ffd966'; tr.style.outline = '2px solid #e08a00'; tr.style.outlineOffset = '-2px'; }
   });
