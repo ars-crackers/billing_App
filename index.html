@@ -4525,7 +4525,8 @@ function tzPaint(body, scaleId, st, qtyOf, onTap, curOf){
     tr.style.cursor = 'pointer';
     if(c > 0){
       tr.style.background = '#a9e0bd'; tr.style.fontWeight = '800';
-      var pc = tr.lastElementChild; if(pc) pc.insertAdjacentHTML('afterbegin', '<span style="display:inline-block; margin-right:3px; padding:0 5px; border-radius:7px; background:#14632f; color:#fff; font-size:9px;">&times;' + c + '</span>');
+      // qty badge at the end of the item name (not in the narrow price cell, where it pushed the price out of view)
+      var nc = tr.children[1]; if(nc) nc.insertAdjacentHTML('beforeend', ' <span style="display:inline-block; padding:0 5px; border-radius:7px; background:#14632f; color:#fff; font-size:9px; line-height:1.4; white-space:nowrap;">&times;' + c + '</span>');
     }
     if(cur){ tr.style.background = '#ffd966'; tr.style.outline = '2px solid #e08a00'; tr.style.outlineOffset = '-2px'; }
   });
@@ -6256,7 +6257,7 @@ function buildPriceListTableHTML(noQr){
       <tr><td colspan="3" style="padding:3px 4px 2px; border-bottom:1.5px solid #7a1414; color:#7a1414; font-weight:800; font-size:9.5px;">${item.no}. ${item.en}${item.cont ? ' <span style="font-weight:600; font-size:8.5px; color:#999;">&hellip;</span>' : ''}</td></tr>` : `
       <tr data-sn="${item.s}" style="background:${(noQr && idx % 2 === 1) ? '#fdf3f1' : '#ffffff'};">
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; vertical-align:middle;">${snDot(item.s, 14, 7.5)}</td>
-        <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-size:${noQr ? 10.2 : 10}px; font-weight:800; line-height:1.2; color:#1a1a1a; vertical-align:middle;">${item.ta} <span style="color:${noQr ? '#777' : '#444'}; font-size:${noQr ? 7 : 8}px;${noQr ? '' : ' font-weight:600;'}">(${item.en})</span></td>
+        <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-size:${noQr ? 10.2 : 10}px; font-weight:800; line-height:1.2; color:#1a1a1a; vertical-align:middle;">${item.ta} <span style="display:inline-block; color:${noQr ? '#777' : '#444'}; font-size:${noQr ? 7 : 8}px;${noQr ? '' : ' font-weight:600;'}">(${String(item.en).replace(/-/g, '\u2011')})</span></td>
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-weight:800; color:#7a1414; font-size:9px; text-align:right; white-space:nowrap; vertical-align:middle;">₹${item.price.toLocaleString('en-IN')}</td>
       </tr>`).join('');
     return `<table style="width:100%; border-collapse:collapse; table-layout:fixed;">
