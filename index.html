@@ -4765,8 +4765,14 @@ function pubTabsPaint(){
   var h = '<div style="display:flex; gap:6px;">' + tab('list', '&#128196; Price List', '#7a1414', "publicTab('list')") + tab('add', '&#10133; Add Items', '#1e7a3c', "publicTab('add')") + tab('est', '&#129534; Estimate' + (n ? ' (' + n + ')' : ''), '#0b5fd8', "publicTab('est')") + '</div>';
   document.querySelectorAll('.pubTabs').forEach(function(el){ el.innerHTML = h; });
 }
+/* After any qty change: repaint whichever customer screen is open - the table view, the Add Items list (its qty boxes,
+   bottom total and the Voucher button) or the estimate list - so the voucher always has the latest items. */
 function estRepaintAll(){
   paintPublicPreview(); pubBarPaint();
+  var ps = document.getElementById('publicPriceScreen');
+  if(ps && ps.style.display === 'block') paintPublicPrices();
+  paintPublicEst();
+  try{ pubTabsPaint(); }catch(e){}
 }
 function pubBarPaint(){
   var bar = document.getElementById('pubVoucherBar'); if(!bar) return;
