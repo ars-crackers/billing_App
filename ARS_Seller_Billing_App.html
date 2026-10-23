@@ -3722,12 +3722,13 @@ function computeTotals(cartObj){
 /* ---- Bill 1 / Bill 2 item filter: In cart, price bands, sort, reset ---- */
 var billFilters = { incart:false, recent:false, sort:'' };
 var billFilterOpen = false, billCatOpen = false;
-/* Bill 1 / Bill 2 item layout: 'list' (default, row with S.No + - qty +) or 'grid' (2-column cards). Seller can switch from the filter bar. */
-var billLayout = 'table';
-try{ var _bl = localStorage.getItem('ars_bill_layout3'); if(_bl === 'table' || _bl === 'list') billLayout = _bl; }catch(e){}
+/* Bill 1 / Bill 2 item layout: 'list' (default every time the app opens: row with S.No + - qty +) or 'table'
+   (the A4 price format, optional - the header button switches for this session). */
+var billLayout = 'list';
+try{ localStorage.removeItem('ars_bill_layout3'); }catch(e){}
 function toggleBillLayout(){
   billLayout = (billLayout === 'list') ? 'table' : 'list';
-  if(billLayout === 'table'){ billFilters = { incart:false, recent:false, sort:'' }; billFilterOpen = false; billCatOpen = false; activeCat = 'ALL'; var _se = document.getElementById('search'); if(_se) _se.value = ''; try{ buildCatNav(); }catch(e){} } try{ localStorage.setItem('ars_bill_layout3', billLayout); }catch(e){} _billSheetSn = null; render(); }
+  if(billLayout === 'table'){ billFilters = { incart:false, recent:false, sort:'' }; billFilterOpen = false; billCatOpen = false; activeCat = 'ALL'; var _se = document.getElementById('search'); if(_se) _se.value = ''; try{ buildCatNav(); }catch(e){} } _billSheetSn = null; render(); }
 function toggleBillCat(){ billCatOpen = !billCatOpen; render(); }
 function pickBillCat(v){ billCatOpen = false; setCat(v); }
 function billFilterActive(){ return billFilters.incart || billFilters.sort || activeCat !== 'ALL'; }
@@ -4738,7 +4739,7 @@ var _pubTab = 'add';
 function _pubShow(which){
   ['publicChoiceScreen','publicPriceScreen','publicPrevScreen','publicEstScreen'].forEach(function(id){ document.getElementById(id).style.display = 'none'; });
   _pubTab = which;
-  if(which === 'list'){ document.getElementById('publicPrevScreen').style.display = 'flex'; _pubViewport(false); paintPublicPreview(); pubBarPaint(); }
+  if(which === 'list'){ document.getElementById('publicPrevScreen').style.display = 'flex'; _pubViewport(false); paintPublicPreview(); pubBarPaint(); setTimeout(pubPinchHint, 500); }
   else if(which === 'est'){ document.getElementById('publicEstScreen').style.display = 'flex'; _pubViewport(false); paintPublicEst(); }
   else { document.getElementById('publicPriceScreen').style.display = 'block'; _pubViewport(false); paintPublicPrices(); updatePublicPriceStamp(); }
   pubTabsPaint();
@@ -4916,7 +4917,7 @@ function tzPaint(body, scaleId, st, qtyOf, onTap, curOf){
   body.scrollTop = keepT; body.scrollLeft = keepL;
   tzBind(st, body);
 }
-var _ppvSt = { base: 1, mul: 1, pinch: null, mode: 'all',      // customer page opens on the FULL price list (whole A4 page)
+var _ppvSt = { base: 1, mul: 1, pinch: null, mode: 'all',      // the price format (table) opens on the FULL page (whole A4 page fits the screen)
   isOpen: function(){ return _pubSheetSn != null; },
   close: function(){ _pubSheetSn = null; var sh = document.getElementById('pubQtySheet'); if(sh) sh.style.display = 'none'; },
   repaint: function(){ if(_pubSheetSn == null) paintPublicPreview(); } };
@@ -4961,7 +4962,7 @@ async function showPublicPriceList(){
   document.getElementById('app').classList.add('hidden');
   screen.style.display = 'none';
   document.getElementById('ppvTitle').textContent = SHOP.name_ta;
-  _pubShow('list');   // customers land straight on the price list
+  _pubShow('add');    // customers land on the List view (search, + qty -); the price format (table) is one tap away
 
   document.getElementById('ppShopTa').textContent = SHOP.name_ta;
   pubBranchPaint();
@@ -10225,66 +10226,72 @@ async function promoSaveImg(key){
   estDownload(await promoBlob(key), 'ARS_Promotion_' + f.label.replace(/\s+/g, '_') + '.png');
 }
 
-/* Self-order page, right after the welcome (first visit on the phone): the full price list is shown, so first two
-   finger dots show "spread 2 fingers to zoom in"; then a moving hand shows the 2 taps - "tap an item to add qty",
-   then "tap Voucher to get your voucher & QR". Any touch ends it. */
-function pubCoach(){
-  try{ if(localStorage.getItem('ars_pub_coached')) return; }catch(e){}   // first visit on this phone only
-  var row = document.querySelector('#publicPrevBody tr[data-sn]');
-  var btn = ['estViewBtn2', 'estViewBtn'].map(function(i){ return document.getElementById(i); }).filter(function(el){ return el && el.getBoundingClientRect().width > 0; })[0];
-  if(!row) return;
-  // the Voucher button appears at the bottom once an item is added; until then point at that place
-  var btnBox = btn ? btn : { getBoundingClientRect: function(){ var w = window.innerWidth, h = window.innerHeight; return { left: w - 130, top: h - 70, width: 110, height: 44, bottom: h - 26 }; } };
-  if(!document.getElementById('pubCoachCss')){
-    var st = document.createElement('style'); st.id = 'pubCoachCss';
-    st.textContent = '@keyframes pcTap{0%,100%{transform:translate(-30%,0) scale(1)}50%{transform:translate(-30%,6px) scale(.86)}}' +
-      '@keyframes pcRing{0%{transform:translate(-50%,-50%) scale(.4);opacity:.9}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}' +
-      '@keyframes pcPinA{0%,20%{transform:translate(-50%,-50%) translate(-12px,12px)}70%,100%{transform:translate(-50%,-50%) translate(-52px,52px)}}' +
-      '@keyframes pcPinB{0%,20%{transform:translate(-50%,-50%) translate(12px,-12px)}70%,100%{transform:translate(-50%,-50%) translate(52px,-52px)}}' +
-      '@keyframes pcZoom{0%,20%{transform:translate(-50%,-50%) scale(.7);opacity:.35}70%,100%{transform:translate(-50%,-50%) scale(1.5);opacity:.9}}';
-    document.head.appendChild(st);
-  }
-  try{ localStorage.setItem('ars_pub_coached', '1'); }catch(e){}
-  var lay = document.createElement('div'); lay.id = 'pubCoach';
+/* Self-order page guides (first visit on the phone only; any touch ends them):
+   - right after the welcome, on the List view: a moving hand shows "tap + to add qty", then "tap Get Voucher",
+     then where the full price list (price format) is;
+   - the first time the price format (table) is opened: two finger dots show "spread 2 fingers to zoom". */
+function pubCoachCss(){
+  if(document.getElementById('pubCoachCss')) return;
+  var st = document.createElement('style'); st.id = 'pubCoachCss';
+  st.textContent = '@keyframes pcTap{0%,100%{transform:translate(-30%,0) scale(1)}50%{transform:translate(-30%,6px) scale(.86)}}' +
+    '@keyframes pcRing{0%{transform:translate(-50%,-50%) scale(.4);opacity:.9}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}' +
+    '@keyframes pcPinA{0%,20%{transform:translate(-50%,-50%) translate(-12px,12px)}70%,100%{transform:translate(-50%,-50%) translate(-52px,52px)}}' +
+    '@keyframes pcPinB{0%,20%{transform:translate(-50%,-50%) translate(12px,-12px)}70%,100%{transform:translate(-50%,-50%) translate(52px,-52px)}}' +
+    '@keyframes pcZoom{0%,20%{transform:translate(-50%,-50%) scale(.7);opacity:.35}70%,100%{transform:translate(-50%,-50%) scale(1.5);opacity:.9}}';
+  document.head.appendChild(st);
+}
+var PC_TIP_CSS = 'position:fixed; left:50%; transform:translateX(-50%); max-width:86%; padding:9px 14px; border-radius:12px; background:#7a1414; color:#fff8e6; border:1.5px solid #ffd34d; font-size:13px; font-weight:800; text-align:center; box-shadow:0 6px 16px rgba(0,0,0,.35); transition:top .5s;';
+function pubGuideLayer(id, html){
+  pubCoachCss();
+  var lay = document.createElement('div'); lay.id = id;
   lay.style.cssText = 'position:fixed; inset:0; z-index:39000; pointer-events:none;';
-  var fdot = 'position:fixed; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,.92); border:3px solid #7a1414; box-shadow:0 3px 8px rgba(0,0,0,.45);';
-  lay.innerHTML = '<div id="pcPinch" style="display:none;">' +
-      '<div style="position:fixed; width:70px; height:70px; border:3px dashed #ffd34d; border-radius:10px; animation:pcZoom 1.5s ease-in-out infinite;" class="pcZ"></div>' +
-      '<div style="' + fdot + ' animation:pcPinA 1.5s ease-in-out infinite;" class="pcF"></div>' +
-      '<div style="' + fdot + ' animation:pcPinB 1.5s ease-in-out infinite;" class="pcF"></div></div>' +
-    '<div id="pcRing" style="display:none; position:fixed; width:54px; height:54px; border-radius:50%; border:3px solid #ffd34d; animation:pcRing 1s ease-out infinite; transition:left .7s, top .7s;"></div>' +
-    '<div id="pcHand" style="display:none; position:fixed; font-size:44px; line-height:1; filter:drop-shadow(0 3px 4px rgba(0,0,0,.4)); animation:pcTap 1s ease-in-out infinite; transition:left .7s, top .7s;">\uD83D\uDC46</div>' +
-    '<div id="pcTip" style="position:fixed; left:50%; transform:translateX(-50%); max-width:86%; padding:9px 14px; border-radius:12px; background:#7a1414; color:#fff8e6; border:1.5px solid #ffd34d; font-size:13px; font-weight:800; text-align:center; box-shadow:0 6px 16px rgba(0,0,0,.35); transition:top .5s;"></div>';
+  lay.innerHTML = html;
   document.body.appendChild(lay);
-  var t0 = null, t1 = null, t2 = null;
-  var end = function(){ if(lay.parentNode) lay.remove(); document.removeEventListener('pointerdown', end, true); document.removeEventListener('touchstart', end, true); clearTimeout(t0); clearTimeout(t1); clearTimeout(t2); };
+  var timers = [];
+  var end = function(){ if(lay.parentNode) lay.remove(); document.removeEventListener('pointerdown', end, true); document.removeEventListener('touchstart', end, true); timers.forEach(clearTimeout); };
   document.addEventListener('pointerdown', end, true);
   document.addEventListener('touchstart', end, true);
+  return { lay: lay, end: end, later: function(fn, ms){ timers.push(setTimeout(fn, ms)); } };
+}
+function pubCoach(){
+  try{ if(localStorage.getItem('ars_pub_coached')) return; }catch(e){}   // first visit on this phone only
+  var vis = function(el){ return el && el.getBoundingClientRect().width > 0; };
+  var plus = Array.prototype.filter.call(document.querySelectorAll('#publicPriceBody button'), function(b){ return b.textContent.trim() === '+' && vis(b); })[0];
+  if(!plus) return;
+  var vbtn = document.getElementById('estViewBtn'), tbtn = document.querySelector('#publicPriceScreen button[aria-label="Table view"]');
+  try{ localStorage.setItem('ars_pub_coached', '1'); }catch(e){}
+  var g = pubGuideLayer('pubCoach',
+    '<div id="pcRing" style="position:fixed; width:54px; height:54px; border-radius:50%; border:3px solid #ffd34d; animation:pcRing 1s ease-out infinite; transition:left .7s, top .7s;"></div>' +
+    '<div id="pcHand" style="position:fixed; font-size:44px; line-height:1; filter:drop-shadow(0 3px 4px rgba(0,0,0,.4)); animation:pcTap 1s ease-in-out infinite; transition:left .7s, top .7s;">👆</div>' +
+    '<div id="pcTip" style="' + PC_TIP_CSS + '"></div>');
   var point = function(el, tip, above){
-    var r = el.getBoundingClientRect(), x = r.left + Math.min(r.width * 0.35, 120), y = r.top + r.height / 2;
+    if(!vis(el)) return;
+    var r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
     var ring = document.getElementById('pcRing'), hand = document.getElementById('pcHand'), t = document.getElementById('pcTip');
     if(!ring) return;
-    var pz = document.getElementById('pcPinch'); if(pz) pz.style.display = 'none';
-    ring.style.display = 'block'; hand.style.display = 'block';
     ring.style.left = x + 'px'; ring.style.top = y + 'px';
     hand.style.left = x + 'px'; hand.style.top = (y + 4) + 'px';
     t.innerHTML = tip;
     t.style.top = above ? Math.max(8, r.top - 70) + 'px' : (r.bottom + 54) + 'px';
   };
-  // step 1: two fingers spread apart over the middle of the price list = zoom in
-  var pinchAt = function(){
-    var bodyEl = document.getElementById('publicPrevBody'), r = bodyEl ? bodyEl.getBoundingClientRect() : { left: 0, top: 120, width: window.innerWidth, height: window.innerHeight - 300 };
-    var cx = r.left + r.width / 2, cy = r.top + Math.min(r.height, window.innerHeight - r.top) * 0.42;
-    var pz = document.getElementById('pcPinch'), t = document.getElementById('pcTip'); if(!pz) return;
-    pz.style.display = 'block';
-    pz.querySelectorAll('.pcF, .pcZ').forEach(function(el){ el.style.left = cx + 'px'; el.style.top = cy + 'px'; });
-    t.innerHTML = '\uD83E\uDD0F Use 2 fingers to zoom<br><span style="font-size:11.5px; font-weight:700; color:#ffe7a8; white-space:nowrap;">spread = bigger &bull; pinch = smaller</span>';
-    t.style.top = (cy + 90) + 'px';
-  };
-  pinchAt();
-  t0 = setTimeout(function(){ point(row, '\u2795 Tap an item to add qty', false); }, 3400);
-  t1 = setTimeout(function(){ point(btnBox, '\uD83E\uDDFE Then tap ' + (btn ? 'here' : '"Voucher" at the bottom') + ' to get your voucher &amp; QR', true); }, 6200);
-  t2 = setTimeout(end, 9200);
+  point(plus, '➕ Tap + to add qty', false);
+  g.later(function(){ point(vbtn, '🧾 Then tap Get Voucher for your voucher &amp; QR', true); }, 2800);
+  g.later(function(){ point(tbtn, '▦ Full price list (price format) here', false); }, 5600);
+  g.later(g.end, 8600);
+}
+function pubPinchHint(){
+  try{ if(localStorage.getItem('ars_pub_pinch_coached')) return; }catch(e){}
+  var scr = document.getElementById('publicPrevScreen'), bodyEl = document.getElementById('publicPrevBody');
+  if(!scr || scr.style.display !== 'flex' || !bodyEl) return;
+  try{ localStorage.setItem('ars_pub_pinch_coached', '1'); }catch(e){}
+  var r = bodyEl.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + Math.min(r.height, window.innerHeight - r.top) * 0.42;
+  var fdot = 'position:fixed; left:' + cx + 'px; top:' + cy + 'px; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,.92); border:3px solid #7a1414; box-shadow:0 3px 8px rgba(0,0,0,.45);';
+  var g = pubGuideLayer('pubPinch',
+    '<div style="position:fixed; left:' + cx + 'px; top:' + cy + 'px; width:70px; height:70px; border:3px dashed #ffd34d; border-radius:10px; animation:pcZoom 1.5s ease-in-out infinite;"></div>' +
+    '<div style="' + fdot + ' animation:pcPinA 1.5s ease-in-out infinite;"></div>' +
+    '<div style="' + fdot + ' animation:pcPinB 1.5s ease-in-out infinite;"></div>' +
+    '<div style="' + PC_TIP_CSS + ' top:' + (cy + 90) + 'px;">🤏 Use 2 fingers to zoom<br><span style="font-size:11.5px; font-weight:700; color:#ffe7a8; white-space:nowrap;">spread = bigger &bull; pinch = smaller</span></div>');
+  g.later(g.end, 4000);
 }
 /* ---------------- INIT ---------------- */
 resetPriceChangeBaseline();
