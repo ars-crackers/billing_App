@@ -1160,6 +1160,7 @@ function __appNotLoaded(){
   </div>
   <div style="padding:10px 14px calc(14px + env(safe-area-inset-bottom)); color:#fff; text-align:center;">
     <div id="scanMsg" style="font-size:12.5px; min-height:18px; margin-bottom:9px;">Point the camera at the QR on the customer's voucher.</div>
+    <div style="font-size:11px; color:#ffd34d; margin:-4px 0 9px;">Long voucher? Ask the customer to zoom in on the QR.</div>
     <button onclick="document.getElementById('scanFile').click()" style="padding:11px 16px; border:2px solid #fff; border-radius:10px; background:transparent; color:#fff; font-weight:800; font-size:13px;">&#128444;&#65039; Read from photo / gallery</button>
     <input type="file" id="scanFile" accept="image/*" style="display:none;" onchange="scanFromFile(this)">
   </div>
@@ -1424,7 +1425,8 @@ document.getElementById('loginShopTitle').textContent = SHOP.name_ta;
 document.getElementById('loginShopSub').textContent = SHOP.name_en;
 document.getElementById('shopNameBig').innerHTML = SHOP.name_ta + '<small>' + SHOP.name_en + '</small>';
 
-/* ---- Account PINs are stored as a salted SHA-256 hash ("pinHash"), never as the PIN itself ---- */
+/* ---- Account PINs: login is checked against a salted SHA-256 hash ("pinHash"); the readable PIN ("pin") is kept
+   only so the admin can see it in Accounts and the seller list PDF. ---- */
 var _SHA_K = (function(){ var k = [], n = 2; while(k.length < 64){ var p = true; for(var d = 2; d * d <= n; d++) if(n % d === 0){ p = false; break; } if(p) k.push((Math.pow(n, 1 / 3) * 4294967296) | 0); n++; } return k; })();
 var _SHA_H = (function(){ var h = [], n = 2; while(h.length < 8){ var p = true; for(var d = 2; d * d <= n; d++) if(n % d === 0){ p = false; break; } if(p) h.push((Math.pow(n, 1 / 2) * 4294967296) | 0); n++; } return h; })();
 function sha256Hex(str){
@@ -1463,10 +1465,22 @@ function usersHashPins(){
   var changed = false;
   Object.keys(USERS || {}).forEach(function(id){
     var u = USERS[id];
-    if(u && u.pin != null && u.pin !== ''){ u.pinHash = pinHashFor(id, u.pin); delete u.pin; changed = true; }
-    else if(u && u.pin !== undefined){ delete u.pin; }
+    if(u && u.pin != null && u.pin !== '' && !u.pinHash){ u.pinHash = pinHashFor(id, u.pin); changed = true; }   // the readable PIN stays (admin can see it)
   });
   return changed;
+}
+/* PINs set before the admin could see them exist only as a hash (a hash cannot be turned back into the PIN).
+   When that person next logs in with the right PIN, it is saved for the admin to see - nothing else changes. */
+function pinRemember(id, pin){
+  pin = String(pin || ''); if(!pin || !USERS[id] || (USERS[id].pin != null && USERS[id].pin !== '')) return;
+  USERS[id].pin = pin; _rawSaveJSON('ars_users', USERS);
+  try{
+    if(_fbDb && !_fbReadOnly) _fbDb.ref('users/' + id).transaction(function(cur){
+      if(cur === null) return null;                                   // not read yet: the server answers with the real record
+      if(!cur || (cur.pin != null && cur.pin !== '') || !pinCheck(cur, pin)) return;   // already there, or the PIN was changed meanwhile
+      cur.pin = pin; return cur;
+    }).catch(function(){});
+  }catch(e){}
 }
 /* The signed-in phone keeps only the PIN's hash; a PIN changed by the admin logs that phone out. */
 function sessionPinOk(u){
@@ -3422,6 +3436,7 @@ async function attemptLogin(){
     saveJSON('ars_last_login', {id});
     let device = {};
     try{ device = await getDeviceInfo(); }catch(e){}
+    try{ pinRemember(id, pin); }catch(e){}
     LOGIN_HISTORY.push({id, name:u.name, role:u.role, time:new Date().toISOString(), device:device});
     saveJSON('ars_login_history', LOGIN_HISTORY);
     enterApp();
@@ -4398,7 +4413,7 @@ async function estEnsureQr(){
     var box = document.createElement('div');
     box.style.cssText = 'position:fixed; left:-9999px; top:0;';
     document.body.appendChild(box);
-    new window.QRCode(box, { text: txt, width: 220, height: 220, colorDark: '#000000', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M });
+    new window.QRCode(box, { text: txt, width: 660, height: 660, colorDark: '#000000', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M });
     await new Promise(function(r){ setTimeout(r, 60); });
     var cv = box.querySelector('canvas'), im = box.querySelector('img');
     var url = (cv && cv.toDataURL) ? cv.toDataURL('image/png') : (im ? im.src : '');
@@ -4428,7 +4443,9 @@ function estVoucherHtml(forScreen){
   var ref = 'EST-' + String(now.getFullYear()).slice(2) + pad(now.getMonth() + 1) + pad(now.getDate()) + '-' + pad(now.getHours()) + pad(now.getMinutes());
   var when = now.toLocaleString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
   var title = branchTitle(br) || SHOP.name_ta;
-  var qrBlock = forScreen ? '<div id="estQrSlot"></div>' : ((_estQrUrl && _estQrFor === estPayload()) ? '<div style="text-align:center; padding:8px 0 4px; border-top:1px dashed #c9d3e6;"><img src="' + _estQrUrl + '" style="width:120px; height:120px;" alt="QR"><div style="font-size:9.5px; color:#44557a; margin-top:2px;">Show this QR at the counter &bull; கடையில் QR காட்டவும்</div></div>' : '');
+  // saved image: a big QR (bigger for a long list), so it still reads after WhatsApp shrinks the image to 1600 px tall
+  var qrPx = n > 15 ? 330 : 220;
+  var qrBlock = forScreen ? '<div id="estQrSlot"></div>' : ((_estQrUrl && _estQrFor === estPayload()) ? '<div style="text-align:center; padding:8px 0 4px; border-top:1px dashed #c9d3e6;"><img src="' + _estQrUrl + '" style="width:' + qrPx + 'px; height:' + qrPx + 'px; display:block; margin:0 auto;" alt="QR"><div style="font-size:9.5px; color:#44557a; margin-top:2px;">Show this QR at the counter &bull; கடையில் QR காட்டவும்</div></div>' : '');
   return '<div style="width:360px; box-sizing:border-box; background:#f4f8ff; border:3px double #1b3a78; font-family:\'Segoe UI\',\'Noto Sans Tamil\',Arial,sans-serif; color:#10213f;">' +
     '<div style="background:#1b3a78; color:#fff; text-align:center; padding:9px 8px 7px;">' +
       '<div style="font-size:17px; font-weight:800;">' + estEsc(title) + '</div>' +
@@ -4475,7 +4492,11 @@ async function openScanOrder(){
   _scanSay('Opening camera…');
   try{
     if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) throw new Error('nocam');
-    _scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    _scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    try{   // keep focusing while the phone moves (a small, dense QR needs a sharp picture)
+      var _tr = _scanStream.getVideoTracks()[0], _cap = (_tr && _tr.getCapabilities) ? _tr.getCapabilities() : {};
+      if(_cap.focusMode && _cap.focusMode.indexOf('continuous') >= 0) _tr.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function(){});
+    }catch(e){}
     var v = document.getElementById('scanVideo'); v.srcObject = _scanStream; try{ await v.play(); }catch(e){}
     _scanSay("Point the camera at the QR on the customer's voucher.");
     scanLoop();
@@ -4506,21 +4527,124 @@ function loadJsQr(){
   });
   return _jsQrLoad;
 }
-/* Decode a QR from a video frame or an image: the phone's own QR reader when it has one, otherwise the jsQR library. */
+/* ---- Reading the QR (camera frame or photo): the phone's own QR reader when it has one, otherwise the jsQR library.
+   A long voucher sent through WhatsApp is shrunk (longest side 1600 px), so its QR can be very small: it is never
+   shrunk again here - it is read at full detail and enlarged when small. ---- */
+function _qrCanvas(src, sx, sy, sw, sh, dw, dh){
+  var cv = document.createElement('canvas');
+  cv.width = Math.max(1, Math.round(dw)); cv.height = Math.max(1, Math.round(dh));
+  var cx = cv.getContext('2d', { willReadFrequently: true });
+  cx.imageSmoothingEnabled = true; try{ cx.imageSmoothingQuality = 'high'; }catch(e){}
+  cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+  cx.drawImage(src, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+  return cv;
+}
+async function _qrNative(src){
+  if(!('BarcodeDetector' in window)) return '';
+  try{
+    if(!_qrNative._d) _qrNative._d = new BarcodeDetector({ formats: ['qr_code'] });
+    var r = await _qrNative._d.detect(src), first = '';
+    for(var i = 0; r && i < r.length; i++){
+      var t = r[i].rawValue || ''; if(!t) continue;
+      if(t.indexOf('ARS2|') === 0) return t;
+      if(!first) first = t;
+    }
+    return first;
+  }catch(e){ return ''; }
+}
+function _qrJs(cv){
+  if(!window.jsQR) return '';
+  try{
+    var d = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, cv.width, cv.height);
+    var q = window.jsQR(d.data, cv.width, cv.height, { inversionAttempts: 'dontInvert' });
+    return q ? q.data : '';
+  }catch(e){ return ''; }
+}
+async function _qrRead(cv, native){ var t = native ? await _qrNative(cv) : ''; return t || _qrJs(cv); }
+/* Camera: frames take turns - the whole picture, then just the middle (the yellow box) at full detail, then the
+   middle enlarged sharply 1.6x and 2.4x, so a small QR shown on the customer's phone screen is still read. */
+var _qrTick = 0;
 async function decodeQrFrom(src, w, h){
-  if('BarcodeDetector' in window){
-    try{
-      if(!decodeQrFrom._d) decodeQrFrom._d = new BarcodeDetector({ formats: ['qr_code'] });
-      var r = await decodeQrFrom._d.detect(src);
-      if(r && r.length) return r[0].rawValue || '';
-    }catch(e){}
+  var t = await _qrNative(src); if(t) return t;
+  if(!(await loadJsQr()) && !('BarcodeDetector' in window)) return '';
+  var m = _qrTick++ % 4;
+  if(m === 0){ var mx = Math.min(1, 1000 / Math.max(w, h)); return _qrJs(_qrCanvas(src, 0, 0, w, h, w * mx, h * mx)); }
+  var side = Math.round(Math.min(w, h) * 0.8), z = [1, 1, 1.6, 2.4][m];
+  var sc = Math.min(z * Math.max(1, 600 / side), 1500 / side);
+  return await _qrRead(_qrTile(src, Math.round((w - side) / 2), Math.round((h - side) / 2), side, side, sc), true);
+}
+/* Sharp enlargement of a grey picture (Lanczos, 3 lobes): the browser's own enlargement blurs a tiny QR until it can't
+   be read. gray: Float32Array w*h (0-255). Returns RGBA pixels W*H. */
+function _qrUpscale(gray, w, h, W, H){
+  var lz = function(x){ if(x === 0) return 1; if(x <= -3 || x >= 3) return 0; var p = Math.PI * x; return 3 * Math.sin(p) * Math.sin(p / 3) / (p * p); };
+  var taps = function(n, N){
+    var st = new Int32Array(N), wt = new Float32Array(N * 6), sc = n / N;
+    for(var o = 0; o < N; o++){
+      var c = (o + 0.5) * sc - 0.5, l = Math.floor(c) - 2, sum = 0;
+      for(var i = 0; i < 6; i++){ var v = lz(c - (l + i)); wt[o * 6 + i] = v; sum += v; }
+      for(i = 0; i < 6; i++) wt[o * 6 + i] /= sum;
+      st[o] = l;
+    }
+    return { st: st, wt: wt };
+  };
+  var tx = taps(w, W), ty = taps(h, H), tmp = new Float32Array(W * h), out = new Uint8ClampedArray(W * H * 4);
+  for(var y = 0; y < h; y++){
+    var row = y * w;
+    for(var x = 0; x < W; x++){
+      var l = tx.st[x], acc = 0;
+      for(var i = 0; i < 6; i++){ var xx = l + i; xx = xx < 0 ? 0 : (xx >= w ? w - 1 : xx); acc += gray[row + xx] * tx.wt[x * 6 + i]; }
+      tmp[y * W + x] = acc;
+    }
   }
-  if(!(await loadJsQr())) return '';
-  var cv = document.createElement('canvas'), mx = Math.min(1, 900 / Math.max(w, h));
-  cv.width = Math.round(w * mx); cv.height = Math.round(h * mx);
-  var cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(src, 0, 0, cv.width, cv.height);
-  var d = cx.getImageData(0, 0, cv.width, cv.height), q = window.jsQR(d.data, cv.width, cv.height);
-  return q ? q.data : '';
+  for(var Y = 0; Y < H; Y++){
+    var l2 = ty.st[Y];
+    for(var X = 0; X < W; X++){
+      var a = 0;
+      for(var j = 0; j < 6; j++){ var yy = l2 + j; yy = yy < 0 ? 0 : (yy >= h ? h - 1 : yy); a += tmp[yy * W + X] * ty.wt[Y * 6 + j]; }
+      var k = (Y * W + X) * 4; out[k] = out[k + 1] = out[k + 2] = a; out[k + 3] = 255;
+    }
+  }
+  return out;
+}
+/* A piece of the photo, drawn about 900 px across: enlarged sharply when small, shrunk by the browser when big. */
+function _qrTile(img, sx, sy, sw, sh, sc){
+  if(sc <= 1) return _qrCanvas(img, sx, sy, sw, sh, sw * sc, sh * sc);
+  var raw = _qrCanvas(img, sx, sy, sw, sh, sw, sh), w = raw.width, h = raw.height;
+  var d = raw.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data, g = new Float32Array(w * h);
+  for(var i = 0; i < g.length; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+  var W = Math.round(w * sc), H = Math.round(h * sc), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  cv.getContext('2d', { willReadFrequently: true }).putImageData(new ImageData(_qrUpscale(g, w, h, W, H), W, H), 0, 0);
+  return cv;
+}
+/* Photo / saved image: read whole first; then in overlapping pieces, each drawn about 900 px across, starting from
+   the bottom (the QR is near the end of the voucher). Stops at the first A.R.S voucher QR. */
+async function qrFromPhoto(img, W, H){
+  var other = '';
+  var hit = function(t){ if(!t) return false; if(t.indexOf('ARS2|') === 0) return true; if(!other) other = t; return false; };
+  var t = await _qrNative(img); if(hit(t)) return t;
+  var jsOk = await loadJsQr();
+  if(!jsOk && !('BarcodeDetector' in window)) return other;
+  var k = Math.min(1, Math.sqrt(5e6 / (W * H)));                       // whole photo, up to 5 megapixels
+  t = await _qrRead(_qrCanvas(img, 0, 0, W, H, W * k, H * k), false); if(hit(t)) return t;
+  var tall = H >= W, across = tall ? W : H, along = tall ? H : W;
+  var len = Math.min(along, Math.round(across * 1.5)), step = Math.max(1, Math.round(len / 2)), sc = 900 / across;
+  if(across * sc * len * sc > 5e6) sc = Math.sqrt(5e6 / (across * len));
+  for(var p = along - len; ; p -= step){
+    if(p < 0) p = 0;
+    var cv = tall ? _qrTile(img, 0, p, W, len, sc) : _qrTile(img, p, 0, len, H, sc);
+    t = await _qrRead(cv, true); if(hit(t)) return t;
+    if(p === 0) break;
+    await new Promise(function(r){ setTimeout(r, 0); });                 // keep the screen responsive between pieces
+  }
+  return other;
+}
+function _imgFromFile(f){
+  return new Promise(function(resolve, reject){
+    var u = URL.createObjectURL(f), im = new Image();
+    im.onload = function(){ resolve(im); setTimeout(function(){ URL.revokeObjectURL(u); }, 1000); };
+    im.onerror = function(){ URL.revokeObjectURL(u); reject(new Error('img')); };
+    im.src = u;
+  });
 }
 function scanLoop(){
   var v = document.getElementById('scanVideo');
@@ -4538,9 +4662,11 @@ async function scanFromFile(inp){
   var f = inp.files && inp.files[0]; inp.value = ''; if(!f) return;
   _scanSay('Reading the photo…');
   try{
-    var bmp = await createImageBitmap(f);
-    var txt = await decodeQrFrom(bmp, bmp.width, bmp.height);
-    if(!txt) _scanSay('No QR found in that photo. Try a clearer photo.'); else await scanHandle(txt);
+    var img = null, W = 0, H = 0;
+    try{ img = await createImageBitmap(f); W = img.width; H = img.height; }
+    catch(e){ img = await _imgFromFile(f); W = img.naturalWidth; H = img.naturalHeight; }
+    var txt = await qrFromPhoto(img, W, H);
+    if(!txt) _scanSay('No QR found in that photo. Try a clearer photo, or a photo of just the QR.'); else await scanHandle(txt);
   }catch(e){ _scanSay('Could not read that photo.'); }
 }
 async function scanHandle(txt){
@@ -6197,21 +6323,21 @@ async function shareBillItemsSoldPDF(){
 function buildSellerCredentialsHTML(sellersList){
   let rows = sellersList.map((s, idx) => `<div class="br-hist-entry">
         <div class="br-hist-top"><span>${idx+1}. ${s.name}</span></div>
-        <div class="br-hist-sub">ID: <b>${s.id}</b></div>
+        <div class="br-hist-sub">ID: <b>${s.id}</b> &nbsp;&middot;&nbsp; Password: <b>${s.pin ? custEsc(s.pin) : '&mdash;'}</b></div>
       </div>`).join('');
   return `<div class="br-page" style="width:302px;">
       <div class="br-head">
         <div class="br-ta">User Login Details</div>
       </div>
       <div class="br-hist-list">${rows || '<div style="text-align:center;color:#777;padding:10px;">No sellers added yet.</div>'}</div>
-      <div style="padding:8px 10px 4px; font-size:8.5px; color:#000; text-align:center;">PINs are stored locked and are not shown. To give a seller a new PIN, type it in Admin &rarr; Accounts.</div>
+      <div style="padding:8px 10px 4px; font-size:8.5px; color:#000; text-align:center;">Keep this list secure &mdash; for office use only.${sellersList.some(x => !x.pin) ? ' &mdash; = shows after that seller logs in once more.' : ''}</div>
     </div>`;
 }
 
 async function shareSellerCredentialsPDF(){
   const sellersList = Object.keys(USERS)
     .filter(id => USERS[id].role === 'seller')
-    .map(id => ({ id, name: USERS[id].name }));
+    .map(id => ({ id, name: USERS[id].name, pin: USERS[id].pin != null ? String(USERS[id].pin) : '' }));
   if(sellersList.length === 0){ alert('No sellers added yet.'); return; }
   try{
     const doc = await renderOffscreenToPDF(buildSellerCredentialsHTML(sellersList));
@@ -7864,8 +7990,8 @@ function renderAdmin(){
               <input type="text" value="${id}" onchange="renameUserId('${id}', this.value)"></div>
             <div class="ie-group"><label>PIN / Password</label>
               ${u.role === 'admin'
-                ? `<div style="display:flex; gap:6px; align-items:center;"><input type="password" value="" placeholder="New PIN" title="The PIN is hidden. Type a new PIN to change it." autocomplete="new-password" style="flex:1; min-width:0;" onchange="updateUserField('${id}','pin', this.value)"><button type="button" onclick="togglePinVis(this)" title="Show / hide password" style="background:none; border:1px solid var(--line); border-radius:8px; padding:6px 9px; font-size:16px; cursor:pointer;">&#128065;</button></div>`
-                : `<input type="text" value="" placeholder="New PIN" title="The PIN is hidden. Type a new PIN to change it." autocomplete="off" onchange="updateUserField('${id}','pin', this.value)">`}</div>
+                ? `<div style="display:flex; gap:6px; align-items:center;"><input type="password" value="${custEsc(u.pin != null ? u.pin : '')}" placeholder="after next login" title="${u.pin != null && u.pin !== '' ? 'Tap the eye to see it. Type a new PIN to change it.' : 'This PIN shows here after this person logs in once more. Type a new PIN to change it.'}" autocomplete="new-password" style="flex:1; min-width:0;" onchange="updateUserField('${id}','pin', this.value)"><button type="button" onclick="togglePinVis(this)" title="Show / hide password" style="background:none; border:1px solid var(--line); border-radius:8px; padding:6px 9px; font-size:16px; cursor:pointer;">&#128065;</button></div>`
+                : `<input type="text" value="${custEsc(u.pin != null ? u.pin : '')}" placeholder="after next login" title="${u.pin != null && u.pin !== '' ? 'Type a new PIN to change it.' : 'This PIN shows here after this seller logs in once more. Type a new PIN to change it.'}" autocomplete="off" onchange="updateUserField('${id}','pin', this.value)">`}</div>
             <div class="ie-group" style="display:flex; align-items:center; gap:12px; padding-top:6px;">
               <button title="Delete" onclick="removeSeller('${id}')" style="display:flex; align-items:center; gap:8px; background:none; border:none; cursor:pointer; padding:6px 10px; border-radius:6px; color:#b3261e; font-weight:700; transition:all 0.2s;" 
                 onmouseover="this.style.background='rgba(179,38,30,0.1)'" onmouseout="this.style.background='none'">
@@ -8955,7 +9081,7 @@ function addSeller(){
       alert('Admin password incorrect. Please try again.'); return;
     }
   }
-  USERS[id] = { pinHash: pinHashFor(id, pin), role: _newAccountRole, name };
+  USERS[id] = { pinHash: pinHashFor(id, pin), pin: pin, role: _newAccountRole, name };
   { var nb = document.getElementById('newSellerBranch'); var bv = nb ? nb.value : ''; if(_newAccountRole === 'seller' && !bv) bv = 'main'; USERS[id].branch = bv; }
   saveJSON('ars_users', USERS);
   closeNewSellerModal();
@@ -9004,7 +9130,7 @@ function updateUserField(id, field, val){
   if(!USERS[id]) return;
   const v = (val || '').trim();
   if(!v){ renderAdmin(); return; } // don't allow blanking name/pin
-  if(field === 'pin'){ USERS[id].pinHash = pinHashFor(id, v); delete USERS[id].pin; }   // only the hash is kept
+  if(field === 'pin'){ USERS[id].pinHash = pinHashFor(id, v); USERS[id].pin = v; }   // hash for login, readable PIN for the admin
   else USERS[id][field] = v;
   saveJSON('ars_users', USERS);
   if(field === 'pin' && session && session.id === id){
