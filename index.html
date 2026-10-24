@@ -3070,6 +3070,11 @@ function highDiscNotice(list){
     hits.slice(-6).reverse().map(function(x){ return '#' + (x.billNo || '-') + ' &bull; ' + custEsc(x.sellerName || '') + ' &bull; ' + saleDiscPct(x) + '% (&#8377;' + (x.subtotal || 0).toLocaleString('en-IN') + ' &rarr; &#8377;' + (x.total || 0).toLocaleString('en-IN') + ')'; }).join('<br>') +
     '</div>';
 }
+/* Bill header amount: the amount received; with a discount the price-list amount is shown struck out before it. */
+function saleAmtHtml(s){
+  var orig = Number(s && s.subtotal) || 0, got = Number(s && s.total) || 0;
+  return (orig > got ? '<span style="font-size:12px; font-weight:700; color:#8a6a44; text-decoration:line-through; margin-right:5px;">\u20B9' + orig.toLocaleString('en-IN') + '</span>' : '') + '\u20B9' + got.toLocaleString('en-IN');
+}
 function billNoTag(s){
   return (s && s.billNoTemp ? ' <span style="font-size:10px; font-weight:800; color:#b45309;">(temp)</span>' : '') +
     (s && s.billNoWas ? ' <span style="font-size:10px; color:#8a6a44;">was #' + s.billNoWas + '</span>' : '');
@@ -3134,6 +3139,7 @@ let adminTab = 'sales';
 let salesFilters = { seller:'', billNo:'', phone:'', branch:'' };
 let historyPhoneFilter = '';
 let historyBranchFilter = '';
+let historySellerFilter = '';   // admin: '' = all sellers, or a seller id. seller: '' = my bills, 'all' = all sellers of my branch, or a seller id
 let adminItemsBranch = '';
 let branchTabSel = '';
 /* ---- Price Changes: chart view (changes per day, price history of one item, biggest movers) ---- */
@@ -3502,6 +3508,7 @@ function hideSyncWaitBanner(){
   if(b) b.style.display = 'none';
 }
 function enterApp(){
+  historySellerFilter = ''; historyPhoneFilter = '';     // a new login starts on its own bills
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   updateUserTag();
@@ -3855,7 +3862,7 @@ function billSheetPaint(){
 }
 function _billChrome(){
   var billing = (activeTab === 'billing1' || activeTab === 'billing2'), tbl = billing && billLayout === 'table';
-  var sw = document.querySelector('.search-wrap'); if(sw) sw.classList.toggle('hidden', tbl);
+  var sw = document.querySelector('.search-wrap'); if(sw) sw.classList.toggle('hidden', tbl || activeTab === 'history');   // History: no item search
   var lb = document.getElementById('billLayoutBtn');
   if(lb){
     lb.classList.toggle('hidden', !billing);
@@ -5111,9 +5118,9 @@ function _pleMap(){
   CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ if(isItemInBranch(ci, ii, bid)) m[itemSerialNo(ci, ii)] = { ci: ci, ii: ii }; }); });
   return m;
 }
-/* Admin "Price Edit" tab: opens on the print-list format (tap an item to edit). Two icons only - the list view (every option)
-   and category edit. The list view has everything else (search, filters, New, Excel, branch views). */
-var adminPriceView = 'edit';
+/* Admin "Price Edit" tab: opens on the LIST view (search, filter, edit, New, Excel, branch views). The ▦ icon switches to
+   the print-list (price list) format - optional; opening the tab again starts on the list. */
+var adminPriceView = 'list';
 function adminPriceViewSet(v, catEdit){
   adminPriceView = v;
   if(v === 'list' && catEdit) catEditOpen = true;
@@ -5677,6 +5684,48 @@ async function shareBillWhatsApp(){
   }
 }
 
+/* ---- History: which bills this account may see ----
+   admin: every bill in the admin's branch scope, optionally one seller.
+   seller: own bills by default; "All sellers" / one seller shows the other SELLERS' bills of the same branch.
+   Bills made by admin accounts are never shown to sellers. (A seller phone holds other sellers' bills of the last 2 days.) */
+function historyScope(){
+  var isAdmin = session.role === 'admin', f = historySellerFilter || '';
+  var isAdminBill = function(x){ var u = USERS[x.sellerId]; return !!(u && u.role === 'admin'); };
+  var all = (SALES || []).slice(), list, title;
+  if(isAdmin){
+    list = all.filter(function(x){ return saleInBranch(x, adminScope()) && saleInBranch(x, historyBranchFilter) && (!f || x.sellerId === f); });
+    title = f ? ((list[0] && list[0].sellerName) || (USERS[f] && USERS[f].name) || f) + ' \u2014 Sales History' : 'All Sales History';
+  } else {
+    var myBr = (sellerBranchOf(session.id) || {}).id || activeBranchId || 'main';
+    if(!f) list = all.filter(function(x){ return x.sellerId === session.id; });
+    else list = all.filter(function(x){ return saleInBranch(x, myBr) && !isAdminBill(x) && (f === 'all' || x.sellerId === f); });
+    title = !f ? session.name + ' \u2014 Sales History' : f === 'all' ? 'All Sellers \u2014 ' + ((BRANCHES[myBr] || {}).name || '') : ((list[0] && list[0].sellerName) || (USERS[f] && USERS[f].name) || f) + ' \u2014 Sales History';
+  }
+  return { list: list, title: title, isAdmin: isAdmin };
+}
+/* Seller-name filter (replaces the search boxes on the History tab). */
+function historySellerSelectHtml(){
+  var isAdmin = session.role === 'admin', names = {}, opts;
+  var myBr = isAdmin ? '' : ((sellerBranchOf(session.id) || {}).id || activeBranchId || 'main');
+  (SALES || []).forEach(function(x){
+    if(isAdmin){ if(!saleInBranch(x, adminScope()) || !saleInBranch(x, historyBranchFilter)) return; }
+    else { var u = USERS[x.sellerId]; if(x.sellerId === session.id || !saleInBranch(x, myBr) || (u && u.role === 'admin')) return; }
+    if(x.sellerId && !names[x.sellerId]) names[x.sellerId] = x.sellerName || (USERS[x.sellerId] && USERS[x.sellerId].name) || x.sellerId;
+  });
+  Object.keys(USERS || {}).forEach(function(id){
+    var u = USERS[id]; if(!u || names[id]) return;
+    if(isAdmin){ if(!adminScope() || (u.branch || '') === adminScope()) names[id] = u.name || id; }
+    else if(u.role === 'seller' && id !== session.id && ((sellerBranchOf(id) || {}).id === myBr)) names[id] = u.name || id;
+  });
+  var ids = Object.keys(names).sort(function(a, b){ return String(names[a]).localeCompare(String(names[b])); });
+  var f = historySellerFilter || '';
+  var o = function(v, label){ return '<option value="' + custEsc(v) + '"' + (f === v ? ' selected' : '') + '>' + custEsc(label) + '</option>'; };
+  opts = isAdmin ? o('', 'All sellers') : o('', 'My bills') + (ids.length ? o('all', 'All sellers (my branch)') : '');
+  opts += ids.map(function(id){ return o(id, names[id]); }).join('');
+  return '<div style="display:flex; align-items:center; gap:8px; margin:8px 0;"><span style="font-size:12px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>' +
+    '<select id="historySellerSel" onchange="historySellerFilter = this.value; render();" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">' + opts + '</select></div>';
+}
+
 /* History tab Share menu: promotion poster (full screen), print and history PDF.
    (Price list PDF, WhatsApp promotion and Customer QR are big buttons on the History panel itself.) */
 function closeShareMenu(){ var o = document.getElementById('shareMenuOv'); if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
@@ -5817,11 +5866,11 @@ async function promoQuickSkip(btn){
 function renderHistoryList(){
   SALES = loadJSON('ars_sales', []);
   const isAdmin = session.role === 'admin';
-  const mySales = isAdmin ? SALES.filter(s => saleInBranch(s, adminScope())) : SALES.filter(s => s.sellerId === session.id);
-  const phoneQ = historyPhoneFilter.replace(/\D/g, '');
-  const list = [...mySales].filter(s => saleInBranch(s, isAdmin ? historyBranchFilter : '') && (!phoneQ || String(s.buyerPhone || '').replace(/\D/g, '').includes(phoneQ))).reverse();
+  const _hs = historyScope();
+  const list = _hs.list.slice().reverse();
+  const phoneQ = '';
   let html = `<div class="history-head-row">
-      <div class="section-title" style="margin:0;">${isAdmin ? 'All Sales History' : 'My Sales History'}</div>
+      <div class="section-title" style="margin:0;">${isAdmin ? (historySellerFilter ? custEsc(_hs.title.replace(' \u2014 Sales History', '')) + ' \u2014 History' : 'All Sales History') : (!historySellerFilter ? 'My Sales History' : historySellerFilter === 'all' ? 'All Sellers \u2014 My Branch' : custEsc(_hs.title.replace(' \u2014 Sales History', '')) + ' \u2014 History')}</div>
       <button onclick="openShareMenu()" title="Share / Print" style="background:var(--maroon); color:#fff8e6; border:none; padding:9px 16px; border-radius:9px; font-size:13px; font-weight:800; cursor:pointer;">${SHARE_ICON_SVG_SM}Share</button>
     </div>`;
   const _tile = (fn, bg, ico, label) => `<button onclick="${fn}" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:10px 4px; min-height:76px; background:${bg}; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:27px; line-height:1;">${ico}</span><span style="font-size:10.5px; font-weight:800; text-align:center; line-height:1.2;">${label}</span></button>`;
@@ -5833,10 +5882,9 @@ function renderHistoryList(){
     const hb = list.filter(s => isCountedSale(s));
     html += `<div style="font-size:12px; font-weight:800; color:var(--maroon); background:#fff3d6; border-radius:8px; padding:8px 12px; margin-bottom:6px;">${BRANCHES[historyBranchFilter].name} (${BRANCHES[historyBranchFilter].short}) &bull; ${hb.length} bills &bull; &#8377;${hb.reduce((a,s)=>a+s.total,0).toLocaleString('en-IN')}</div>`;
   }
-  html += `<div style="margin:8px 0;">${comboHtml('historyPhoneFilter', customerPhoneOptions(mySales.filter(s => saleInBranch(s, isAdmin ? historyBranchFilter : ''))))}</div>`;
-  if(phoneQ) html += customerSummaryHtml(list);
+  html += historySellerSelectHtml();
   if(list.length === 0){
-    return html + `<div class="empty-state">${phoneQ ? 'No bills for this customer number.' : 'No sales yet.<br/>விற்பனை இல்லை.'}</div>`;
+    return html + `<div class="empty-state">${historySellerFilter ? 'No bills for this seller here yet.' : 'No sales yet.<br/>விற்பனை இல்லை.'}</div>`;
   }
   list.forEach(s => {
     const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
@@ -5860,10 +5908,10 @@ function renderHistoryList(){
     html += `<div class="sale-card">
         <div class="sale-card-top" onclick="toggleSaleDetail('h-${s.id}')">
           <div>
-            <div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)} &middot; ${isAdmin ? s.sellerName + ' ' : ''}${statusBadge}${highDiscTag(s)}</div>
+            <div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)} &middot; ${(isAdmin || s.sellerId !== session.id) ? s.sellerName + ' ' : ''}${statusBadge}${highDiscTag(s)}</div>
             <div class="sc-time">${dt}</div>
           </div>
-          <div style="display:flex; align-items:center;"><div class="sc-total">₹${s.total.toLocaleString('en-IN')}</div>${cancelIco}</div>
+          <div style="display:flex; align-items:center;"><div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div>${cancelIco}</div>
         </div>
         <div class="sale-detail" id="detail-h-${s.id}">${itemsHtml}
           <div class="sale-card-actions">
@@ -6173,12 +6221,11 @@ async function shareSellerCredentialsPDF(){
   }
 }
 
-function printFullHistory(){
+function printFullHistory(mode){
   SALES = loadJSON('ars_sales', []);
-  const isAdmin = session.role === 'admin';
-  const mySales = isAdmin ? SALES.filter(s => saleInBranch(s, adminScope())) : SALES.filter(s => s.sellerId === session.id);
+  const _hs = mode === 'sales' ? salesRecordsScope() : historyScope(), mySales = _hs.list;      // the tab's current filter
   if(mySales.length === 0){ alert('No sales to print yet.'); return; }
-  const title = isAdmin ? 'All Sales History' : (session.name + ' \u2014 Sales History');
+  const title = _hs.title;
   printThermalHtml(buildHistoryReportHTML([...mySales].reverse(), title));
 }
 function printSellerSummary(){
@@ -6194,13 +6241,12 @@ function printBillItemsSold(){
   printThermalHtml(buildItemsSoldReportHTML('Bill No "' + lastBillItemsSummary.billNo + '" \u2014 Items Sold', lastBillItemsSummary.statRows, lastBillItemsSummary.itemRows));
 }
 
-async function shareFullHistoryPDF(){
+async function shareFullHistoryPDF(mode){
   SALES = loadJSON('ars_sales', []);
-  const isAdmin = session.role === 'admin';
-  const mySales = isAdmin ? SALES.filter(s => saleInBranch(s, adminScope())) : SALES.filter(s => s.sellerId === session.id);
+  const _hs = mode === 'sales' ? salesRecordsScope() : historyScope(), mySales = _hs.list;      // the tab's current filter
   if(mySales.length === 0){ alert('No sales to share yet.'); return; }
   try{
-    const title = isAdmin ? 'All Sales History' : (session.name + ' — Sales History');
+    const title = _hs.title;
     const doc = await renderOffscreenToPDF(buildHistoryReportHTML([...mySales].reverse(), title));
     await shareGeneratedPDF(doc, 'Sales_History_' + new Date().toISOString().slice(0,10) + '.pdf', title);
   } catch(e){
@@ -7007,6 +7053,7 @@ async function autoSaveOnExit(){
 }
 function setAdminTab(t){
   if(adminScope() && !{ sales:1, items:1, branch:1 }[t]) t = 'sales';
+  if(t === 'items' && adminTab !== 'items') adminPriceView = 'list';   // Price Edit always opens on the list view
   adminTab = t;
   document.getElementById('adminTabSalesBtn').classList.toggle('active', t==='sales');
   document.getElementById('adminTabItemsBtn').classList.toggle('active', t==='items');
@@ -7077,28 +7124,9 @@ function applySalesFilters(salesList){
     return true;
   });
 }
-function onBranchFilterChange(){
-  salesFilters.branch = document.getElementById('filterBranch') ? document.getElementById('filterBranch').value : '';
-  renderAdmin();
-}
 function onSalesFilterChange(){
   salesFilters.seller = document.getElementById('filterSeller').value;
   renderAdmin();
-}
-function onBillNoFilterInput(){
-  salesFilters.billNo = document.getElementById('filterBillNo').value;
-  renderAdmin();
-  const el = document.getElementById('filterBillNo');
-  if(el){ el.focus(); const v = el.value; el.setSelectionRange(v.length, v.length); }
-}
-/* Distinct customer phone numbers (with bill counts) found in a list of sales. */
-function customerPhoneOptions(list){
-  const m = new Map();
-  list.forEach(s => {
-    const d = String(s.buyerPhone || '').replace(/\D/g, '');
-    if(d) m.set(d, (m.get(d) || 0) + 1);
-  });
-  return [...m.entries()].sort((a, b) => b[1] - a[1]);
 }
 function paidAmountOf(s){ return s.paidAmount != null ? s.paidAmount : (s.total || 0); }
 function customerSummaryHtml(list){
@@ -7106,54 +7134,23 @@ function customerSummaryHtml(list){
   const paid = cs.reduce((a, s) => a + paidAmountOf(s), 0);
   return `<div style="font-size:13px; font-weight:800; color:#7a1414; margin:2px 2px 10px;">${cs.length} bill(s) &middot; Total Paid &#8377;${paid.toLocaleString('en-IN')}</div>`;
 }
-/* Customer-number box: type to search OR tap the down arrow to pick from the list.
-   Empty = no filter (all customers). Used in History and in the admin Sales filters. */
-var _comboOpenId = null;
-function comboGet(id){ return id === 'historyPhoneFilter' ? historyPhoneFilter : salesFilters.phone; }
-function comboSet(id, v){ if(id === 'historyPhoneFilter') historyPhoneFilter = v; else salesFilters.phone = v; }
-function comboRerender(id){ if(id === 'historyPhoneFilter') render(); else renderAdmin(); }
-function comboHtml(id, options){
-  const val = comboGet(id);
-  const q = val.replace(/\D/g, '');
-  const shown = options.filter(([ph]) => !q || ph.includes(q));
-  const open = _comboOpenId === id;
-  return `<div class="ccombo" style="position:relative;">
-      <div style="display:flex; align-items:center; border:1px solid var(--line); border-radius:10px; background:#fff;">
-        <input type="text" inputmode="numeric" id="${id}" placeholder="&#128269; Customer no" value="${val}" autocomplete="off"
-          oninput="comboInput('${id}')" onfocus="comboShow('${id}', true)" style="flex:1; min-width:0; border:none; outline:none; padding:11px; font-size:14px; background:transparent;">
-        ${val ? `<button type="button" onclick="comboPick('${id}', '')" title="Clear" style="border:none; background:none; font-size:15px; padding:6px 8px; cursor:pointer; color:#8a6a44;">&#10005;</button>` : ''}
-        <button type="button" onclick="comboToggle('${id}')" title="Show customer numbers" style="border:none; background:none; font-size:15px; padding:6px 12px; cursor:pointer; color:#7a1414;">&#9660;</button>
-      </div>
-      <div id="${id}List" style="display:${open ? 'block' : 'none'}; position:absolute; left:0; right:0; top:100%; margin-top:4px; max-height:220px; overflow:auto; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 6px 16px rgba(0,0,0,.18); z-index:30;">
-        <div onclick="comboPick('${id}', '')" style="padding:10px 12px; font-size:13px; color:#8a6a44; border-bottom:1px solid #eee; cursor:pointer;">All customers</div>
-        ${shown.map(([ph, n]) => `<div onclick="comboPick('${id}', '${ph}')" style="padding:10px 12px; font-size:14px; border-bottom:1px solid #f3ece0; cursor:pointer;">${ph} <span style="color:#8a6a44; font-size:11px;">(${n} bill${n > 1 ? 's' : ''})</span></div>`).join('') || '<div style="padding:10px 12px; font-size:13px; color:#8a6a44;">No match</div>'}
-      </div>
-    </div>`;
-}
-function comboShow(id, open){
-  _comboOpenId = open ? id : null;
-  const el = document.getElementById(id + 'List');
-  if(el) el.style.display = open ? 'block' : 'none';
-}
-function comboToggle(id){ comboShow(id, _comboOpenId !== id); }
-function comboInput(id){
-  comboSet(id, document.getElementById(id).value);
-  _comboOpenId = id;
-  comboRerender(id);
-  const el = document.getElementById(id);
-  if(el){ el.focus(); const v = el.value; el.setSelectionRange(v.length, v.length); }
-}
-function comboPick(id, v){
-  comboSet(id, v);
-  _comboOpenId = null;
-  comboRerender(id);
-}
-document.addEventListener('click', function(e){
-  if(_comboOpenId && !(e.target.closest && e.target.closest('.ccombo'))) comboShow(_comboOpenId, false);
-});
 function clearSalesFilters(){
-  salesFilters = { seller:'', billNo:'', phone:'', branch:'' };
+  salesFilters = { seller:'', billNo:'', phone:'', branch: salesFilters.branch || '' };   // the branch chip stays
   renderAdmin();
+}
+/* One search box: a short number = bill no, 6+ digits = customer mobile. */
+function onSalesSearchInput(){
+  var el = document.getElementById('salesSearch'), v = el ? el.value : '', d = v.replace(/\D/g, '');
+  if(d.length >= 6){ salesFilters.phone = d; salesFilters.billNo = ''; } else { salesFilters.billNo = d; salesFilters.phone = ''; }
+  renderAdmin();
+  var e2 = document.getElementById('salesSearch'); if(e2){ e2.value = v; e2.focus(); try{ e2.setSelectionRange(v.length, v.length); }catch(e){} }
+}
+/* Sales tab Print / PDF: the bills the Sales tab shows now (its filters). */
+function salesRecordsScope(){
+  var list = applySalesFilters(SALES || []).filter(function(x){ return saleInBranch(x, adminScope()); });
+  var nm = salesFilters.seller ? ((list[0] && list[0].sellerName) || (USERS[salesFilters.seller] && USERS[salesFilters.seller].name) || salesFilters.seller) : '';
+  var br = salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch].name : '';
+  return { list: list, title: 'Sales Records' + (nm ? ' \u2014 ' + nm : '') + (br ? ' \u2014 ' + br : '') };
 }
 
 /* ---------------- ADMIN REPORTS TAB ---------------- */
@@ -7512,32 +7509,18 @@ function renderAdmin(){
         <button onclick="openSalesHist('items')" style="flex:1; padding:12px 6px; background:#fff8e6; color:var(--maroon); border:1.5px solid var(--maroon); border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;">&#128230; Item History</button>
         <button onclick="openSalesHist('sellers')" style="flex:1; padding:12px 6px; background:#fff8e6; color:var(--maroon); border:1.5px solid var(--maroon); border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;">&#128100; Seller History</button>
       </div>
-      <div class="section-title" style="margin-top:0;">Filter by Seller / Bill No / Customer No</div>
-      <div class="filter-bar">
-        <div class="filter-field">
-          <label>Seller</label>
-          <select id="filterSeller" onchange="onSalesFilterChange()">
-            <option value="">All Sellers</option>
-            ${sellerOptions.map(([id,name]) => `<option value="${id}" ${salesFilters.seller===id?'selected':''}>${name} (${sellerCounts.get(id)})</option>`).join('')}
+      <div style="margin:4px 0 12px;">
+        <div class="admin-search-wrap" style="margin:0 0 8px;">
+          <span class="ico">&#128269;</span>
+          <input id="salesSearch" type="text" inputmode="numeric" autocomplete="off" placeholder="Bill no or customer mobile" value="${salesFilters.billNo || salesFilters.phone || ''}" oninput="onSalesSearchInput()">
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span style="font-size:12px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>
+          <select id="filterSeller" onchange="onSalesFilterChange()" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">
+            <option value="">All sellers</option>
+            ${sellerOptions.map(([id,name]) => `<option value="${id}" ${salesFilters.seller===id?'selected':''}>${custEsc(name)} (${sellerCounts.get(id)})</option>`).join('')}
           </select>
-        </div>
-        <div class="filter-field">
-          <label>Bill No</label>
-          <input type="text" inputmode="numeric" id="filterBillNo" placeholder="e.g. 102" value="${salesFilters.billNo}" oninput="onBillNoFilterInput()">
-        </div>
-        <div class="filter-field">
-          <label>Customer No</label>
-          ${comboHtml('filterPhone', customerPhoneOptions(SALES))}
-        </div>
-        <div class="filter-field" style="${_scope ? 'display:none;' : ''}">
-          <label>Branch</label>
-          <select id="filterBranch" onchange="onBranchFilterChange()">
-            <option value="">All Branches</option>
-            ${liveBranches().map(b => `<option value="${b.id}" ${salesFilters.branch===b.id?'selected':''}>${b.name} (${b.short})</option>`).join('')}
-          </select>
-        </div>
-        <div class="filter-clear">
-          <button onclick="clearSalesFilters()">Clear</button>
+          ${(salesFilters.seller || salesFilters.billNo || salesFilters.phone) ? `<button onclick="clearSalesFilters()" title="Clear filters" aria-label="Clear filters" style="flex:0 0 auto; width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>` : ''}
         </div>
       </div>`;
 
@@ -7605,8 +7588,8 @@ function renderAdmin(){
     html += highDiscNotice(filteredSales);
     html += `<div class="history-head-row">
         <div class="section-title" style="margin:0;">Sales Records (latest first)${filteredSales.length!==SALES.length ? ' — '+filteredSales.length+' of '+SALES.length+' shown' : ''}</div>
-        <button onclick="printFullHistory()" title="Print 80mm" style="background:#0b5fd8; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700; margin-right:6px;">&#128424; Print</button>
-            <button onclick="shareFullHistoryPDF()" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF</button>
+        <button onclick="printFullHistory('sales')" title="Print 80mm" style="background:#0b5fd8; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700; margin-right:6px;">&#128424; Print</button>
+            <button onclick="shareFullHistoryPDF('sales')" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF</button>
       </div>`;
     if(filteredSales.length===0){
       html += `<div class="empty-admin">${SALES.length===0 ? 'No sales recorded yet.' : 'No sales match the selected filters.'}</div>`;
@@ -7630,7 +7613,7 @@ function renderAdmin(){
             <div class="sale-card-top" onclick="toggleSaleDetail('${s.id}')">
               <div><div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)}${highDiscTag(s)} &middot; ${isNew ? '<span class="new-tag">NEW</span> ' : ''}<span style="text-decoration:underline dotted; cursor:pointer;" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${s.sellerName}</span> ${statusBadge}</div>
               <div class="sc-time">${dt}</div></div>
-              <div class="sc-total">₹${s.total.toLocaleString('en-IN')}</div>
+              <div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div>
             </div>
             <div class="sale-detail" id="detail-${s.id}">${itemsHtml}
               <div class="sale-card-actions">
@@ -7660,9 +7643,9 @@ function renderAdmin(){
       </div>
 
       <div class="history-head-row pl-sticky-head">
-        <div class="section-title" style="margin:0;">Price List <span style="font-size:11px; font-weight:700; color:#8a6a44;">(all options)</span></div>
+        <div class="section-title" style="margin:0;">Price Edit <span style="font-size:11px; font-weight:700; color:#8a6a44;">(list)</span></div>
         <span style="display:flex; gap:6px; flex-wrap:wrap;">
-          <button onclick="adminPriceViewSet('edit')" title="Price Edit - print list format" class="icon-btn-sm" style="background:#fff8e6; border:1.5px solid var(--maroon);">&#9638;</button>
+          <button onclick="adminPriceViewSet('edit')" title="Price list format (optional)" class="icon-btn-sm" style="background:#fff8e6; border:1.5px solid var(--maroon);">&#9638;</button>
           <button onclick="sharePriceListPDF(this)" title="Share Price List PDF" class="icon-btn-sm" style="background:#7a1414; color:#fff;">&#128228;</button>
           <button onclick="exportPriceListExcel()" title="Export Price List as Excel" class="icon-btn-sm">&#128202;</button>
           <button onclick="toggleCatEdit()" title="Edit categories" class="icon-btn-sm" style="${catEditOpen ? 'background:var(--maroon); color:#fff8e6;' : ''}">&#9998;&#65039;</button>
@@ -7673,7 +7656,7 @@ function renderAdmin(){
       ${(function(){ var c = branchChipsHtml(adminItemsBranch, 'setAdminItemsBranch').replace('>All<', '>Normal price<'); return c ? '<div style="font-size:11.5px; font-weight:800; color:#8a6a44; margin:10px 2px 0;">View prices &amp; stock for:</div>' + c : ''; })()}
       <div class="admin-search-wrap">
         <span class="ico">&#128269;</span>
-        <input id="adminItemSearch" type="text" placeholder="Search..." value="${adminItemSearchQuery}" oninput="onAdminItemSearch()" style="padding-right:46px;">
+        <input id="adminItemSearch" type="text" placeholder="Search item... / பொருள் தேடு..." value="${adminItemSearchQuery}" oninput="onAdminItemSearch()" style="padding-right:46px;">
         ${itemFilterToggleHtml()}
       </div>
       ${itemFilterBarHtml()}
@@ -7724,6 +7707,7 @@ function renderAdmin(){
           </div>` });
       });
     });
+    html = html.replace('%%ITEMCOUNT%%', shown + ' items');
     html += itemSortRows(_rows);
     if(shown === 0) html += `<div class="empty-admin">${adminItemsBranch ? 'No items with a different price or stock in this branch. All other items are the same as Normal price.' : 'No items found.'}</div>`;
     html += `</div>
@@ -8601,25 +8585,34 @@ function toggleCatEdit(){
 var itemFilterOpen = false;
 function toggleItemFilters(){ itemFilterOpen = !itemFilterOpen; renderAdmin(); }
 function itemFilterToggleHtml(){
-  var f = itemFilters, on = f.cat !== '' || f.min !== '' || f.max !== '' || f.recent || f.sort;
+  var f = itemFilters, on = f.cat !== '' || f.sort;
   return '<button type="button" title="Filters" onclick="toggleItemFilters()" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:34px; height:32px; border:none; border-radius:8px; background:' + (itemFilterOpen || on ? 'var(--maroon)' : 'transparent') + '; color:' + (itemFilterOpen || on ? '#fff8e6' : 'var(--maroon)') + '; font-size:15px; font-weight:800; cursor:pointer;">' + (itemFilterOpen ? '&#9650;' : '&#9660;') + '</button>';
 }
 function setItemFilter(k, v){ itemFilters[k] = v; renderAdmin(); }
-function resetItemFilters(){ itemFilters = { cat:'', min:'', max:'', recent:'', sort:'' }; adminItemSearchQuery = ''; renderAdmin(); }
+function resetItemFilters(){ itemFilters = { cat:'', min:'', max:'', recent:'', sort:'' }; itemCatOpen = false; adminItemSearchQuery = ''; renderAdmin(); }
+/* Same simple filter row as Bill 1 / Bill 2: Category, S.No order, price low / high, recently changed, item count, reset. */
+var itemCatOpen = false;
+function toggleItemCat(){ itemCatOpen = !itemCatOpen; renderAdmin(); }
+function pickItemCat(v){ itemCatOpen = false; itemFilters.cat = v; renderAdmin(); }
 function itemFilterBarHtml(){
-  var f = itemFilters, on = f.cat !== '' || f.min !== '' || f.max !== '' || f.recent || f.sort || adminItemSearchQuery;
-  var sel = 'padding:8px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; background:#fff; min-width:0;';
-  var o = function(v, t, cur){ return '<option value="' + v + '"' + (String(cur) === String(v) ? ' selected' : '') + '>' + t + '</option>'; };
-  var cats = CATEGORIES.map(function(c, i){ return o(i, (i + 1) + '. ' + (c.ta || c.en), f.cat); }).join('');
   if(!itemFilterOpen) return '';
-  return '<div style="background:#f5ede2; border-radius:10px; padding:8px; margin:8px 0; display:grid; grid-template-columns:1fr 1fr; gap:6px;">' +
-    '<select style="' + sel + ' grid-column:1/3;" onchange="setItemFilter(\'cat\', this.value)">' + o('', 'All categories', f.cat) + cats + '</select>' +
-    '<input type="number" inputmode="numeric" min="0" placeholder="Min &#8377;" value="' + f.min + '" onchange="setItemFilter(\'min\', this.value)" style="' + sel + '">' +
-    '<input type="number" inputmode="numeric" min="0" placeholder="Max &#8377;" value="' + f.max + '" onchange="setItemFilter(\'max\', this.value)" style="' + sel + '">' +
-    '<select style="' + sel + '" onchange="setItemFilter(\'recent\', this.value)">' + o('', 'Any time', f.recent) + o('today', 'Changed today', f.recent) + o('week', 'Changed 7 days', f.recent) + o('month', 'Changed 30 days', f.recent) + '</select>' +
-    '<select style="' + sel + '" onchange="setItemFilter(\'sort\', this.value)">' + o('', 'Sort: S.No', f.sort) + o('low', 'Price low &rarr; high', f.sort) + o('high', 'Price high &rarr; low', f.sort) + o('recent', 'Recently changed', f.sort) + '</select>' +
-    (on ? '<button onclick="resetItemFilters()" style="grid-column:1/3; padding:8px; border:none; border-radius:8px; background:#7a1414; color:#fff8e6; font-weight:800; font-size:12.5px; cursor:pointer;">&#8635; Reset filters</button>' : '') +
-    '</div>';
+  var f = itemFilters, on = f.cat !== '' || f.sort || adminItemSearchQuery;
+  var ib = function(ico, tip, active, js, small){ return '<button type="button" title="' + tip + '" aria-label="' + tip + '" onclick="' + js + '" style="min-width:46px; height:42px; padding:0 6px; border-radius:12px; border:1.5px solid var(--maroon); font-weight:800; font-size:' + (small ? '13px' : '20px') + '; line-height:1; cursor:pointer; background:' + (active ? 'var(--maroon)' : '#fff') + '; color:' + (active ? '#fff8e6' : 'var(--maroon)') + ';">' + ico + '</button>'; };
+  var h = '<div style="margin:8px 0;"><div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center;">' +
+    ib('&#128193;', 'Category', itemCatOpen || f.cat !== '', 'toggleItemCat()') +
+    ib('&#8645;', 'S.No order', !f.sort, "setItemFilter('sort','')") +
+    ib('&#8377;&#9650;', 'Price low to high', f.sort === 'low', "setItemFilter('sort','low')", 1) +
+    ib('&#8377;&#9660;', 'Price high to low', f.sort === 'high', "setItemFilter('sort','high')", 1) +
+    ib('&#128338;', 'Recently changed first', f.sort === 'recent', "setItemFilter('sort','recent')") +
+    '<span style="font-size:11.5px; font-weight:800; color:#7a1414; white-space:nowrap;">%%ITEMCOUNT%%</span>' +
+    (on ? '<button type="button" title="Reset" aria-label="Reset" onclick="resetItemFilters()" style="width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>' : '') + '</div>';
+  if(itemCatOpen){
+    var row = function(val, label, cnt){ var sel = String(f.cat) === String(val); return '<button type="button" onclick="pickItemCat(\'' + val + '\')" style="display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; padding:9px 11px; border:none; border-bottom:1px solid var(--line); background:' + (sel ? '#fff3d6' : '#fff') + '; color:#3a2a14; font-size:13px; font-weight:' + (sel ? '800' : '600') + '; cursor:pointer;"><span>' + label + '</span><span style="color:#8a6a44;">' + cnt + '</span></button>'; };
+    var total = 0; CATEGORIES.forEach(function(c){ total += c.items.length; });
+    h += '<div style="margin-top:8px; max-height:240px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('', 'All categories', total) +
+      CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci); return row(String(ci), (ci + 1) + '. ' + (n.ta || n.en) + ' (' + n.en + ')', c.items.length); }).join('') + '</div>';
+  }
+  return h + '</div>';
 }
 function onAdminItemSearch(){
   adminItemSearchQuery = document.getElementById('adminItemSearch').value;
