@@ -3188,7 +3188,8 @@ cart = cart1; // Default to Bill 1
 let activeCat = 'ALL';
 let activeTab = 'billing1';
 let adminTab = 'sales';
-let salesFilters = { seller:'', billNo:'', phone:'', branch:'' };
+let salesFilters = { seller:'', billNo:'', phone:'', branch:'', from:'', to:'' };
+let salesStatsOpen = false;   // Sales tab totals: hidden until the admin taps the eye
 let historyPhoneFilter = '';
 let historyBranchFilter = '';
 let historySellerFilter = '';   // admin: '' = all sellers, or a seller id. seller: '' = my bills, 'all' = all sellers of my branch, or a seller id
@@ -7368,6 +7369,8 @@ function closeQtySheets(){
 }
 function showAdmin(){
   closeQtySheets();
+  adminItemsBranch = adminScope() || '';                 // a branch's own price view never sticks
+  salesStatsOpen = false;                                // Sales totals start hidden (eye button shows them)
   applyAdminTabAccess();
   document.getElementById('app').classList.add('hidden');
   document.getElementById('adminScreen').classList.remove('hidden');
@@ -7400,7 +7403,7 @@ async function autoSaveOnExit(){
 }
 function setAdminTab(t){
   if(adminScope() && !{ sales:1, items:1, branch:1 }[t]) t = 'sales';
-  if(t === 'items' && adminTab !== 'items') adminPriceView = 'list';   // Price Edit always opens on the list view
+  if(t === 'items' && adminTab !== 'items'){ adminPriceView = 'list'; adminItemsBranch = adminScope() || ''; }   // Price Edit always opens on the full list view
   adminTab = t;
   document.getElementById('adminTabSalesBtn').classList.toggle('active', t==='sales');
   document.getElementById('adminTabItemsBtn').classList.toggle('active', t==='items');
@@ -7578,8 +7581,14 @@ function confirmOrder(saleId){
 }
 
 /* ---------------- ADMIN SALES FILTERS ---------------- */
+function salesInDates(s){
+  if(!salesFilters.from && !salesFilters.to) return true;
+  var d = saleLocalDate(s.time);
+  return !(salesFilters.from && d < salesFilters.from) && !(salesFilters.to && d > salesFilters.to);
+}
 function applySalesFilters(salesList){
   return salesList.filter(s => {
+    if(!salesInDates(s)) return false;
     if(salesFilters.seller && s.sellerId !== salesFilters.seller) return false;
     if(salesFilters.billNo && !String(s.billNo||'').includes(salesFilters.billNo.trim())) return false;
     if(salesFilters.phone && !String(s.buyerPhone||'').replace(/\D/g,'').includes(salesFilters.phone.replace(/\D/g,''))) return false;
@@ -7601,9 +7610,38 @@ function customerSummaryHtml(list){
   return `<div style="font-size:13px; font-weight:800; color:#7a1414; margin:2px 2px 10px;">${cs.length} bill(s) &middot; Total Paid &#8377;${paid.toLocaleString('en-IN')}</div>`;
 }
 function clearSalesFilters(){
-  salesFilters = { seller:'', billNo:'', phone:'', branch: salesFilters.branch || '' };   // the branch chip stays
+  salesFilters = { seller:'', billNo:'', phone:'', branch: salesFilters.branch || '', from:'', to:'' };   // the branch chip stays
   renderAdmin();
 }
+function toggleSalesStats(){ salesStatsOpen = !salesStatsOpen; renderAdmin(); }
+/* 📅 next to the search: on = From / To dates (first bill day .. today to start with), off = all dates. */
+function toggleSalesDates(){
+  if(salesFilters.from || salesFilters.to){ salesFilters.from = ''; salesFilters.to = ''; renderAdmin(); return; }
+  var today = saleLocalDate(new Date()), first = today;
+  (SALES || []).forEach(function(x){ if(saleInBranch(x, salesFilters.branch)){ var d = saleLocalDate(x.time); if(d < first) first = d; } });
+  salesFilters.from = first; salesFilters.to = today;
+  renderAdmin();
+}
+function onSalesDateChange(){
+  var f = (document.getElementById('salesFrom') || {}).value || '', t = (document.getElementById('salesTo') || {}).value || '';
+  if(f && t && f > t){ var x = f; f = t; t = x; }
+  salesFilters.from = f; salesFilters.to = t;
+  if(!f && !t){ salesFilters.from = salesFilters.to = ''; }
+  renderAdmin();
+}
+function salesPickSeller(id){ salesFilters.seller = salesFilters.seller === id ? '' : id; renderAdmin(); }
+/* Present days in the chosen dates: a day counts when that person made at least one bill (in the branch shown). */
+function salesAttendance(){
+  var by = new Map();
+  (SALES || []).forEach(function(x){
+    if(!saleInBranch(x, salesFilters.branch) || !salesInDates(x)) return;
+    var e = by.get(x.sellerId) || { name: x.sellerName || x.sellerId, days: new Set() };
+    e.name = x.sellerName || e.name; e.days.add(saleLocalDate(x.time)); by.set(x.sellerId, e);
+  });
+  return Array.from(by.entries()).map(function(r){ return { id: r[0], name: r[1].name, n: r[1].days.size }; })
+    .sort(function(a, b){ return b.n - a.n || String(a.name).localeCompare(String(b.name)); });
+}
+function salesDateLabel(d){ try{ var p = d.split('-'); return Number(p[2]) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(p[1]) - 1]; }catch(e){ return d; } }
 /* One search box: a short number = bill no, 6+ digits = customer mobile. */
 function onSalesSearchInput(){
   var el = document.getElementById('salesSearch'), v = el ? el.value : '', d = v.replace(/\D/g, '');
@@ -7616,7 +7654,8 @@ function salesRecordsScope(){
   var list = applySalesFilters(SALES || []).filter(function(x){ return saleInBranch(x, adminScope()); });
   var nm = salesFilters.seller ? ((list[0] && list[0].sellerName) || (USERS[salesFilters.seller] && USERS[salesFilters.seller].name) || salesFilters.seller) : '';
   var br = salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch].name : '';
-  return { list: list, title: 'Sales Records' + (nm ? ' \u2014 ' + nm : '') + (br ? ' \u2014 ' + br : '') };
+  var dt = (salesFilters.from || salesFilters.to) ? salesDateLabel(salesFilters.from || salesFilters.to) + (salesFilters.to && salesFilters.to !== salesFilters.from ? ' \u2013 ' + salesDateLabel(salesFilters.to) : '') : '';
+  return { list: list, title: 'Sales Records' + (nm ? ' \u2014 ' + nm : '') + (br ? ' \u2014 ' + br : '') + (dt ? ' \u2014 ' + dt : '') };
 }
 
 /* ---------------- ADMIN REPORTS TAB ---------------- */
@@ -7935,7 +7974,7 @@ function renderAdmin(){
   if(adminTab === 'items' && _scope){ renderScopedItems(main, _scope); return; }
 
   if(adminTab === 'sales'){
-    const scopedSales = SALES.filter(s => saleInBranch(s, salesFilters.branch) && (!salesFilters.seller || s.sellerId === salesFilters.seller));
+    const scopedSales = SALES.filter(s => saleInBranch(s, salesFilters.branch) && salesInDates(s) && (!salesFilters.seller || s.sellerId === salesFilters.seller));
     const confirmedSales = scopedSales.filter(s => isCountedSale(s));
     const totalRevenue = confirmedSales.reduce((a,s)=>a+s.total,0);
     const totalDiscountGiven = confirmedSales.reduce((a,s)=>a+(s.discount||0),0);
@@ -7949,15 +7988,20 @@ function renderAdmin(){
     // Build seller dropdown options with counts from all sales data
     const sellerCounts = new Map();
     const sellerNames = new Map();
-    SALES.filter(s => saleInBranch(s, salesFilters.branch)).forEach(s => { sellerNames.set(s.sellerId, s.sellerName); sellerCounts.set(s.sellerId, (sellerCounts.get(s.sellerId)||0)+1); });
+    SALES.filter(s => saleInBranch(s, salesFilters.branch) && salesInDates(s)).forEach(s => { sellerNames.set(s.sellerId, s.sellerName); sellerCounts.set(s.sellerId, (sellerCounts.get(s.sellerId)||0)+1); });
+    if(salesFilters.seller && !sellerNames.has(salesFilters.seller)){ const _x = SALES.find(s => s.sellerId === salesFilters.seller); sellerNames.set(salesFilters.seller, (_x && _x.sellerName) || salesFilters.seller); sellerCounts.set(salesFilters.seller, 0); }
+    const _dates = !!(salesFilters.from || salesFilters.to);
     const sellerOptions = [...sellerNames.entries()];
 
     const filteredSales = applySalesFilters(SALES);
 
     const scopeBr = salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch] : null;
     let html = branchChipsHtml(salesFilters.branch, 'setAdminBranch') +
-      (scopeBr || salesFilters.seller ? `<div style="font-size:12px; font-weight:800; color:var(--maroon); margin:0 2px 6px;">Showing: ${salesFilters.seller ? (sellerNames.get(salesFilters.seller) || salesFilters.seller) : 'All sellers'} &bull; ${scopeBr ? scopeBr.name + ' (' + scopeBr.short + ') only' : 'All branches'}</div>` : '') +
-      `<div class="stat-grid">
+      `<div style="display:flex; align-items:center; gap:8px; margin:0 2px ${salesStatsOpen ? '6px' : '12px'};">
+        <div style="flex:1; min-width:0; font-size:12px; font-weight:800; color:var(--maroon);">Showing: ${salesFilters.seller ? custEsc(sellerNames.get(salesFilters.seller) || salesFilters.seller) : 'All sellers'} &bull; ${scopeBr ? scopeBr.name + ' (' + scopeBr.short + ') only' : 'All branches'}${_dates ? ' &bull; ' + salesDateLabel(salesFilters.from || salesFilters.to) + (salesFilters.to && salesFilters.to !== salesFilters.from ? ' &ndash; ' + salesDateLabel(salesFilters.to) : '') : ''}</div>
+        <button onclick="toggleSalesStats()" title="${salesStatsOpen ? 'Hide totals' : 'Show totals'}" aria-label="${salesStatsOpen ? 'Hide totals' : 'Show totals'}" style="flex:0 0 auto; display:flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px; border:1.5px solid var(--maroon); background:${salesStatsOpen ? 'var(--maroon)' : '#fff8e6'}; color:${salesStatsOpen ? '#fff8e6' : 'var(--maroon)'}; font-weight:800; font-size:12px; cursor:pointer;"><span style="font-size:16px; line-height:1;">${salesStatsOpen ? '&#128584;' : '&#128065;&#65039;'}</span>${salesStatsOpen ? 'Hide' : 'Show'}</button>
+      </div>` +
+      `<div class="stat-grid" style="${salesStatsOpen ? '' : 'display:none;'}">
         <div class="stat-card"><div class="sv">₹${totalRevenue.toLocaleString('en-IN')}</div><div class="sl">Total Sales (Confirmed)</div></div>
         <div class="stat-card"><div class="sv">${scopedSales.length}</div><div class="sl">Total Orders</div></div>
         <div class="stat-card"><div class="sv">${totalItemsSold}</div><div class="sl">Total Items Sold (Qty)</div></div>
@@ -7976,17 +8020,28 @@ function renderAdmin(){
         <button onclick="openSalesHist('sellers')" style="flex:1; padding:12px 6px; background:#fff8e6; color:var(--maroon); border:1.5px solid var(--maroon); border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;">&#128100; Seller History</button>
       </div>
       <div style="margin:4px 0 12px;">
-        <div class="admin-search-wrap" style="margin:0 0 8px;">
-          <span class="ico">&#128269;</span>
-          <input id="salesSearch" type="text" inputmode="numeric" autocomplete="off" placeholder="Bill no or customer mobile" value="${salesFilters.billNo || salesFilters.phone || ''}" oninput="onSalesSearchInput()">
+        <div style="display:flex; gap:8px; align-items:stretch; margin:0 0 8px;">
+          <div class="admin-search-wrap" style="margin:0; flex:1; min-width:0;">
+            <span class="ico">&#128269;</span>
+            <input id="salesSearch" type="text" inputmode="numeric" autocomplete="off" placeholder="Bill no or customer mobile" value="${salesFilters.billNo || salesFilters.phone || ''}" oninput="onSalesSearchInput()">
+          </div>
+          <button onclick="toggleSalesDates()" title="${_dates ? 'Show all dates' : 'Filter by dates'}" aria-label="Date filter" style="flex:0 0 auto; width:48px; border-radius:10px; border:1.5px solid var(--maroon); background:${_dates ? 'var(--maroon)' : '#fff8e6'}; color:${_dates ? '#fff8e6' : 'var(--maroon)'}; font-size:20px; cursor:pointer;">&#128197;</button>
         </div>
+        ${_dates ? `<div style="display:flex; gap:6px; align-items:center; margin:0 0 8px; font-size:12px; font-weight:800; color:#5b4630;">
+          <span>From</span><input id="salesFrom" type="date" value="${salesFilters.from}" onchange="onSalesDateChange()" style="flex:1; min-width:0; padding:8px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:700; color:var(--maroon);">
+          <span>To</span><input id="salesTo" type="date" value="${salesFilters.to}" onchange="onSalesDateChange()" style="flex:1; min-width:0; padding:8px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:700; color:var(--maroon);">
+        </div>
+        <div style="margin:0 0 10px; padding:8px 10px; border-radius:10px; background:#fff3d6; border:1px solid #e9c77a;">
+          <div style="font-size:11px; font-weight:800; color:#8a6a44; margin-bottom:5px;">&#128100; Present days (at least 1 bill)</div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">${salesAttendance().map(a => `<button onclick="salesPickSeller('${String(a.id).replace(/'/g, '')}')" style="display:flex; align-items:center; gap:6px; padding:5px 6px 5px 10px; border-radius:999px; border:1.5px solid var(--maroon); background:${salesFilters.seller === a.id ? 'var(--maroon)' : '#fff'}; color:${salesFilters.seller === a.id ? '#fff8e6' : 'var(--maroon)'}; font-weight:800; font-size:12.5px; cursor:pointer;">${custEsc(a.name)} <span style="min-width:22px; padding:1px 6px; border-radius:999px; background:${salesFilters.seller === a.id ? '#fff8e6' : 'var(--maroon)'}; color:${salesFilters.seller === a.id ? 'var(--maroon)' : '#fff8e6'}; font-size:12px; text-align:center;">${a.n}</span></button>`).join('') || '<span style="font-size:12px; color:#8a6a44;">No bills in these dates.</span>'}</div>
+        </div>` : ''}
         <div style="display:flex; gap:8px; align-items:center;">
           <span style="font-size:12px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>
           <select id="filterSeller" onchange="onSalesFilterChange()" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">
             <option value="">All sellers</option>
             ${sellerOptions.map(([id,name]) => `<option value="${id}" ${salesFilters.seller===id?'selected':''}>${custEsc(name)} (${sellerCounts.get(id)})</option>`).join('')}
           </select>
-          ${(salesFilters.seller || salesFilters.billNo || salesFilters.phone) ? `<button onclick="clearSalesFilters()" title="Clear filters" aria-label="Clear filters" style="flex:0 0 auto; width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>` : ''}
+          ${(salesFilters.seller || salesFilters.billNo || salesFilters.phone || _dates) ? `<button onclick="clearSalesFilters()" title="Clear filters" aria-label="Clear filters" style="flex:0 0 auto; width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>` : ''}
         </div>
       </div>`;
 
@@ -10886,7 +10941,7 @@ function saveBranchDetails(id){
   showAdminNotification('\u2713 Branch details saved');
 }
 function selectBranchTab(id){ branchTabSel = id; renderAdmin(); }
-function openBranchItems(id){ adminItemsBranch = id; setAdminTab('items'); }
+function openBranchItems(id){ setAdminTab('items'); adminItemsBranch = id; renderAdmin(); }   // just this visit: Price Edit opened any other way shows the full list
 function openBranchSales(id){ salesFilters.branch = id; salesFilters.seller = ''; setAdminTab('sales'); }
 /* Hold = the branch is switched off everywhere (billing, lists, filters, price lists) until resumed. */
 async function setBranchHold(id, hold){
