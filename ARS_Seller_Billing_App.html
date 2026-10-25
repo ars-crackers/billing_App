@@ -4220,7 +4220,7 @@ function buildPendingSaleForPrint(){
       var qty = cart[key(ci, ii)] || 0;
       if(qty > 0){
         var n = getItemName(ci, ii);
-        items.push({ ta:n.ta, en:n.en, price:getPrice(ci, ii), qty:qty });
+        items.push({ ta:n.ta, en:n.en, price:getPrice(ci, ii), qty:qty, sn:itemSerialNo(ci, ii) });
       }
     });
   });
@@ -5427,7 +5427,7 @@ async function completeSale(paymentMethod, splitDetails){
     if(qty>0){
       const price = getPrice(ci, ii);
       const name = getItemName(ci, ii);
-      items.push({ta:name.ta, en:name.en, price, qty});
+      items.push({ta:name.ta, en:name.en, price, qty, sn: itemSerialNo(ci, ii)});
     }
   }));
   const buyerPhone = document.getElementById('billCustomerPhone').value.trim();
@@ -5600,7 +5600,7 @@ function buildCurrentBillPseudoSale(){
     if(qty > 0){
       const name = getItemName(ci, ii);
       const price = getPrice(ci, ii);
-      items.push({ ta: name.ta, en: name.en, price, qty });
+      items.push({ ta: name.ta, en: name.en, price, qty, sn: itemSerialNo(ci, ii) });
     }
   }));
   return {
@@ -5829,13 +5829,13 @@ async function shareBillWhatsApp(){
     const sale = lastCompletedSale || buildCurrentBillPseudoSale();
     
     // Render bill as 80mm thermal printer format IMAGE
-    const blob = await renderOffscreenToImageBlob(buildBillReceiptHTML(sale));
-    const file = new File([blob], 'Bill_' + (sale.billNo || Date.now()) + '.png', { type: 'image/png' });
+    const files = await renderBillPictures(sale);   // one picture, or pages for a long bill
+    if(!files.length) throw new Error('');
     
     // Open GENERAL SHARE OPTIONS (user picks WhatsApp or any app) — NO auto download
-    if(typeof navigator.share === 'function' && (!navigator.canShare || navigator.canShare({ files: [file] }))){
+    if(typeof navigator.share === 'function' && (!navigator.canShare || navigator.canShare({ files: files }))){
       try{
-        await navigator.share({ files: [file] });   // image only — no caption text
+        await navigator.share({ files: files });   // image only — no caption text
       } catch(e){
         if(e && e.name === 'AbortError') return; // user closed share sheet — do nothing
         throw e;
@@ -6119,12 +6119,132 @@ const RECEIPT_ITEM_COL_FRACTION = 0.50; // matches .br-col-item's width — prin
 const RECEIPT_ITEM_TEXT_RESERVE_PX = 30; // room used up by the "1." index number, its margin, and the cell's own padding
 
 /* ---- Bill receipt PDF (reuses .br-page styles) for a single sale ---- */
+/* Final bill: the English name ends with the item's price-list number - "4" Lakshmi Bomb (12)". Bills saved
+   before the number was stored find it in the price list by the item's name. */
+function billEnNamer(){
+  var idx = null;
+  return function(it){
+    var n = Number(it && it.sn) || 0;
+    if(!n && it){
+      if(!idx){
+        idx = {};
+        CATEGORIES.forEach(function(c, ci){ (c.items || []).forEach(function(x, ii){
+          var nm = getItemName(ci, ii), sn = itemSerialNo(ci, ii);
+          var k1 = (nm.en || '') + '|' + (nm.ta || ''), k2 = 'en|' + (nm.en || '');
+          if(!(k1 in idx)) idx[k1] = sn; if(!(k2 in idx)) idx[k2] = sn;
+        }); });
+      }
+      n = idx[(it.en || '') + '|' + (it.ta || '')] || idx['en|' + (it.en || '')] || 0;
+    }
+    return String((it && it.en) || '') + (n ? ' (' + n + ')' : '');
+  };
+}
+/* "PH: +91 8760209888" - each number kept whole on one line (two numbers may sit on two lines). */
+function billPhoneHtml(b){
+  var ph = String(branchPhoneText(b) || '').split(/\s*(?:\/|,)\s*/).filter(Boolean);
+  return ph.map(function(p, i){ return '<span style="white-space:nowrap;">' + (i ? '' : 'PH: ') + custEsc(p) + '</span>'; }).join(' / ');
+}
+/* The bill as a picture for phones (Share button): big black text that is never shrunk to fit (long names wrap
+   instead), Tamil name with the English name under it. A long bill is cut into pages (see renderBillPictures). */
+function buildBillPictureHTML(s){
+  const br = branchOfSale(s) || {}, inr = n => '&#8377;' + (Number(n) || 0).toLocaleString('en-IN'), enName = billEnNamer();
+  const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+  const td = 'padding:6px 4px; border-bottom:1px dashed #888; vertical-align:top;';
+  const rows = (s.items || []).map((it, i) => `<tr data-r="1">
+      <td style="${td} padding-left:9px; font-size:14px; font-weight:700;">${i + 1}.</td>
+      <td style="${td} word-break:break-word; line-height:1.22;"><div style="font-size:16.5px; font-weight:800;">${custEsc(it.ta || '')}</div><div style="font-size:13px; color:#222;">${custEsc(enName(it))}</div></td>
+      <td style="${td} font-size:15px; text-align:right; white-space:nowrap;">${inr(it.price)}</td>
+      <td style="${td} font-size:16px; font-weight:800; text-align:center;">${it.qty}</td>
+      <td style="${td} font-size:15.5px; font-weight:800; text-align:right; white-space:nowrap; padding-right:10px;">${inr(it.price * it.qty)}</td></tr>`).join('');
+  const th = 'padding:5px 4px; font-size:13.5px; font-weight:800; border-bottom:2px solid #000;';
+  const row = (a, b, st) => `<div style="display:flex; justify-content:space-between; gap:8px; padding:3px 0; font-size:15.5px; ${st || ''}"><span>${a}</span><span style="white-space:nowrap;">${b}</span></div>`;
+  return `<div style="width:400px; box-sizing:border-box; background:#fff; color:#000; font-family:${RECEIPT_FONT_FAMILY}; padding-bottom:8px;">
+      <div style="text-align:center; padding:13px 10px 9px; border-bottom:2px dashed #000;">
+        <div style="font-size:25px; font-weight:800; letter-spacing:0.3px;">${custEsc(branchTitle(br) || SHOP.name_ta)}</div>
+        <div style="font-size:14px; font-weight:600; margin-top:3px;">Branch: ${custEsc(br.name || 'Thanneerpandhal')}</div>
+        <div style="font-size:16px; font-weight:800; margin-top:1px;">${billPhoneHtml(br)}</div>
+        <div style="font-size:20px; font-weight:800; margin-top:5px;">Bill No: ${s.billNo || '-'}</div>
+      </div>
+      <div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px 0; font-size:14px;"><span>${dt}</span><span>Seller: <b>${custEsc(s.sellerName || '')}</b></span></div>
+      <table style="width:100%; table-layout:fixed; border-collapse:collapse; margin-top:5px; color:#000;">
+        <colgroup><col style="width:32px;"><col><col style="width:62px;"><col style="width:38px;"><col style="width:82px;"></colgroup>
+        <thead><tr><th style="${th} text-align:left; padding-left:9px;">#</th><th style="${th} text-align:left;">Item</th><th style="${th} text-align:right;">Price</th><th style="${th} text-align:center;">Qty</th><th style="${th} text-align:right; padding-right:10px;">Total</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="padding:7px 10px 0;">
+        ${row('Grand Total / மொத்தம்', inr(s.subtotal), 'font-weight:700;')}
+        ${s.discount > 0 ? row('Discount / தள்ளுபடி (' + s.discountPercent + '%)', '&minus;' + inr(s.discount), 'font-weight:800;') : ''}
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding:9px 10px; border-top:2px dashed #000;">
+        <span style="font-size:16px; font-weight:800; line-height:1.3;">Paid Amount<br><span style="font-size:13.5px; font-weight:700;">செலுத்திய தொகை</span></span>
+        <span style="text-align:right;"><span style="display:block; font-size:28px; font-weight:800;">${inr(s.paidAmount || s.total)}</span>${s.paymentMethod ? '<span style="font-size:13px; font-weight:600; color:#222;">(' + paymentMethodLabel(s) + ')</span>' : ''}</span>
+      </div>
+      <div style="padding:5px 10px 0; font-size:13.5px; text-align:center;">Thank you from ${custEsc(SHOP.name_ta)}!</div>
+      ${saleStatus(s) === 'cancelled' ? '<div style="margin-top:6px; text-align:center; font-size:15px; font-weight:800; padding:7px 8px; border-top:2px dashed #000;">&#9888; ORDER CANCELLED</div>' : ''}
+    </div>`;
+}
+/* The bill picture(s) as PNG files. Drawn 2x (800 px wide). WhatsApp shrinks a normal photo to 1600 px on its
+   longest side, which makes a long bill tiny and blurred - so a long bill is cut between items into pages of at most
+   1600 px, each sent at full sharpness: "Page 2 of 2" at the top, "Continued" at the bottom. */
+async function renderBillPictures(s){
+  await ensureHtml2Canvas();
+  const S = 2, MAXH = 800, STRIP = 32;           // CSS px: 800 x 2 = 1600 px per page
+  const host = document.createElement('div'); host.className = 'pl-host';
+  const wrap = document.createElement('div'); wrap.innerHTML = buildBillPictureHTML(s);
+  const pageEl = wrap.firstElementChild; host.appendChild(pageEl); document.body.appendChild(host);
+  let canvas, rows, total;
+  try{
+    const r0 = pageEl.getBoundingClientRect();
+    rows = Array.prototype.map.call(pageEl.querySelectorAll('tr[data-r]'), function(tr){ const r = tr.getBoundingClientRect(); return [r.top - r0.top, r.bottom - r0.top]; });
+    total = r0.height;
+    canvas = await window.html2canvas(pageEl, { scale: S, backgroundColor: '#ffffff', useCORS: true, width: r0.width, windowWidth: r0.width });
+  } finally { host.remove(); }
+  const name = 'ARS_Bill_' + (s.billNo || Date.now());
+  const toFile = (cv, nm) => new Promise(res => cv.toBlob(b => res(b ? new File([b], nm, { type: 'image/png' }) : null), 'image/png'));
+  // where to cut: between item rows; the totals stay with at least two items
+  const cuts = []; let start = 0, i = 0;
+  while(true){
+    const top = cuts.length ? STRIP : 0;
+    if(total - start + top <= MAXH){ cuts.push([start, total]); break; }
+    const room = MAXH - top - STRIP;
+    let j = i, end = start;
+    while(j < rows.length && rows[j][1] - start <= room){ end = rows[j][1]; j++; }
+    if(j === i){ if(i >= rows.length){ cuts.push([start, total]); break; } end = rows[i][1]; j = i + 1; }
+    if(j >= rows.length && j - i > 2){ j -= 2; end = rows[j - 1][1]; }
+    cuts.push([start, end]); start = end; i = j;
+    if(cuts.length > 40){ cuts.push([start, total]); break; }
+  }
+  if(cuts.length === 1){ const f = await toFile(canvas, name + '.png'); return f ? [f] : []; }
+  const n = cuts.length, out = [], W = canvas.width;
+  for(let k = 0; k < n; k++){
+    const a = Math.round(cuts[k][0] * S), b = Math.min(canvas.height, Math.round(cuts[k][1] * S));
+    const t = k ? Math.round(STRIP * S) : 0, bt = k < n - 1 ? Math.round(STRIP * S) : 0;
+    const pc = document.createElement('canvas'); pc.width = W; pc.height = t + (b - a) + bt;
+    const cx = pc.getContext('2d');
+    cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, pc.width, pc.height);
+    cx.drawImage(canvas, 0, a, W, b - a, 0, t, W, b - a);
+    cx.fillStyle = '#000000'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.font = 'bold ' + Math.round(14.5 * S) + 'px ' + RECEIPT_FONT_FAMILY;
+    if(t){
+      cx.fillText('Bill No: ' + (s.billNo || '-') + '  •  Page ' + (k + 1) + ' of ' + n, W / 2, t / 2);
+      cx.fillRect(0, t - Math.round(S), W, Math.round(S));
+    }
+    if(bt){
+      cx.font = '600 ' + Math.round(13.5 * S) + 'px ' + RECEIPT_FONT_FAMILY;
+      cx.fillText('Continued on page ' + (k + 2) + '  ▸', W / 2, pc.height - bt / 2);
+    }
+    const f = await toFile(pc, name + '_' + (k + 1) + 'of' + n + '.png');
+    if(f) out.push(f);
+  }
+  return out;
+}
 function buildBillReceiptHTML(s){
   const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
   const pageWidthPx = 226.772;
   const availableTextWidth = Math.max(30, pageWidthPx * RECEIPT_ITEM_COL_FRACTION - RECEIPT_ITEM_TEXT_RESERVE_PX);
   const taFontPx = fitReceiptFontSize(s.items.map(it=>it.ta), availableTextWidth, RECEIPT_FONT_FAMILY, 12, 7);
-  const enFontPx = fitReceiptFontSize(s.items.map(it=>it.en), availableTextWidth, RECEIPT_FONT_FAMILY, 9.5, 6);
+  const enName = billEnNamer();
+  const enFontPx = fitReceiptFontSize(s.items.map(it=>enName(it)), availableTextWidth, RECEIPT_FONT_FAMILY, 9.5, 7);
   // Price & Qty are the same size as each other but NOT bold; Total stays bold
   // (the one number that matters most) and gets a touch of right padding so
   // it sits a little in from the paper's very edge instead of flush against it.
@@ -6134,7 +6254,7 @@ function buildBillReceiptHTML(s){
   // so the customer can see what every item actually cost them.
   let rows = s.items.map((it, idx) => `<tr><td class="br-col-item"><div style="display:flex; align-items:baseline; min-width:0;"><span style="flex:0 0 auto; margin-right:4px; font-size:${taFontPx}px;">${idx+1}.</span><div style="min-width:0; overflow:hidden;">
         <div style="white-space:nowrap; overflow:hidden; font-size:${taFontPx}px; font-weight:700;">${it.ta}</div>
-        <div class="br-en" style="white-space:nowrap; overflow:hidden; font-size:${enFontPx}px;">${it.en}</div>
+        <div class="br-en" style="overflow-wrap:anywhere; line-height:1.2; font-size:${enFontPx}px;">${enName(it)}</div>
       </div></div></td>
       <td class="num br-col-price" style="${priceQtyStyle}">&#8377;${it.price.toLocaleString('en-IN')}</td><td class="num br-col-qty" style="${priceQtyStyle}">${it.qty}</td>
       <td class="num br-col-total" style="${totalStyle}">&#8377;${(it.price*it.qty).toLocaleString('en-IN')}</td></tr>`).join('');
@@ -6145,7 +6265,8 @@ function buildBillReceiptHTML(s){
   return `<div class="br-page" style="width:${pageWidthPx}px;">
       <div class="br-head">
         <div class="br-ta">${branchTitle(branchOfSale(s)) || SHOP.name_ta}</div>
-        <div style="font-size:10px; color:#000; margin-top:3px;">Branch: ${(branchOfSale(s) || {}).name || 'Thanneerpandhal'} &bull; Ph: ${branchPhoneText(branchOfSale(s))}</div>
+        <div style="font-size:10px; color:#000; margin-top:3px;">Branch: ${(branchOfSale(s) || {}).name || 'Thanneerpandhal'}</div>
+        <div style="font-size:10.5px; color:#000; font-weight:700; margin-top:1px;">${billPhoneHtml(branchOfSale(s))}</div>
         <div style="font-size:11px; color:#000; font-weight:800; margin-top:4px;">Bill No: ${s.billNo || '-'}</div>
       </div>
       <div class="br-meta"><span>${dt}</span><span>Seller: ${s.sellerName}</span></div>
@@ -6257,14 +6378,13 @@ async function shareSaleImage(saleId, btn){
   const s = (SALES || []).find(x => x.id === saleId);
   if(!s) return;
   const sig = saleId + '|' + (s.edited ? s.edited.at : '') + '|' + s.total + '|' + saleStatus(s);
-  let file = _billPngReady[sig];
+  let files = _billPngReady[sig];
   const label = SHARE_ICON_SVG_SM + 'Share';
-  if(!file){
+  if(!files){
     if(btn){ btn.disabled = true; btn.innerHTML = '&hellip;'; }
     try{
-      const blob = await renderOffscreenToImageBlob(buildBillReceiptHTML(s), 3);   // sharp text on the customer's phone
-      if(!blob) throw new Error('no picture');
-      file = new File([blob], 'ARS_Bill_' + (s.billNo || s.id) + '.png', { type: 'image/png' });
+      files = await renderBillPictures(s);                  // one picture, or pages for a long bill
+      if(!files.length) throw new Error('no picture');
     }catch(e){
       if(btn){ btn.disabled = false; btn.innerHTML = label; }
       alert('Could not make the bill picture. Please check the internet and try again.');
@@ -6272,15 +6392,15 @@ async function shareSaleImage(saleId, btn){
     }
     if(btn){ btn.disabled = false; btn.innerHTML = label; }
   }
-  if(typeof navigator.share === 'function' && (!navigator.canShare || navigator.canShare({ files: [file] }))){
-    try{ await navigator.share({ files: [file] }); delete _billPngReady[sig]; return; }   // picture only, no caption
+  if(typeof navigator.share === 'function' && (!navigator.canShare || navigator.canShare({ files: files }))){
+    try{ await navigator.share({ files: files }); delete _billPngReady[sig]; return; }   // picture(s) only, no caption
     catch(e){
       if(e && e.name === 'AbortError'){ delete _billPngReady[sig]; return; }
-      if(e && e.name === 'NotAllowedError'){ _billPngReady[sig] = file; if(btn) btn.innerHTML = SHARE_ICON_SVG_SM + 'Tap to share'; return; }
+      if(e && e.name === 'NotAllowedError'){ _billPngReady[sig] = files; if(btn) btn.innerHTML = SHARE_ICON_SVG_SM + 'Tap to share'; return; }
     }
   }
   delete _billPngReady[sig];
-  estDownload(file, file.name);
+  files.forEach(function(f, k){ setTimeout(function(){ estDownload(f, f.name); }, k * 400); });
 }
 
 /* Shares a past sale's bill as a bill-size IMAGE. If the sale has a recorded customer
