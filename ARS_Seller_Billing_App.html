@@ -624,6 +624,18 @@
   .sale-detail.show{display:block;}
   .sale-detail div{display:flex; justify-content:space-between; padding:2px 0; color:var(--ink-soft);}
   .sale-detail .sd-disc{color:var(--green); font-weight:700;}
+  .sale-detail .sd-edited{color:#8a5a00; font-weight:700; background:#fff6dc; border-radius:6px; padding:3px 6px; margin-top:3px;}
+  .edited-tag{display:inline-block; font-size:9.5px; font-weight:800; padding:1px 7px; border-radius:999px; vertical-align:middle; margin-left:4px; background:#fff1c7; color:#8a5a00; border:1px solid #e3b341; white-space:nowrap;}
+  .btn-edit-bill{background:#b45309; color:#fff;}
+  .se-row{display:flex; align-items:center; gap:6px; padding:8px 0; border-bottom:1px dashed var(--line);}
+  .se-row.off{opacity:.45;}
+  .se-row .se-name{flex:1; min-width:0; font-size:12.5px; line-height:1.25;}
+  .se-row .se-name small{display:block; font-size:10.5px; color:#8a6a44;}
+  .item-edit-body .se-row input{width:52px; margin:0; flex:0 0 auto; padding:7px 4px; border:1.5px solid var(--line); border-radius:8px; font-size:14px; font-weight:800; text-align:center; box-sizing:border-box; background:#fff;}
+  .item-edit-body .se-row input.se-p{width:66px;}
+  .se-row .se-amt{width:62px; text-align:right; font-size:12.5px; font-weight:800; color:var(--maroon);}
+  .se-tot{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 0; font-size:13px;}
+  .item-edit-body .se-tot input{width:96px; margin:0; flex:0 0 auto; padding:7px 8px; border:1.5px solid var(--line); border-radius:8px; font-size:15px; font-weight:800; text-align:right; box-sizing:border-box; background:#fff;}
   .seller-row{display:flex; align-items:center; justify-content:space-between; background:var(--paper);
     border:1px solid var(--line); border-radius:10px; padding:9px 12px; margin-bottom:7px;}
   .seller-row .sr-info b{font-size:13px;} .seller-row .sr-info div{font-size:10.5px; color:var(--ink-soft);}
@@ -1020,6 +1032,26 @@ function __appNotLoaded(){
     <div class="confirm-actions" style="padding:6px 18px 18px;">
       <button class="btn-confirm-no" onclick="closeItemEditModal()">Cancel</button>
       <button class="btn-confirm-yes" onclick="saveItemEditModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ADMIN: EDIT A FINISHED BILL ================= -->
+<div class="modal-overlay" id="saleEditOverlay">
+  <div class="item-edit-sheet">
+    <div class="bill-head" style="position:sticky;">
+      <div class="bn" id="saleEditTitle">Edit Bill</div>
+      <div id="saleEditSub" style="font-size:11px; color:#f3d9a6; margin-top:4px;"></div>
+    </div>
+    <div class="item-edit-body" style="padding-top:8px;">
+      <div style="display:flex; gap:6px; font-size:10px; font-weight:800; color:#8a6a44; padding:2px 0 0;"><span style="flex:1;">Item</span><span style="width:52px; text-align:center;">Qty</span><span style="width:66px; text-align:center;">Price &#8377;</span><span style="width:62px; text-align:right;">Amount</span></div>
+      <div id="saleEditItems"></div>
+      <div style="font-size:10.5px; color:#8a6a44; margin:6px 0 8px;">Qty 0 removes that item from the bill.</div>
+      <div id="saleEditTotals"></div>
+    </div>
+    <div class="confirm-actions" style="padding:6px 18px 18px;">
+      <button class="btn-confirm-no" onclick="closeSaleEdit()">Cancel</button>
+      <button class="btn-confirm-yes" onclick="saveSaleEdit()">Save changes</button>
     </div>
   </div>
 </div>
@@ -2035,6 +2067,12 @@ function mergeRemoteSales(list){
     }
     if(existing && !_fbUnsentSales[remote.id] && ((existing.buyerPhone || '') !== (remote.buyerPhone || '') || (existing.buyerName || '') !== (remote.buyerName || ''))){
       existing.buyerPhone = remote.buyerPhone || null; existing.buyerName = remote.buyerName || null; changed = true;   // a customer edit made by the admin
+    }
+    if(existing && !_fbUnsentSales[remote.id] && remote.edited && remote.edited.at && (!existing.edited || String(remote.edited.at) > String(existing.edited.at || ''))){
+      // an admin changed this bill's items / amounts
+      ['items', 'subtotal', 'discount', 'discountPercent', 'total', 'paidAmount', 'cashAmount', 'upiAmount', 'edited', 'editOrig'].forEach(function(f){ existing[f] = remote[f] === undefined ? null : remote[f]; });
+      if(existing.editOrig && existing.editOrig.items && !Array.isArray(existing.editOrig.items)) existing.editOrig.items = fbToArr(existing.editOrig.items);
+      existing._sheetSynced = false; changed = true;
     }
     if(existing && !_fbUnsentSales[remote.id] && remote.billNo && (existing.billNo !== remote.billNo || !!existing.billNoTemp !== !!remote.billNoTemp)){
       existing.billNo = remote.billNo; changed = true;                                       // a temporary (no-signal) number was confirmed / changed
@@ -6031,16 +6069,18 @@ function renderHistoryList(){
     if(s.buyerName) itemsHtml += `<div><span>Customer</span><span>${custEsc(s.buyerName)}</span></div>`;
     if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${fmtPhones(s.buyerPhone)}</span></div>`;
     if(s.paidAmount) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
+    itemsHtml += saleEditNote(s);
     html += `<div class="sale-card">
         <div class="sale-card-top" onclick="toggleSaleDetail('h-${s.id}')">
           <div>
-            <div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)} &middot; ${(isAdmin || s.sellerId !== session.id) ? s.sellerName + ' ' : ''}${statusBadge}${highDiscTag(s)}</div>
+            <div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)} &middot; ${(isAdmin || s.sellerId !== session.id) ? s.sellerName + ' ' : ''}${statusBadge}${highDiscTag(s)}${saleEditTag(s)}</div>
             <div class="sc-time">${dt}</div>
           </div>
           <div style="display:flex; align-items:center;"><div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div>${cancelIco}</div>
         </div>
         <div class="sale-detail" id="detail-h-${s.id}">${itemsHtml}
           <div class="sale-card-actions">
+            ${isAdmin && status === 'confirmed' ? `<button class="btn-edit-bill" onclick="event.stopPropagation(); openSaleEdit('${s.id}')" title="Change qty / price">&#9998; Edit</button>` : ''}
             ${s.buyerPhone ? `<button class="btn-whatsapp-sm" onclick="event.stopPropagation(); sharePastBillImageViaWhatsApp('${s.id}')">${WHATSAPP_ICON_SVG_SM}WhatsApp Image</button>` : ''}
             <button class="btn-share-pdf-sm" onclick="event.stopPropagation(); shareSaleHistoryPDF('${s.id}')">${SHARE_ICON_SVG_SM}PDF</button>
             <button class="btn-share-pdf-sm" style="background:#0b5fd8;" onclick="event.stopPropagation(); printSaleById('${s.id}')" title="Print this bill">&#128424; Print</button>
@@ -7211,6 +7251,125 @@ function setSaleStatus(saleId, status){
   else { render(); }
   refreshNotifBadges();
 }
+/* ---- Admin only: change a finished bill (qty / price of its items). The bill keeps its number and is marked
+   "Edited" (who, when) everywhere it is listed; its first version is kept (editOrig), so the old amount can always be
+   seen. With items changed the discount % stays the same; typing the received amount sets the discount instead. ---- */
+var _seId = null, _seRows = [], _seMode = 'amt', _sePct = 0, _seAmt = 0;
+function saleEditTag(s){
+  return (s && s.edited) ? ' <span class="edited-tag" title="Edited by ' + custEsc(s.edited.by || 'admin') + '">&#9998; Edited</span>' : '';
+}
+function saleEditNote(s){
+  if(!s || !s.edited) return '';
+  var when = ''; try{ when = new Date(s.edited.at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }); }catch(e){}
+  var o = s.editOrig || {};
+  return '<div class="sd-edited"><span>&#9998; Edited by ' + custEsc(s.edited.by || 'admin') + (when ? ' &middot; ' + when : '') + '</span>' +
+    (o.total != null ? '<span style="white-space:nowrap;">was &#8377;' + Number(o.total).toLocaleString('en-IN') + '</span>' : '') + '</div>';
+}
+function _seNum(v){ v = parseFloat(String(v == null ? '' : v).replace(/[^\d.]/g, '')); return isNaN(v) ? 0 : v; }
+function _seCalc(){
+  var sub = 0, count = 0;
+  _seRows.forEach(function(r){ if(r.qty > 0){ sub += r.qty * r.price; count++; } });
+  sub = Math.round(sub);
+  var disc, tot, pct;
+  if(_seMode === 'amt'){
+    tot = Math.round(_seAmt);
+    tot = Math.max(Math.ceil(sub * 0.2), Math.min(sub, tot));          // shop rule: at most 80% discount
+    disc = sub - tot; pct = sub > 0 ? disc / sub * 100 : 0;
+  } else {
+    pct = Math.max(0, Math.min(80, _sePct));
+    disc = Math.round(sub * pct / 100); tot = sub - disc;
+  }
+  return { sub: sub, disc: disc, pct: Math.round(pct * 100) / 100, tot: tot, count: count };
+}
+function openSaleEdit(id){
+  if(typeof session === 'undefined' || !session || session.role !== 'admin') return;
+  SALES = loadJSON('ars_sales', []) || [];
+  var s = SALES.find(function(x){ return x.id === id; }); if(!s) return;
+  if(saleStatus(s) !== 'confirmed'){ alert('Only a confirmed bill can be edited.'); return; }
+  _seId = id;
+  _seRows = (s.items || []).map(function(it){ return { it: it, qty: Number(it.qty) || 0, price: Number(it.price) || 0 }; });
+  _seMode = 'amt'; _seAmt = Number(s.total) || 0;                          // opens with the bill exactly as it is
+  _sePct = (Number(s.subtotal) > 0) ? Math.round((Number(s.discount) || 0) / Number(s.subtotal) * 10000) / 100 : 0;
+  var dt = ''; try{ dt = new Date(s.time).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }); }catch(e){}
+  document.getElementById('saleEditTitle').textContent = 'Edit Bill #' + (s.billNo || '-');
+  document.getElementById('saleEditSub').innerHTML = custEsc(s.sellerName || '') + ' &middot; ' + dt + (s.buyerName ? ' &middot; ' + custEsc(s.buyerName) : '');
+  document.getElementById('saleEditItems').innerHTML = _seRows.map(function(r, i){
+    return '<div class="se-row" id="seRow' + i + '"><div class="se-name"><b>' + custEsc(r.it.ta || r.it.en || '') + '</b>' + (r.it.en && r.it.ta ? '<small>' + custEsc(r.it.en) + '</small>' : '') + '</div>' +
+      '<input type="number" inputmode="numeric" min="0" max="9999" value="' + r.qty + '" oninput="saleEditRow(' + i + ',\'qty\',this.value)" aria-label="Qty">' +
+      '<input type="number" inputmode="decimal" min="0" class="se-p" value="' + r.price + '" oninput="saleEditRow(' + i + ',\'price\',this.value)" aria-label="Price">' +
+      '<div class="se-amt" id="seAmt' + i + '"></div></div>';
+  }).join('');
+  saleEditPaint(true);
+  document.getElementById('saleEditOverlay').classList.add('show');
+}
+function closeSaleEdit(){ document.getElementById('saleEditOverlay').classList.remove('show'); _seId = null; }
+function saleEditRow(i, field, v){
+  var r = _seRows[i]; if(!r) return;
+  if(field === 'qty') r.qty = Math.min(9999, Math.max(0, Math.round(_seNum(v))));
+  else r.price = Math.max(0, Math.round(_seNum(v) * 100) / 100);
+  if(_seMode === 'amt'){ _seMode = 'pct'; }                                 // items changed: keep the same discount %
+  saleEditPaint(false);
+}
+function saleEditPct(v){ _seMode = 'pct'; _sePct = _seNum(v); saleEditPaint(false, 'pct'); }
+function saleEditAmt(v){ _seMode = 'amt'; _seAmt = _seNum(v); saleEditPaint(false, 'amt'); }
+/* full = build the totals boxes too; typing = the box being typed in (left alone so the cursor stays put) */
+function saleEditPaint(full, typing){
+  var s = (SALES || []).find(function(x){ return x.id === _seId; }); if(!s) return;
+  var c = _seCalc(), inr = function(n){ return '&#8377;' + Math.round(n).toLocaleString('en-IN'); };
+  _seRows.forEach(function(r, i){
+    var row = document.getElementById('seRow' + i), a = document.getElementById('seAmt' + i);
+    if(row) row.classList.toggle('off', !(r.qty > 0));
+    if(a) a.innerHTML = r.qty > 0 ? inr(r.qty * r.price) : '<span style="font-size:10.5px; color:#b3261e;">removed</span>';
+  });
+  var box = document.getElementById('saleEditTotals');
+  if(full || !document.getElementById('sePct')){
+    box.innerHTML =
+      '<div class="se-tot"><span>Price list total</span><b id="seSub"></b></div>' +
+      '<div class="se-tot"><span>Discount <input id="sePct" type="number" inputmode="decimal" min="0" max="80" style="width:70px; text-align:center;" oninput="saleEditPct(this.value)"> %</span><b id="seDisc" style="color:var(--green);"></b></div>' +
+      '<div class="se-tot"><span style="font-weight:800;">Received amount</span><input id="seTot" type="number" inputmode="numeric" min="0" oninput="saleEditAmt(this.value)"></div>' +
+      '<div id="seCmp" style="margin-top:6px; padding:8px 10px; border-radius:9px; background:#fff6dc; border:1px solid #e3b341; font-size:12.5px; font-weight:700; color:#5a3a00;"></div>';
+  }
+  document.getElementById('seSub').innerHTML = inr(c.sub);
+  document.getElementById('seDisc').innerHTML = c.disc > 0 ? '&minus;' + inr(c.disc) : '&mdash;';
+  if(typing !== 'pct') document.getElementById('sePct').value = c.pct;
+  if(typing !== 'amt') document.getElementById('seTot').value = c.tot;
+  var old = Number(s.total) || 0, diff = c.tot - old;
+  document.getElementById('seCmp').innerHTML = 'Bill amount: ' + inr(old) + ' &rarr; <span style="font-size:15px; color:var(--maroon);">' + inr(c.tot) + '</span>' +
+    (diff ? ' <span style="color:' + (diff > 0 ? 'var(--green)' : '#b3261e') + ';">(' + (diff > 0 ? '+' : '&minus;') + inr(Math.abs(diff)) + ')</span>' : ' <span style="color:#8a6a44;">(no change)</span>') +
+    (c.pct >= HIGH_DISC_PCT ? '<div style="color:#b3261e; margin-top:3px;">&#9888; Discount ' + c.pct + '%</div>' : '');
+}
+async function saveSaleEdit(){
+  if(typeof session === 'undefined' || !session || session.role !== 'admin') return;
+  SALES = loadJSON('ars_sales', []) || [];
+  var s = SALES.find(function(x){ return x.id === _seId; }); if(!s){ closeSaleEdit(); return; }
+  if(saleStatus(s) !== 'confirmed'){ alert('Only a confirmed bill can be edited.'); closeSaleEdit(); return; }
+  var c = _seCalc(), kept = _seRows.filter(function(r){ return r.qty > 0; });
+  if(!kept.length){ alert('A bill needs at least one item. To remove the whole bill, use Cancel Order.'); return; }
+  var same = c.tot === Number(s.total) && kept.length === (s.items || []).length &&
+    _seRows.every(function(r){ return r.qty === (Number(r.it.qty) || 0) && r.price === (Number(r.it.price) || 0); });
+  if(same){ closeSaleEdit(); return; }
+  var ok = await showConfirm('Save changes to bill #' + (s.billNo || '-') + '?\n\n₹' + (Number(s.total) || 0).toLocaleString('en-IN') + '  →  ₹' + c.tot.toLocaleString('en-IN') + '\n\nThe bill will show "Edited" on every phone.');
+  if(!ok) return;
+  if(!s.editOrig) s.editOrig = { items: (s.items || []).map(function(it){ return Object.assign({}, it); }), subtotal: s.subtotal, discount: s.discount, discountPercent: s.discountPercent, total: s.total, paymentMethod: s.paymentMethod || 'cash' };
+  var oldTot = Number(s.total) || 0;
+  s.items = kept.map(function(r){ return Object.assign({}, r.it, { qty: r.qty, price: r.price }); });
+  s.subtotal = c.sub; s.discount = c.disc; s.discountPercent = c.pct; s.total = c.tot;
+  if(s.paidAmount != null) s.paidAmount = c.tot;
+  var m = s.paymentMethod || 'cash';
+  if(m === 'split'){
+    var cash = oldTot > 0 ? Math.round((Number(s.cashAmount) || 0) * c.tot / oldTot) : c.tot;
+    s.cashAmount = Math.max(0, Math.min(c.tot, cash)); s.upiAmount = c.tot - s.cashAmount;
+  } else if(m === 'upi'){ s.cashAmount = 0; s.upiAmount = c.tot; }
+  else { s.cashAmount = c.tot; s.upiAmount = 0; }
+  s.edited = { at: new Date().toISOString(), by: session.name || session.id, byId: session.id, n: ((s.edited && s.edited.n) || 0) + 1 };
+  s._sheetSynced = false;                               // the admin's next "Save to Google Sheet" re-sends this row
+  saveJSON('ars_sales', SALES);
+  pushSaleToFirebase(s, true);                          // every phone gets the new amounts
+  closeSaleEdit();
+  if(!document.getElementById('adminScreen').classList.contains('hidden')) renderAdmin(); else render();
+  refreshNotifBadges();
+  try{ scanToast('✎ Bill #' + (s.billNo || '-') + ' updated • ₹' + c.tot.toLocaleString('en-IN'), 'green'); }catch(e){}
+}
 /* Seller: ask the admin to cancel one of their own bills. The bill stops counting in the totals
    straight away; the admin then approves or rejects. */
 async function requestCancelBill(saleId){
@@ -7734,10 +7893,11 @@ function renderAdmin(){
         if(s.buyerName) itemsHtml += `<div><span>Customer</span><span>${custEsc(s.buyerName)}</span></div>`;
     if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${fmtPhones(s.buyerPhone)}</span></div>`;
         if(s.paidAmount) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
+        itemsHtml += saleEditNote(s);
         const isNew = new Date(s.time).getTime() > lastSeen;
         html += `<div class="sale-card">
             <div class="sale-card-top" onclick="toggleSaleDetail('${s.id}')">
-              <div><div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)}${highDiscTag(s)} &middot; ${isNew ? '<span class="new-tag">NEW</span> ' : ''}<span style="text-decoration:underline dotted; cursor:pointer;" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${s.sellerName}</span> ${statusBadge}</div>
+              <div><div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)}${highDiscTag(s)} &middot; ${isNew ? '<span class="new-tag">NEW</span> ' : ''}<span style="text-decoration:underline dotted; cursor:pointer;" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${s.sellerName}</span> ${statusBadge}${saleEditTag(s)}</div>
               <div class="sc-time">${dt}</div></div>
               <div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div>
             </div>
@@ -7747,7 +7907,7 @@ function renderAdmin(){
                   ? `<button class="btn-cancel-order" onclick="event.stopPropagation(); approveCancel('${s.id}')">&#10003; Approve Cancel</button><button class="btn-confirm-order" onclick="event.stopPropagation(); rejectCancel('${s.id}')">&#10005; Reject</button>`
                   : status === 'cancelled'
                   ? `<button class="btn-confirm-order" onclick="event.stopPropagation(); confirmOrder('${s.id}')">&#10003; Re-confirm Order</button>`
-                  : `<button class="btn-cancel-order" onclick="event.stopPropagation(); cancelOrder('${s.id}')">&#10005; Cancel Order</button>`}
+                  : `<button class="btn-edit-bill" onclick="event.stopPropagation(); openSaleEdit('${s.id}')" title="Change qty / price">&#9998; Edit</button><button class="btn-cancel-order" onclick="event.stopPropagation(); cancelOrder('${s.id}')">&#10005; Cancel Order</button>`}
                 ${s.buyerPhone ? `<button class="btn-whatsapp-sm" onclick="event.stopPropagation(); shareSaleWhatsAppImage('${s.id}')">${WHATSAPP_ICON_SVG_SM}WhatsApp</button>` : ''}
                 <button class="btn-share-pdf-sm" onclick="event.stopPropagation(); shareSaleHistoryPDF('${s.id}')">${SHARE_ICON_SVG_SM}PDF</button>
             <button class="btn-share-pdf-sm" style="background:#0b5fd8;" onclick="event.stopPropagation(); printSaleById('${s.id}')" title="Print this bill">&#128424; Print</button>
@@ -8083,7 +8243,7 @@ function renderAdmin(){
         latest.forEach(s => {
           const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'short', timeStyle:'short'});
           html += `<div class="price-row">
-              <div class="pr-name"><div class="pr-ta">#${s.billNo||'-'} ${s.sellerName}${isCountedSale(s) ? '' : ' <span class="status-badge cancelled">Cancelled</span>'}</div><div class="pr-en">${dt}</div></div>
+              <div class="pr-name"><div class="pr-ta">#${s.billNo||'-'} ${s.sellerName}${isCountedSale(s) ? '' : ' <span class="status-badge cancelled">Cancelled</span>'}${saleEditTag(s)}</div><div class="pr-en">${dt}</div></div>
               <div class="pr-right"><div class="pr-price">${fmt(s.total)}</div></div>
             </div>`;
         });
