@@ -346,7 +346,7 @@
   .price-row2 .pr-unit3{font-size:10.5px; color:var(--ink-soft); margin-top:1px;}
 
   .cart-bar{
-    flex:0 0 auto; background:var(--maroon-dark); color:#fff8e6; padding:11px 14px;
+    flex:0 0 auto; background:var(--maroon-dark); color:#fff8e6; padding:11px 14px calc(11px + env(safe-area-inset-bottom));
     display:flex; align-items:center; justify-content:space-between; gap:10px;
     box-shadow:0 -3px 10px rgba(0,0,0,0.25); z-index:6;
   }
@@ -854,7 +854,7 @@ function __appNotLoaded(){
       <div class="cb-total">&#8377;<span id="cbTotal">0</span></div>
     </div>
     <div style="display:flex; gap:6px;">
-      <button id="scanOrderBtn" type="button" onclick="openScanOrder()" title="Scan customer estimate QR" aria-label="Scan customer estimate QR" style="background:transparent; color:#ffe1a8; border:1.5px solid #ffe1a8; padding:10px 11px; font-size:17px; line-height:1;">&#128247;</button>
+      <button id="scanOrderBtn" type="button" onclick="openScanOrder()" title="Scan customer estimate QR" aria-label="Scan customer estimate QR" style="background:transparent; color:#ffe1a8; border:1.5px solid #ffe1a8; padding:10px 11px; min-width:46px; min-height:42px; font-size:17px; line-height:1; touch-action:manipulation;">&#128247;</button>
       <button id="clearShareBtn" type="button" onclick="handleClearShareClick(this)" title="Clear cart" aria-label="Clear cart" style="background:transparent; color:#ffe1a8; border:1.5px solid #ffe1a8; padding:10px 11px; display:flex; align-items:center;">
         <span id="clearShareIcon" style="display:flex;"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M6,19c0,1.1,0.9,2,2,2h8c1.1,0,2-0.9,2-2V7H6V19z M19,4h-3.5l-1-1h-5l-1,1H5v2h14V4z"/></svg></span>
         <span id="clearShareLabel" style="display:none;">Clear</span>
@@ -1192,7 +1192,7 @@ function __appNotLoaded(){
   </div>
   <div style="padding:10px 14px calc(14px + env(safe-area-inset-bottom)); color:#fff; text-align:center;">
     <div id="scanMsg" style="font-size:12.5px; min-height:18px; margin-bottom:9px;">Point the camera at the QR on the customer's voucher.</div>
-    <div style="font-size:11px; color:#ffd34d; margin:-4px 0 9px;">Long voucher? Ask the customer to zoom in on the QR.</div>
+    <div style="font-size:11px; color:#ffd34d; margin:-4px 0 9px;">Not reading? Ask the customer to tap the QR on their voucher to make it big.</div>
     <button onclick="document.getElementById('scanFile').click()" style="padding:11px 16px; border:2px solid #fff; border-radius:10px; background:transparent; color:#fff; font-weight:800; font-size:13px;">&#128444;&#65039; Read from photo / gallery</button>
     <input type="file" id="scanFile" accept="image/*" style="display:none;" onchange="scanFromFile(this)">
   </div>
@@ -4523,23 +4523,48 @@ function scanToast(msg, kind){
 }
 var _scanStream = null, _scanTimer = null, _scanHist = false, _scanBusy = false, _jsQrLoad = null;
 function _scanSay(t){ var m = document.getElementById('scanMsg'); if(m) m.textContent = t; }
+/* Camera button: the scan screen always opens first, then the camera. Whatever stops the camera (permission blocked,
+   camera busy, no answer from the phone) is said on that screen - "Read from photo / gallery" always works there. */
+var _scanOpenSeq = 0;
 async function openScanOrder(){
-  if(_saleSaved()){ alert('This sale is already saved. Start a new bill first.'); return; }
-  var ov = document.getElementById('scanOverlay'); ov.style.display = 'flex';
-  try{ if(!_scanHist){ history.pushState({ scanOrder: true }, ''); _scanHist = true; } }catch(e){}
-  _scanSay('Opening camera…');
+  var ov = document.getElementById('scanOverlay');
   try{
-    if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) throw new Error('nocam');
-    _scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    if(_saleSaved()){ try{ closeBill(); }catch(e){} }             // the last bill is saved: this QR starts the next one
+    ov.style.display = 'flex';
+    try{ if(!_scanHist){ history.pushState({ scanOrder: true }, ''); _scanHist = true; } }catch(e){}
+  }catch(e){ if(ov) ov.style.display = 'flex'; }
+  _scanStop();
+  var seq = ++_scanOpenSeq;
+  _scanSay('Opening camera…');
+  var slow = setTimeout(function(){
+    if(seq === _scanOpenSeq && !_scanStream) _scanSay('Camera is not opening. If the phone asked, tap "Allow". Or tap the lock icon next to the web address \u2192 Permissions \u2192 Camera \u2192 Allow. You can also use "Read from photo / gallery" below.');
+  }, 7000);
+  try{
+    if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) throw { name: window.isSecureContext === false ? 'Insecure' : 'NoApi' };
+    var stream;
+    try{ stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }); }
+    catch(e1){
+      if(e1 && (e1.name === 'NotAllowedError' || e1.name === 'SecurityError')) throw e1;
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });   // some phones refuse the size / back-camera request
+    }
+    clearTimeout(slow);
+    if(seq !== _scanOpenSeq || ov.style.display !== 'flex'){ stream.getTracks().forEach(function(t){ t.stop(); }); return; }   // closed meanwhile
+    _scanStream = stream;
     try{   // keep focusing while the phone moves (a small, dense QR needs a sharp picture)
       var _tr = _scanStream.getVideoTracks()[0], _cap = (_tr && _tr.getCapabilities) ? _tr.getCapabilities() : {};
       if(_cap.focusMode && _cap.focusMode.indexOf('continuous') >= 0) _tr.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function(){});
     }catch(e){}
-    var v = document.getElementById('scanVideo'); v.srcObject = _scanStream; try{ await v.play(); }catch(e){}
+    var v = document.getElementById('scanVideo'); v.setAttribute('playsinline', ''); v.muted = true; v.srcObject = _scanStream;
+    try{ await Promise.race([v.play(), new Promise(function(r){ setTimeout(r, 1500); })]); }catch(e){}   // never wait for ever
     _scanSay("Point the camera at the QR on the customer's voucher.");
     scanLoop();
   }catch(e){
-    _scanSay('Camera not available here. Use "Read from photo / gallery" below, or open the app from its GitHub Pages link.');
+    clearTimeout(slow);
+    var n = e && e.name;
+    _scanSay(n === 'NotAllowedError' || n === 'SecurityError' ? 'Camera is blocked for this app. Tap the lock icon next to the web address \u2192 Permissions \u2192 Camera \u2192 Allow, then tap the camera button again. Or use "Read from photo / gallery" below.'
+      : n === 'NotReadableError' || n === 'AbortError' ? 'The camera is busy in another app. Close that app and tap the camera button again, or use "Read from photo / gallery" below.'
+      : n === 'NotFoundError' || n === 'OverconstrainedError' ? 'No camera found on this phone. Use "Read from photo / gallery" below.'
+      : 'Camera not available here. Use "Read from photo / gallery" below, or open the app from its GitHub Pages link in Chrome.');
   }
 }
 function _scanStop(){
@@ -4548,6 +4573,7 @@ function _scanStop(){
   var v = document.getElementById('scanVideo'); if(v) v.srcObject = null;
 }
 function closeScanOrder(fromBack){
+  _scanOpenSeq++;
   _scanStop();
   document.getElementById('scanOverlay').style.display = 'none';
   if(_scanHist){ _scanHist = false; if(fromBack !== true){ _estPopping = true; try{ history.back(); }catch(e){ _estPopping = false; } } }
@@ -4599,17 +4625,15 @@ function _qrJs(cv){
   }catch(e){ return ''; }
 }
 async function _qrRead(cv, native){ var t = native ? await _qrNative(cv) : ''; return t || _qrJs(cv); }
-/* Camera: frames take turns - the whole picture, then just the middle (the yellow box) at full detail, then the
-   middle enlarged sharply 1.6x and 2.4x, so a small QR shown on the customer's phone screen is still read. */
+/* Camera: the phone's own QR reader first; otherwise frames take turns - the whole picture, then just the middle
+   (the yellow box) at full detail for a small QR. Kept light, so the camera picture never freezes on a slow phone. */
 var _qrTick = 0;
 async function decodeQrFrom(src, w, h){
   var t = await _qrNative(src); if(t) return t;
-  if(!(await loadJsQr()) && !('BarcodeDetector' in window)) return '';
-  var m = _qrTick++ % 4;
-  if(m === 0){ var mx = Math.min(1, 1000 / Math.max(w, h)); return _qrJs(_qrCanvas(src, 0, 0, w, h, w * mx, h * mx)); }
-  var side = Math.round(Math.min(w, h) * 0.8), z = [1, 1, 1.6, 2.4][m];
-  var sc = Math.min(z * Math.max(1, 600 / side), 1500 / side);
-  return await _qrRead(_qrTile(src, Math.round((w - side) / 2), Math.round((h - side) / 2), side, side, sc), true);
+  if(!(await loadJsQr())) return '';
+  if(_qrTick++ % 2 === 0){ var mx = Math.min(1, 900 / Math.max(w, h)); return _qrJs(_qrCanvas(src, 0, 0, w, h, w * mx, h * mx)); }
+  var side = Math.round(Math.min(w, h) * 0.75), k = Math.min(1, 900 / side);
+  return _qrJs(_qrCanvas(src, Math.round((w - side) / 2), Math.round((h - side) / 2), side, side, side * k, side * k));
 }
 /* Sharp enlargement of a grey picture (Lanczos, 3 lobes): the browser's own enlargement blurs a tiny QR until it can't
    be read. gray: Float32Array w*h (0-255). Returns RGBA pixels W*H. */
@@ -4686,7 +4710,7 @@ function _imgFromFile(f){
 }
 function scanLoop(){
   var v = document.getElementById('scanVideo');
-  _scanTimer = setInterval(async function(){
+  _scanTimer = setInterval(async function(){   // every 250 ms (skipped while the last frame is still being read)
     if(_scanBusy || !v.videoWidth) return;
     _scanBusy = true;
     try{
@@ -4694,7 +4718,7 @@ function scanLoop(){
       if(txt) await scanHandle(txt);
     }catch(e){}
     _scanBusy = false;
-  }, 350);
+  }, 250);
 }
 async function scanFromFile(inp){
   var f = inp.files && inp.files[0]; inp.value = ''; if(!f) return;
@@ -4800,12 +4824,25 @@ function estQrRightPaint(){
   if(!_estQrShown){
     r.innerHTML = '<button onclick="estShowQr()" style="width:100%; height:120px; border:2px dashed #1e7a3c; border-radius:10px; background:#eef7ee; color:#1e7a3c; font-weight:800; font-size:13px; cursor:pointer; line-height:1.4;">▦<br>Get QR code<br><span style="font-size:11px;">QR பெறவும்</span></button>';
   } else if(_estQrUrl && _estQrFor === estPayload()){
-    r.innerHTML = '<img src="' + _estQrUrl + '" style="width:120px; height:120px; display:block; margin:0 auto;" alt="QR"><div style="font-size:9px; color:#44557a; margin-top:2px;">Show at the counter<br>கடையில் காட்டவும்</div>';
+    r.innerHTML = '<img src="' + _estQrUrl + '" onclick="estQrBig()" style="width:120px; height:120px; display:block; margin:0 auto; cursor:zoom-in;" alt="QR"><div style="font-size:9px; color:#44557a; margin-top:2px;">Tap QR to enlarge &bull; Show at the counter<br>பெரிதாக்க QR-ஐ தொடவும்</div>';
   } else if(_estQrFailed){
     r.innerHTML = '<div style="font-size:11px; color:#b3261e; padding:10px 0;">QR not ready (check internet). Show this voucher at the counter.</div>';
   } else {
     r.innerHTML = '<div style="font-size:12px; color:#44557a; padding:40px 0;">Preparing QR…</div>';
   }
+}
+/* Big QR on a white screen for the seller to scan (tap anywhere to go back to the voucher). */
+function estQrBig(){
+  if(!_estQrUrl) return;
+  var ov = document.getElementById('estVoucherOverlay'); if(!ov) return;
+  var old = document.getElementById('estQrBigBox'); if(old) old.remove();
+  var d = document.createElement('div'); d.id = 'estQrBigBox';
+  d.style.cssText = 'position:fixed; inset:0; z-index:30600; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:16px; box-sizing:border-box;';
+  d.innerHTML = '<div style="font-size:16px; font-weight:800; color:#1b3a78; text-align:center;">Show this QR to the seller<br><span style="font-size:13px;">விற்பனையாளரிடம் காட்டவும்</span></div>' +
+    '<img src="' + _estQrUrl + '" alt="QR" style="width:min(88vw, 70vh); height:min(88vw, 70vh); image-rendering:pixelated;">' +
+    '<div style="font-size:13px; color:#44557a;">Tap anywhere to close / மூட தொடவும்</div>';
+  d.onclick = function(){ d.remove(); };
+  ov.appendChild(d);
 }
 function estMobileDigits(){
   var mbEl = document.getElementById('estCustMobile'), d = mbEl ? mbEl.value.replace(/\D/g, '') : String(_estCust.mobile || '');
@@ -4869,6 +4906,7 @@ function openEstVoucher(){
   clearTimeout(_estDetTimer);
   custTrackEstimate();
   document.getElementById('estVoucherOverlay').style.display = 'block';
+  var _big = document.getElementById('estQrBigBox'); if(_big) _big.remove();
   estScreenPaint();
   estEnsureQr().then(function(changed){ if(document.getElementById('estVoucherOverlay').style.display === 'block'){ _estQrFailed = _estQrShown && !(_estQrUrl && _estQrFor === estPayload()); estQrRightPaint(); } });   // QR side only: never takes the keyboard away
   // one history step (made by this tap), so the phone's Back key closes the voucher instead of leaving the page
@@ -10986,6 +11024,7 @@ function openAddBranchModal(){
     'newSellerOverlay',
     'priceListPreviewOverlay',
     'priceQrOverlay',
+    'saleEditOverlay',
     'billOverlay'
   ];
 
@@ -11003,6 +11042,7 @@ function openAddBranchModal(){
           'upiQrOverlay':          closeUpiQr,
           'confirmOverlay':        function(){ closeConfirm(false); },
           'itemEditOverlay':       closeItemEditModal,
+          'saleEditOverlay':       closeSaleEdit,
           'newSellerOverlay':      closeNewSellerModal
         };
         if(fnMap[OVERLAY_IDS[i]]) {
