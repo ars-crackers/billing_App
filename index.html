@@ -171,6 +171,14 @@
     font-size:14px; background:#fff; color:var(--ink); box-sizing:border-box;
   }
   .search-wrap .ico{position:absolute; left:25px; top:50%; transform:translateY(-50%); opacity:0.55; font-size:14px;}
+  .search-wrap.sw-flex{display:flex; gap:7px; align-items:center;}
+  .search-wrap.sw-flex .ico{left:11px;}
+  /* category filter button at the start of the item search (Bill 1 / Bill 2 / Self Estimation) */
+  .cat-pick-btn{flex:0 0 auto; width:66px; height:42px; padding:2px 3px; box-sizing:border-box; border-radius:10px; border:1.5px solid var(--maroon); background:#fff8ea; color:var(--maroon);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; cursor:pointer; line-height:1;}
+  .cat-pick-btn .cpb-ico{font-size:16px; line-height:1;}
+  .cat-pick-btn .cpb-txt{max-width:100%; font-size:9.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .cat-pick-btn.on{background:var(--maroon); color:#fff8e6;}
 
   .tabbar{display:flex; background:var(--paper); border-bottom:1px solid var(--line); flex:0 0 auto;}
   .tabbar button{flex:1; padding:11px 6px; border:none; background:transparent; font-size:12.5px; font-weight:700;
@@ -834,10 +842,13 @@ function __appNotLoaded(){
         <button id="tabHistoryBtn" onclick="setTab('history')">&#129534; History</button>
         <button id="adminPanelBtn" class="hidden" onclick="showAdmin()"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px; margin-right:3px;"><path d="M19.14,12.94a7.43,7.43,0,0,0,0-1.88l2.03-1.58a.5.5,0,0,0,.12-.64l-1.92-3.32a.5.5,0,0,0-.6-.22l-2.39,.96a7.34,7.34,0,0,0-1.62-.94L14.4,2.18A.5.5,0,0,0,13.9,1.8H10.1a.5.5,0,0,0-.5,.38L9.24,4.92a7.34,7.34,0,0,0-1.62,.94l-2.39-.96a.5.5,0,0,0-.6,.22L2.71,8.44a.5.5,0,0,0,.12,.64L4.86,10.66a7.43,7.43,0,0,0,0,1.88L2.83,14.12a.5.5,0,0,0-.12,.64l1.92,3.32a.5.5,0,0,0,.6,.22l2.39-.96a7.34,7.34,0,0,0,1.62,.94l.36,2.74a.5.5,0,0,0,.5,.38h3.8a.5.5,0,0,0,.5-.38l.36-2.74a7.34,7.34,0,0,0,1.62-.94l2.39,.96a.5.5,0,0,0,.6-.22l1.92-3.32a.5.5,0,0,0-.12-.64ZM12,15.5A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/></svg>Admin<span class="notif-badge hidden" id="adminPanelBadge">0</span></button>
       </div>
-      <div class="search-wrap">
-        <span class="ico">&#128269;</span>
-        <input id="search" type="text" placeholder="Search item... / பொருள் தேடு..." oninput="render()" style="padding-right:46px;">
-        <button id="billFilterBtn" type="button" title="Filter items" onclick="toggleBillFilters()" style="position:absolute; right:20px; top:50%; transform:translateY(-50%); width:34px; height:32px; border:none; border-radius:8px; background:transparent; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
+      <div class="search-wrap sw-flex">
+        <button id="billCatBtn" type="button" class="cat-pick-btn" title="Category filter" aria-label="Category filter" onclick="toggleBillCat()"><span class="cpb-ico">&#128193;</span><span class="cpb-txt" id="billCatLbl">Category</span></button>
+        <div style="position:relative; flex:1; min-width:0;">
+          <span class="ico">&#128269;</span>
+          <input id="search" type="text" placeholder="Search item... / பொருள் தேடு..." oninput="render()" style="padding-right:42px;">
+          <button id="billFilterBtn" type="button" title="Filter items" onclick="toggleBillFilters()" style="position:absolute; right:5px; top:50%; transform:translateY(-50%); width:34px; height:32px; border:none; border-radius:8px; background:transparent; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
+        </div>
       </div>
       <div id="billFilterBar" class="hidden" style="padding:0 14px 8px;"></div>
       <nav class="cats" id="catNav"></nav>
@@ -1161,6 +1172,7 @@ function __appNotLoaded(){
   </div>
   <div style="position:sticky; top:0; z-index:5; background:var(--paper); padding:8px 10px; border-bottom:1px solid var(--line);">
     <div style="display:flex; gap:7px; align-items:center;">
+      <button id="estCatBtn" type="button" class="cat-pick-btn" title="Category filter" aria-label="Category filter" onclick="estToggleCat()"><span class="cpb-ico">&#128193;</span><span class="cpb-txt" id="estCatLbl">Category</span></button>
       <input type="search" id="estSearch" placeholder="Search item / பொருள் தேடு…" oninput="estSearchInput(this.value)" style="flex:1; min-width:0; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); font-size:14px; background:#fff;">
       <button id="estFilterBtn" type="button" onclick="estToggleFilters()" aria-label="Filters" style="flex:0 0 auto; width:42px; height:42px; border-radius:10px; border:1.5px solid var(--maroon); background:#fff; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
     </div>
@@ -3829,12 +3841,17 @@ function renderBillFilterBar(shown){
   var on = billFilterActive();
   btn.style.background = (billFilterOpen || on) ? 'var(--maroon)' : 'transparent';
   btn.style.color = (billFilterOpen || on) ? '#fff8e6' : 'var(--maroon)';
-  if(!billing || !billFilterOpen){ bar.classList.add('hidden'); bar.innerHTML = ''; return; }
+  var cb = document.getElementById('billCatBtn'), cl = document.getElementById('billCatLbl'), catOn0 = activeCat !== 'ALL';
+  if(cb){
+    cb.classList.toggle('on', catOn0 || billCatOpen);
+    var _cn = catOn0 ? getCategoryName(Number(activeCat)) : null;
+    if(cl) cl.textContent = _cn ? (Number(activeCat) + 1) + '. ' + (_cn.ta || _cn.en) : 'Category';
+    cb.title = _cn ? 'Category: ' + (_cn.en || _cn.ta) : 'Category filter';
+  }
+  if(!billing || (!billFilterOpen && !billCatOpen)){ bar.classList.add('hidden'); bar.innerHTML = ''; return; }
   var ib = function(ico, tip, active, js, extra){ return '<button type="button" title="' + tip + '" aria-label="' + tip + '" onclick="' + js + '" style="min-width:46px; height:42px; padding:0 6px; border-radius:12px; border:1.5px solid var(--maroon); font-weight:800; font-size:' + (extra ? '13px' : '20px') + '; line-height:1; cursor:pointer; background:' + (active ? 'var(--maroon)' : '#fff8ea') + '; color:' + (active ? '#fff8e6' : 'var(--maroon)') + ';">' + ico + '</button>'; };
-  var catOn = activeCat !== 'ALL';
-  var h = '<div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center;">' +
+  var h = !billFilterOpen ? '' : '<div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center;">' +
     ib('&#128722;', 'In cart', billFilters.incart, "setBillFilter('incart')") +
-    ib('&#128193;', 'Category', billCatOpen || catOn, 'toggleBillCat()') +
     ib('&#8645;', 'S.No / category order', !billFilters.sort, "setBillFilter('sort','')") +
     ib('&#8377;&#9650;', 'Price low to high', billFilters.sort === 'low', "setBillFilter('sort','low')", 1) +
     ib('&#8377;&#9660;', 'Price high to low', billFilters.sort === 'high', "setBillFilter('sort','high')", 1) +
@@ -3842,7 +3859,8 @@ function renderBillFilterBar(shown){
     (on || (document.getElementById('search').value || '') ? '<button type="button" title="Reset" aria-label="Reset" onclick="resetBillFilters()" style="width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>' : '') + '</div>';
   if(billCatOpen){
     var row = function(val, label, cnt){ var sel = activeCat === val; return '<button type="button" onclick="pickBillCat(\'' + val + '\')" style="display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; padding:9px 11px; border:none; border-bottom:1px solid var(--line); background:' + (sel ? 'var(--maroon)' : '#fff') + '; color:' + (sel ? '#fff8e6' : 'var(--maroon)') + '; font-weight:700; font-size:12.5px; cursor:pointer;"><span>' + label + '</span><span>' + cnt + '</span></button>'; };
-    h += '<div style="margin-top:8px; max-height:240px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('ALL', 'All categories', shown) +
+    var _allN = 0; CATEGORIES.forEach(function(c, ci){ c.items.forEach(function(x, ii){ if(isItemInBranch(ci, ii, activeBranchId)) _allN++; }); });
+    h += '<div style="margin-top:' + (billFilterOpen ? '8px' : '0') + '; max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('ALL', 'All categories', _allN) +
       CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci), cnt = c.items.filter(function(x, ii){ return isItemInBranch(ci, ii, activeBranchId); }).length; return cnt ? row(String(ci), (ci + 1) + '. ' + (n.ta || n.en) + ' (' + n.en + ')', cnt) : ''; }).join('') + '</div>';
   }
   bar.innerHTML = h; bar.classList.remove('hidden');
@@ -4344,7 +4362,7 @@ function estUpdateBar(items){
   document.getElementById('estClearBtn').style.display = t.lines ? '' : 'none';
 }
 var _estF = { incart:false, sort:'', cat:'ALL' }, _estFOpen = false, _estCatOpen = false;
-function estToggleFilters(){ _estFOpen = !_estFOpen; if(!_estFOpen) _estCatOpen = false; paintPublicPrices(); }
+function estToggleFilters(){ _estFOpen = !_estFOpen; paintPublicPrices(); }
 function estSetFilter(k, v){ if(k === 'incart') _estF.incart = !_estF.incart; else _estF[k] = v; if(k === 'cat') _estCatOpen = false; paintPublicPrices(); }
 function estToggleCat(){ _estCatOpen = !_estCatOpen; paintPublicPrices(); }
 function estResetFilters(){ _estF = { incart:false, sort:'', cat:'ALL' }; _estCatOpen = false; _estSearchText = ''; var el = document.getElementById('estSearch'); if(el) el.value = ''; paintPublicPrices(); }
@@ -4353,11 +4371,17 @@ function estPaintFilterBar(shown){
   var on = _estF.incart || _estF.sort || _estF.cat !== 'ALL';
   btn.innerHTML = _estFOpen ? '&#9650;' : '&#9660;';
   btn.style.background = (_estFOpen || on) ? 'var(--maroon)' : '#fff'; btn.style.color = (_estFOpen || on) ? '#fff8e6' : 'var(--maroon)';
-  if(!_estFOpen){ bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  var cb = document.getElementById('estCatBtn'), cl = document.getElementById('estCatLbl'), catOn0 = _estF.cat !== 'ALL';
+  if(cb){
+    cb.classList.toggle('on', catOn0 || _estCatOpen);
+    var _c0 = catOn0 ? _estList.find(function(it){ return String(it.cno) === String(_estF.cat); }) : null;
+    if(cl) cl.textContent = _c0 ? _c0.cno + '. ' + (_c0.catTa || _c0.catEn) : 'Category';
+    cb.title = _c0 ? 'Category: ' + (_c0.catEn || _c0.catTa) : 'Category filter';
+  }
+  if(!_estFOpen && !_estCatOpen){ bar.style.display = 'none'; bar.innerHTML = ''; return; }
   var ib = function(ico, tip, act, js, small){ return '<button type="button" title="' + tip + '" aria-label="' + tip + '" onclick="' + js + '" style="min-width:46px; height:42px; padding:0 6px; border-radius:12px; border:1.5px solid var(--maroon); font-weight:800; font-size:' + (small ? '13px' : '20px') + '; line-height:1; cursor:pointer; background:' + (act ? 'var(--maroon)' : '#fff8ea') + '; color:' + (act ? '#fff8e6' : 'var(--maroon)') + ';">' + ico + '</button>'; };
-  var h = '<div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center;">' +
+  var h = !_estFOpen ? '' : '<div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center;">' +
     ib('&#128722;', 'Added items', _estF.incart, "estSetFilter('incart')") +
-    ib('&#128193;', 'Category', _estCatOpen || _estF.cat !== 'ALL', 'estToggleCat()') +
     ib('&#8645;', 'S.No / category order', !_estF.sort, "estSetFilter('sort','')") +
     ib('&#8377;&#9650;', 'Price low to high', _estF.sort === 'low', "estSetFilter('sort','low')", 1) +
     ib('&#8377;&#9660;', 'Price high to low', _estF.sort === 'high', "estSetFilter('sort','high')", 1) +
@@ -4367,7 +4391,7 @@ function estPaintFilterBar(shown){
     var cats = [], seen = {};
     _estList.forEach(function(it){ if(!seen[it.cno]){ seen[it.cno] = { no: it.cno, ta: it.catTa, en: it.catEn, n: 0 }; cats.push(seen[it.cno]); } seen[it.cno].n++; });
     var row = function(val, label, cnt){ var sel = String(_estF.cat) === String(val); return '<button type="button" onclick="estSetFilter(\'cat\',\'' + val + '\')" style="display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; padding:9px 11px; border:none; border-bottom:1px solid var(--line); background:' + (sel ? 'var(--maroon)' : '#fff') + '; color:' + (sel ? '#fff8e6' : 'var(--maroon)') + '; font-weight:700; font-size:12.5px; cursor:pointer;"><span>' + label + '</span><span>' + cnt + '</span></button>'; };
-    h += '<div style="margin-top:8px; max-height:240px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('ALL', 'All categories', _estList.length) +
+    h += '<div style="margin-top:' + (_estFOpen ? '8px' : '0') + '; max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('ALL', 'All categories', _estList.length) +
       cats.map(function(c){ return row(c.no, c.no + '. ' + estEsc(c.ta) + ' (' + estEsc(c.en) + ')', c.n); }).join('') + '</div>';
   }
   bar.innerHTML = h; bar.style.display = 'block';
