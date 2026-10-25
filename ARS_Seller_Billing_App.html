@@ -6082,7 +6082,7 @@ function renderHistoryList(){
           <div class="sale-card-actions">
             ${isAdmin && status === 'confirmed' ? `<button class="btn-edit-bill" onclick="event.stopPropagation(); openSaleEdit('${s.id}')" title="Change qty / price">&#9998; Edit</button>` : ''}
             ${s.buyerPhone ? `<button class="btn-whatsapp-sm" onclick="event.stopPropagation(); sharePastBillImageViaWhatsApp('${s.id}')">${WHATSAPP_ICON_SVG_SM}WhatsApp Image</button>` : ''}
-            <button class="btn-share-pdf-sm" onclick="event.stopPropagation(); shareSaleHistoryPDF('${s.id}')">${SHARE_ICON_SVG_SM}PDF</button>
+            <button class="btn-share-pdf-sm" onclick="event.stopPropagation(); shareSaleImage('${s.id}', this)" title="Share the bill as a picture (PNG)">${SHARE_ICON_SVG_SM}Share</button>
             <button class="btn-share-pdf-sm" style="background:#0b5fd8;" onclick="event.stopPropagation(); printSaleById('${s.id}')" title="Print this bill">&#128424; Print</button>
           </div>
         </div>
@@ -6167,7 +6167,7 @@ const THERMAL_WIDTH_PT = 226.772; // 80mm @ 72pt/inch
 
 /* Same offscreen render as renderOffscreenToPDF, but returns a PNG image Blob directly —
    used for WhatsApp sharing, which should be an image rather than a PDF. */
-async function renderOffscreenToImageBlob(html){
+async function renderOffscreenToImageBlob(html, scale){
   await ensureHtml2Canvas();
   const host = document.createElement('div');
   host.className = 'pl-host';
@@ -6179,7 +6179,7 @@ async function renderOffscreenToImageBlob(html){
   try{
     const elW = pageEl.getBoundingClientRect().width || pageEl.offsetWidth;
     const canvas = await window.html2canvas(pageEl, {
-      scale: 2, backgroundColor: '#fffdf7', useCORS: true,
+      scale: scale || 2, backgroundColor: '#fffdf7', useCORS: true,
       width: elW, windowWidth: elW
     });
     return await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -6249,15 +6249,38 @@ async function renderOffscreenToPDF(html){
   }
 }
 
-async function shareSaleHistoryPDF(saleId){
-  const s = SALES.find(x => x.id === saleId);
+/* History / Sales "Share": the finished bill as a PNG picture (the 80 mm receipt look) through the phone's share
+   sheet - WhatsApp or any app. A phone that cannot share pictures saves the PNG instead. When making the picture took
+   too long for the phone to allow sharing, the button says "Tap to share" and the next tap shares it at once. */
+var _billPngReady = {};
+async function shareSaleImage(saleId, btn){
+  const s = (SALES || []).find(x => x.id === saleId);
   if(!s) return;
-  try{
-    const doc = await renderOffscreenToPDF(buildBillReceiptHTML(s));
-    await shareGeneratedPDF(doc, 'Bill_' + s.id + '.pdf', SHOP.name_en + ' — Bill Receipt');
-  } catch(e){
-    alert('Could not generate/share the PDF. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
+  const sig = saleId + '|' + (s.edited ? s.edited.at : '') + '|' + s.total + '|' + saleStatus(s);
+  let file = _billPngReady[sig];
+  const label = SHARE_ICON_SVG_SM + 'Share';
+  if(!file){
+    if(btn){ btn.disabled = true; btn.innerHTML = '&hellip;'; }
+    try{
+      const blob = await renderOffscreenToImageBlob(buildBillReceiptHTML(s), 3);   // sharp text on the customer's phone
+      if(!blob) throw new Error('no picture');
+      file = new File([blob], 'ARS_Bill_' + (s.billNo || s.id) + '.png', { type: 'image/png' });
+    }catch(e){
+      if(btn){ btn.disabled = false; btn.innerHTML = label; }
+      alert('Could not make the bill picture. Please check the internet and try again.');
+      return;
+    }
+    if(btn){ btn.disabled = false; btn.innerHTML = label; }
   }
+  if(typeof navigator.share === 'function' && (!navigator.canShare || navigator.canShare({ files: [file] }))){
+    try{ await navigator.share({ files: [file] }); delete _billPngReady[sig]; return; }   // picture only, no caption
+    catch(e){
+      if(e && e.name === 'AbortError'){ delete _billPngReady[sig]; return; }
+      if(e && e.name === 'NotAllowedError'){ _billPngReady[sig] = file; if(btn) btn.innerHTML = SHARE_ICON_SVG_SM + 'Tap to share'; return; }
+    }
+  }
+  delete _billPngReady[sig];
+  estDownload(file, file.name);
 }
 
 /* Shares a past sale's bill as a bill-size IMAGE. If the sale has a recorded customer
@@ -7909,7 +7932,7 @@ function renderAdmin(){
                   ? `<button class="btn-confirm-order" onclick="event.stopPropagation(); confirmOrder('${s.id}')">&#10003; Re-confirm Order</button>`
                   : `<button class="btn-edit-bill" onclick="event.stopPropagation(); openSaleEdit('${s.id}')" title="Change qty / price">&#9998; Edit</button><button class="btn-cancel-order" onclick="event.stopPropagation(); cancelOrder('${s.id}')">&#10005; Cancel Order</button>`}
                 ${s.buyerPhone ? `<button class="btn-whatsapp-sm" onclick="event.stopPropagation(); shareSaleWhatsAppImage('${s.id}')">${WHATSAPP_ICON_SVG_SM}WhatsApp</button>` : ''}
-                <button class="btn-share-pdf-sm" onclick="event.stopPropagation(); shareSaleHistoryPDF('${s.id}')">${SHARE_ICON_SVG_SM}PDF</button>
+                <button class="btn-share-pdf-sm" onclick="event.stopPropagation(); shareSaleImage('${s.id}', this)" title="Share the bill as a picture (PNG)">${SHARE_ICON_SVG_SM}Share</button>
             <button class="btn-share-pdf-sm" style="background:#0b5fd8;" onclick="event.stopPropagation(); printSaleById('${s.id}')" title="Print this bill">&#128424; Print</button>
               </div>
             </div>
