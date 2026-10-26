@@ -738,6 +738,12 @@
   .btn-confirm-order{background:var(--green); color:#fff;}
   .btn-share-pdf-sm{background:var(--maroon); color:#fff;}
   .btn-whatsapp-sm{background:#1ebe5d; color:#fff;}
+  /* History bill buttons: clean icons only (the name shows on long-press / as the button title) */
+  .sale-card-actions button.ico-only{width:46px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-size:19px; line-height:1;}
+  .sale-card-actions button.ico-only svg{width:20px; height:20px; margin:0 !important; vertical-align:middle !important;}
+  .sale-card-actions button.ico-only .wa-logo{width:24px !important; height:24px !important; margin:0 !important; vertical-align:middle !important;}
+  .sale-card-actions button.ico-only.ready{box-shadow:0 0 0 3px #ffd34d; animation:icoReady 1s ease-in-out infinite;}
+  @keyframes icoReady{50%{box-shadow:0 0 0 6px rgba(255,211,77,.35);}}
   .history-head-row{display:flex; justify-content:space-between; align-items:center; gap:8px; margin:4px 4px 12px; flex-wrap:wrap;}
 
   .user-edit-row{background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:10px 11px; margin-bottom:8px;}
@@ -2274,8 +2280,8 @@ function custTrackVisit(){
   try{ localStorage.setItem('ars_vis_last', String(Date.now())); }catch(e){}
   var vid = custVid(), now = new Date().toISOString();
   return _fbDb.ref('visitors/' + vid).transaction(function(cur){
-    if(!cur) return { vid: vid, first: now, last: now, visits: 1, est: 0 };
-    cur.visits = (cur.visits || 0) + 1; cur.last = now;
+    if(!cur) return { vid: vid, first: now, last: now, visits: 1, est: 0, lastVisit: custWhen(now) };
+    cur.visits = (cur.visits || 0) + 1; cur.last = now; cur.lastVisit = custWhen(now);
     return cur;
   }).then(function(r){
     var v = (r && r.snapshot && r.snapshot.val()) || {};
@@ -2290,8 +2296,8 @@ function custTrackDevice(){
     d = d || {};
     if(!d.model && /iPhone/.test(navigator.userAgent || '')) d.model = 'iPhone';
     if(!d.model && /iPad/.test(navigator.userAgent || '')) d.model = 'iPad';
-    var dev = { model: d.model || '', os: d.os || '', browser: d.browser || '', screen: d.screen || '', lang: d.language || '' };
-    return _fbDb.ref('visitors/' + custVid()).update({ device: dev, deviceLabel: deviceLabel(dev) || 'Unknown device' }).catch(function(){});
+    var dev = { model: d.model || '', os: d.os || '', browser: d.browser || '' };
+    return _fbDb.ref('visitors/' + custVid()).update({ device: null, deviceLabel: deviceLabel(dev) || 'Unknown device' }).catch(function(){});
   }).catch(function(){});
 }
 /* Voucher opened: count one estimate per new set of items (opening the same voucher again is not counted twice). */
@@ -2305,20 +2311,58 @@ function custTrackEstimate(){
   if(isNew){ try{ localStorage.setItem('ars_est_counted', items); }catch(e){} }
   custSaveProfile(isNew, Number(seg[2]) || 0);
 }
-function custSaveProfile(addEst, total){
+/* ---- Simple words on the server: each visitor keeps the last visit time and the LAST items chosen with the total,
+   e.g. lastItems "No.2 4" Lakshmi Bomb x2 = ₹60 | No.9 Flower Pot — Big x1 = ₹95", lastTotal "2 items · qty 3 ·
+   ₹155 → offer ₹124 (20% off)". Every new selection also adds one line to estimateLog/<date>/<time>_<visitor>, so the
+   Firebase console shows each day's estimates as plain lines. ---- */
+function custWhen(t){ try{ return new Date(t).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }catch(e){ return String(t || ''); } }
+function custSelection(){
+  var parts = [], short = [], n = 0, q = 0, amt = 0;
+  estItems().forEach(function(it){
+    var c = _estQty[it.k] || 0; if(!(c > 0)) return;
+    n++; q += c; amt += c * it.price;
+    parts.push('No.' + it.s + ' ' + it.en + ' x' + c + ' = \u20B9' + (c * it.price).toLocaleString('en-IN'));
+    short.push(it.en + ' x' + c);
+  });
+  if(!n) return null;
+  var t = estTotals();
+  var total = n + ' item' + (n > 1 ? 's' : '') + ' \u00B7 qty ' + q + ' \u00B7 \u20B9' + amt.toLocaleString('en-IN') +
+    (t.pct > 0 ? ' \u2192 offer \u20B9' + t.net.toLocaleString('en-IN') + ' (' + t.pct + '% off)' : '');
+  return { items: parts.join(' | '), short: short.join(', '), total: total, sig: parts.join('|') };
+}
+function custSaveProfile(addEst, total, viaLeave){
   if(!_fbReadOnly || !_fbDb) return;
   var vid = custVid(), now = new Date().toISOString(), cu = estCustClean(), opt = !!(_estCust && _estCust.optin) && !!cu.mobile;
+  var sel = custSelection(), lastSig = '';
+  try{ lastSig = localStorage.getItem('ars_sel_saved') || ''; }catch(e){}
+  var newSel = !!sel && sel.sig !== lastSig;
+  if(viaLeave && !newSel) return;                          // left the page with the same items: nothing to save
+  if(newSel){ try{ localStorage.setItem('ars_sel_saved', sel.sig); }catch(e){} }
   custNetRun(function(){
     return _fbDb.ref('visitors/' + vid).transaction(function(cur){
       cur = cur || { vid: vid, first: now, last: now, visits: 1, est: 0 };
       if(addEst){ cur.est = (cur.est || 0) + 1; cur.estLast = now; if(total) cur.estTotal = total; }
+      if(sel){ cur.lastItems = sel.items; cur.lastTotal = sel.total; cur.lastItemsAt = custWhen(now); }
       if(cu.name) cur.name = cu.name;
       if(cu.mobile) cur.mobile = cu.mobile;
       cur.optin = opt;
       return cur;
-    }).then(function(){ return addEst ? custStatInc('estimates') : null; });
+    }).then(function(){
+      var w = [];
+      if(addEst) w.push(custStatInc('estimates'));
+      if(newSel){
+        var d = new Date(), p = function(x){ return (x < 10 ? '0' : '') + x; };
+        var line = (cu.name || 'Customer') + (cu.mobile ? ' ' + cu.mobile : '') + ' \u00B7 ' + sel.total + ' \u00B7 ' + sel.short + (viaLeave ? ' (did not open the voucher)' : '');
+        w.push(_fbDb.ref('estimateLog/' + custDay(d) + '/' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '_' + vid).set(line.slice(0, 1500)));
+      }
+      return Promise.all(w);
+    });
   });
 }
+/* Customer leaves the page (closes / switches app) after choosing items without opening the voucher: save the selection. */
+document.addEventListener('visibilitychange', function(){
+  try{ if(document.visibilityState === 'hidden' && _fbReadOnly && _fbDb && Object.keys(_estQty || {}).length) custSaveProfile(false, 0, true); }catch(e){}
+});
 /* Seller side: the visitor id from a scanned estimate QR, kept per bill tab until that bill is saved. */
 var _scanVids = loadJSON('ars_scan_vid', {}) || {};
 function scanVidSet(tab, vid){ if(vid) _scanVids[tab] = vid; else delete _scanVids[tab]; _rawSaveJSON('ars_scan_vid', _scanVids); }
@@ -2434,10 +2478,12 @@ function initFirebase(opts){
       var _custDone = false;
       var _custOff = function(){ if(_custDone) return; _custDone = true; try{ _fbDb.goOffline(); }catch(e){} };
       var _offerP = _fbDb.ref(FB_DOCS.offer.path).once('value').then(function(s){ FB_DOCS.offer.apply(s.val()); }).catch(function(){});
+      // branches too: names, branches on hold, address and Google Maps links shown to the customer
+      var _brP = _fbDb.ref(FB_DOCS.branches.path).once('value').then(function(s){ FB_DOCS.branches.apply(s.val()); try{ pubBranchPaint(); var _ev = document.getElementById('estVoucherOverlay'); if(_ev && _ev.style.display === 'block') estScreenPaint(); }catch(e){} }).catch(function(){});
       _fbDb.ref(FB_DOCS.pricelist.path).once('value')
         .then(function(s){ fbOnDocValue('pricelist', s.val()); })
         .catch(fbNoteError)
-        .then(function(){ return _offerP; })
+        .then(function(){ return Promise.all([_offerP, _brP]); })
         .then(function(){ return fbTimeout(custTrackVisit().then(custTrackDevice), 12000, 'Visit').catch(function(){}); })   // count this visit (+ phone / browser), then disconnect
         .then(function(){ setTimeout(_custOff, 400); });
       setTimeout(_custOff, 15000);
@@ -3293,6 +3339,23 @@ function branchNamesText(firstId, sep){
   brs.sort(function(a, b){ return (b.id === firstId) - (a.id === firstId); });
   return brs.map(function(b){ return b.name || b.short || ''; }).filter(Boolean).join(sep || ' \u2022 ');
 }
+/* Google Maps link of a branch (pasted by the admin in Branches), only real Google Maps addresses are used. */
+/* Main shop (Thanneerpandhal): Google Maps pin given by the owner, address as on the shop's papers - used until the admin sets
+   something else in Branches (an emptied field stays empty). */
+var BRANCH_DEFAULTS = { main: { map: 'https://www.google.com/maps/search/?api=1&query=11.3068217%2C79.7158038', addr: '1/5 Main Road, Vijayanagar, Opp. Kannangulam Bus Stand, Thanneerpandhal, Puthur' } };
+function branchAddr(b){ if(!b) return ''; var d = BRANCH_DEFAULTS[b.id] || {}; return String(b.addr != null ? b.addr : (d.addr || '')).trim(); }
+/* "11.3068217, 79.7158038" (a point location) -> a Google Maps pin link */
+function mapFromPoint(t){ var m = String(t || '').trim().match(/^(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)$/); return m ? 'https://www.google.com/maps/search/?api=1&query=' + m[1] + '%2C' + m[2] : ''; }
+/* Directions straight to the shop when the pin's point is known, else the map link itself */
+function branchDir(b){ var m = branchMap(b); if(!m) return ''; var p = decodeURIComponent(m).match(/(?:query=|destination=|place\/|@)(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/); return p ? 'https://www.google.com/maps/dir/?api=1&destination=' + p[1] + '%2C' + p[2] : m; }
+function branchMap(b){ var d = (b && BRANCH_DEFAULTS[b.id]) || {}; var m = String((b && (b.map != null ? b.map : d.map)) || '').trim().replace(/[?&]g_st=[^&]*$/, ''); return /^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|g\.page|(www\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+)\b/i.test(m) ? m : ''; }
+/* Message lines: "📍 Thanneerpandhal — <map link>" for every active branch (the first branch first);
+   without any map link it stays one line "📍 A • B". */
+function branchLocText(firstId){
+  var brs = liveBranches().slice(); brs.sort(function(a, b){ return (b.id === firstId) - (a.id === firstId); });
+  if(!brs.some(branchMap)) return '📍 ' + branchNamesText(firstId);
+  return brs.map(function(b){ var m = branchMap(b); return '📍 ' + (b.name || b.short || '') + (m ? ' — ' + m : ''); }).join('\n');
+}
 function branchesLabel(firstId){ var n = liveBranches().length; return (n > 1 ? 'Branches: ' : 'Branch: ') + branchNamesText(firstId); }
 function branchOfSale(sale){ return (sale && sale.branchId && BRANCHES[sale.branchId]) || (sale && !sale.branchId && BRANCHES.main) || BRANCHES[activeBranchId] || BRANCHES.main || null; }
 function adminScope(){
@@ -3311,8 +3374,22 @@ function branchChipsHtml(current, handler){
   return '<div style="display:flex; gap:7px; flex-wrap:wrap; margin:8px 0;">' + chip('', 'All') +
     list.map(function(b){ return chip(b.id, b.short); }).join('') + '</div>';
 }
-function setAdminBranch(id){ salesFilters.branch = id; if(id && salesFilters.seller){ var ok = SALES.some(function(x){ return x.sellerId === salesFilters.seller && saleInBranch(x, id); }); if(!ok) salesFilters.seller = ''; } renderAdmin(); }
-function setHistoryBranch(id){ historyBranchFilter = id; render(); }
+function setAdminBranch(id){ listReset('sales'); salesFilters.branch = id; if(id && salesFilters.seller){ var ok = SALES.some(function(x){ return x.sellerId === salesFilters.seller && saleInBranch(x, id); }); if(!ok) salesFilters.seller = ''; } renderAdmin(); }
+function setHistoryBranch(id){ historyBranchFilter = id; listReset('hist'); render(); }
+/* Long lists (History, Sales records, Login History) draw the newest 60 first with a "Show more" button, so a phone
+   with thousands of bills never freezes while drawing them. Totals and PDFs always use every bill. */
+var LIST_PAGE = 60, _listLimit = { hist: 60, sales: 60, logins: 60 };
+function listReset(k){ _listLimit[k] = LIST_PAGE; }
+function listMore(k){ _listLimit[k] += 100; if(k === 'hist') render(); else renderAdmin(); }
+function listMoreBtn(k, total){
+  var left = total - _listLimit[k]; if(left <= 0) return '';
+  return '<button onclick="listMore(\'' + k + '\')" style="display:block; width:100%; padding:11px; margin:6px 0 12px; border-radius:10px; border:1.5px solid var(--maroon); background:#fff8e6; color:var(--maroon); font-weight:800; font-size:13px; cursor:pointer;">Show more (' + left + ' more)</button>';
+}
+var _billTimeFmt = null;   // one date formatter for every bill card (making a new one per card is slow)
+function fmtBillTime(t){
+  try{ if(!_billTimeFmt) _billTimeFmt = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }); return _billTimeFmt.format(new Date(t)); }
+  catch(e){ return new Date(t).toLocaleString('en-IN'); }
+}
 let lastSellerSummary = null;
 let lastOverallItemsSummary = null;
 let lastBillItemsSummary = null;
@@ -3486,9 +3563,10 @@ async function attemptLogin(){
     const u = USERS[id];
     if(!u || !(u === _quickU || pinCheck(u, pin))){ err.textContent = 'Invalid ID / PIN. / தவறான ID / PIN.'; return; }
     err.textContent = '';
-    session = {id, name:u.name, role:u.role, pinHash: u.pinHash || pinHashFor(id, pin)};
+    session = {id, name:u.name, role:u.role, pinHash: u.pinHash || pinHashFor(id, pin), day: arsToday()};
     saveJSON('ars_session', session);
     saveJSON('ars_last_login', {id});
+    _rawSaveJSON('ars_last_use', 0);                       // a login always counts as opening the app
     let device = {};
     try{ device = await getDeviceInfo(); }catch(e){}
     try{ pinRemember(id, pin); }catch(e){}
@@ -3532,6 +3610,73 @@ function hideAdminIfOpen(){
     document.getElementById('app').classList.remove('hidden');
   }
 }
+/* ---- Seller sign-in is for one day: from 12 am the next day the app signs the seller out and asks to sign in again
+   (a seller in the middle of a payment is signed out right after it). Admin accounts stay signed in. ---- */
+function arsToday(){ var d = new Date(Date.now() + 5.5 * 3600 * 1000); return d.toISOString().slice(0, 10); }   // India date
+var SELLER_NEW_DAY_MSG = 'New day — please sign in again. / புதிய நாள் — மீண்டும் உள்நுழையவும்.';
+function sellerDayOver(){
+  if(!session || session.role === 'admin') return false;
+  var today = arsToday();
+  if(!session.day){ session.day = today; saveJSON('ars_session', session); return false; }   // signed in before this version: today counts
+  return session.day !== today;
+}
+function sellerBusy(){
+  try{
+    if(_saleSaving) return true;
+    var bo = document.getElementById('billOverlay'); if(bo && bo.classList.contains('show') && !_saleSaved()) return true;
+    var so = document.getElementById('scanOverlay'); if(so && so.style.display === 'flex') return true;
+    var sp = document.getElementById('splitPaymentOverlay'); if(sp && sp.classList.contains('show')) return true;
+    var up = document.getElementById('upiQrOverlay'); if(up && up.classList.contains('show')) return true;
+  }catch(e){}
+  return false;
+}
+function sellerDayTick(){
+  if(!sellerDayOver() || sellerBusy()) return;
+  try{ closeBill(); }catch(e){}
+  forceLogout(SELLER_NEW_DAY_MSG);
+}
+/* ---- "Last open": when the app is opened (or comes back) after 1 hour or more without use, it reconnects with the
+   server and saves the time (lastSeen/<id>). Admin -> Login History shows each person's last open time. ---- */
+var LAST_SEEN = loadJSON('ars_last_seen', {}) || {};
+var _lastUseSaved = 0;
+function noteAppUse(){ var n = Date.now(); if(n - _lastUseSaved > 60000){ _lastUseSaved = n; _rawSaveJSON('ars_last_use', n); } }
+function markAppOpen(){
+  if(!session) return;
+  var last = Number(loadJSON('ars_last_use', 0)) || 0, now = Date.now();
+  if(last && now - last < 3600 * 1000){ noteAppUse(); return; }
+  _lastUseSaved = now; _rawSaveJSON('ars_last_use', now);
+  var rec = { time: new Date(now).toISOString(), name: session.name || session.id, role: session.role || 'seller' };
+  try{ rec.dev = localStorage.getItem('ars_device_id') || ''; }catch(e){}
+  _rawSaveJSON('ars_open_pending', rec);
+  lastSeenSend();
+  try{ if(last) fbFullSync(); }catch(e){}                 // back after an hour: connect with the server again
+}
+function lastSeenSend(){
+  var rec = loadJSON('ars_open_pending', null);
+  if(!rec || !session || !_fbDb || _fbReadOnly) return;
+  try{
+    _fbDb.ref('lastSeen/' + fbSafeKey(session.id)).set(rec).then(function(){
+      var cur = loadJSON('ars_open_pending', null); if(cur && cur.time === rec.time) _rawSaveJSON('ars_open_pending', null);
+    }).catch(function(){});
+  }catch(e){}
+}
+var _lastSeenOn = false;
+function lastSeenAttach(){
+  if(_lastSeenOn || !_fbDb || _fbReadOnly || !session || session.role !== 'admin') return;
+  _lastSeenOn = true;
+  _fbDb.ref('lastSeen').on('value', function(snap){
+    LAST_SEEN = snap.val() || {}; _rawSaveJSON('ars_last_seen', LAST_SEEN);
+    try{ if(!document.getElementById('adminScreen').classList.contains('hidden') && adminTab === 'logins') renderAdmin(); }catch(e){}
+  }, function(){ _lastSeenOn = false; });
+}
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden'){ if(session){ _lastUseSaved = Date.now(); _rawSaveJSON('ars_last_use', _lastUseSaved); } return; }
+  if(!session) return;
+  sellerDayTick();
+  if(session) markAppOpen();
+});
+document.addEventListener('pointerdown', function(){ if(session) noteAppUse(); }, true);
+setInterval(function(){ if(session){ sellerDayTick(); lastSeenSend(); lastSeenAttach(); } }, 60000);
 function forceLogout(msg){
   session = null;
   saveJSON('ars_session', null);
@@ -3606,11 +3751,12 @@ function enterApp(){
   }
   if(session && session.role === 'admin'){ fbAttachAdminColls(); if(usersHashPins()) saveJSON('ars_users', USERS); }
   else { try{ var _tr = salesTrimForPhone(loadJSON('ars_sales', []) || []); if(_tr.length !== SALES.length){ SALES = _tr; _rawSaveJSON('ars_sales', SALES); } }catch(e){} }
+  setTimeout(function(){ try{ markAppOpen(); lastSeenAttach(); }catch(e){} }, 1200);   // opened after 1 hour+ (or a login): save the open time
   initFirebase();   // open live listeners so other devices' bills appear instantly
   startFbFullSyncTimer();   // plus a full re-sync every 40 minutes
   fbFullSync();
   updateSyncBadge();
-  setInterval(updateSyncBadge, 30000); // also catches the phone going offline / coming back
+  if(!window._syncBadgeTimer) window._syncBadgeTimer = setInterval(updateSyncBadge, 30000); // also catches the phone going offline / coming back (one timer, even after signing in again)
   ensureJsPDF().catch(()=>{ /* will retry on demand when the share button is tapped */ });
   ensureHtml2Canvas().catch(()=>{ /* will retry on demand when the share button is tapped */ });
 }
@@ -3678,6 +3824,7 @@ const SHARE_ICON_SVG_SM = '<svg width="13" height="13" viewBox="0 0 24 24" fill=
 const WHATSAPP_ICON_SVG_SM = '<span class="wa-logo" style="width:15px; height:15px; margin-right:4px; vertical-align:-3px;"></span>';
 
 function setTab(t){
+  if(t !== activeTab) listReset('hist');
   activeTab = t;
   _billSheetSn = null; { const _bq = document.getElementById('billQtySheet'); if(_bq) _bq.style.display = 'none'; }   // qty panel belongs to the bill tabs only
   // Update button active states
@@ -4539,7 +4686,16 @@ function estVoucherHtml(forScreen){
         '<div style="text-align:right; padding:0 10px 5px; font-size:10px; font-weight:700; color:#b3261e;">' + pct + '% offer price valid' + (till ? ' up to ' + till : '') + '</div>';
     })() +
     (offerActive() ? '<div style="margin:0 10px 8px; padding:6px 10px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:9px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border:1px solid #f0c969; color:#7a1414; font-size:12.5px; font-weight:800; text-align:center;"><span style="font-size:20px; vertical-align:middle;">&#127873;</span> <div style="display:inline-block; vertical-align:middle; text-align:left;"><div style="font-size:13.5px; font-weight:800;">' + estEsc(OFFER.title || '') + '</div><div style="font-size:11.5px; font-weight:700; line-height:1.35; margin-top:1px;">' + estEsc(OFFER.text || '') + '</div></div></div>' : '') + qrBlock +
-    '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + (forScreen ? telLinks(estEsc(branchPhoneText(br))) + ' <span style="display:inline-block; vertical-align:middle; margin:4px 0 0 4px; text-align:left; font-size:10px; font-weight:800; line-height:1.25; color:#1b3a78;">&#128072; Tap to call<br><span style="font-size:9px; font-weight:700;">அழைக்க தொடவும்</span></span>' : estEsc(branchPhoneText(br))) + '</div>' +
+    '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + (forScreen ? telLinks(estEsc(branchPhoneText(br))) + ' <span style="display:inline-block; vertical-align:middle; margin:4px 0 0 4px; text-align:left; font-size:10px; font-weight:800; line-height:1.25; color:#1b3a78;">&#128072; Tap to call<br><span style="font-size:9px; font-weight:700;">அழைக்க தொடவும்</span></span>' : estEsc(branchPhoneText(br))) +
+      (function(){
+        var links = liveBranches().filter(function(b){ return branchMap(b) || branchAddr(b); });
+        if(!links.length) return '';
+        return '<div style="margin-top:6px; display:flex; flex-wrap:wrap; justify-content:center; gap:6px;">' + links.map(function(b){
+          var m = branchDir(b), ad = branchAddr(b), t = '&#128205; ' + estEsc(b.name || b.short || '') + (ad ? '<br><span style="font-size:8.5px; font-weight:600;">' + estEsc(ad) + '</span>' : '');
+          return (forScreen && m) ? '<a href="' + estEsc(m) + '" target="_blank" rel="noopener" style="display:inline-block; padding:4px 10px; border-radius:12px; background:#fff; border:1.5px solid #1b3a78; color:#1b3a78; font-size:10.5px; font-weight:800; text-decoration:none; line-height:1.3;">' + t + ' &rarr; Directions</a>'
+            : '<span style="display:inline-block; font-size:10px; font-weight:700; color:#1b3a78; line-height:1.3;">' + t + '</span>';
+        }).join('') + '</div>';
+      })() + '</div>' +
   '</div>';
 }
 /* ---- Seller: read a customer's estimate QR (camera or photo) and add its items to the current bill ---- */
@@ -4842,7 +4998,8 @@ function estQrSlotPaint(){
   var left = '<div style="font-size:11.5px; font-weight:800; color:#1b3a78; margin-bottom:5px;">🤝 Keep in touch / தொடர்பில் இருங்கள்</div>' +
     '<input type="text" id="estCustName" maxlength="40" placeholder="Name / பெயர்" autocomplete="off" value="' + estEsc(_estCust.name || '') + '" oninput="estDetailsInput()" onblur="estDetailsInput(true)" style="' + inp + ' margin-bottom:5px;">' +
     '<input type="tel" id="estCustMobile" maxlength="14" inputmode="numeric" placeholder="Mobile / கைபேசி" autocomplete="off" value="' + estEsc(_estCust.mobile || '') + '" oninput="estDetailsInput()" onblur="estDetailsInput(true)" style="' + inp + '">' +
-    '<div id="estKeepMsg" style="font-size:9.5px; color:#44557a; margin-top:4px;">' + estKeepMsgHtml() + '</div>';
+    '<div id="estKeepMsg" style="font-size:9.5px; color:#44557a; margin-top:4px;">' + estKeepMsgHtml() + '</div>' +
+    '<div style="font-size:9px; color:#44557a; margin-top:3px; line-height:1.3;">&#128274; Only our shop sees this &mdash; never shared.<br>கடை மட்டுமே பார்க்கும்.</div>';
   slot.innerHTML = '<div style="display:flex; gap:10px; align-items:flex-start; border-top:1px dashed #c9d3e6; padding:10px 10px 8px;">' +
     '<div style="flex:1; min-width:0; text-align:left;">' + left + '</div>' +
     '<div id="estQrRight" style="flex:0 0 128px; text-align:center;"></div></div>';
@@ -5196,6 +5353,7 @@ function paintPublicPreview(){
   pubQtyPaint();
 }
 async function showPublicPriceList(){
+  try{ document.title = (SHOP.name_en ? SHOP.name_en.replace(/\bSHOP\b/i, 'Shop').replace(/\bCRACKERS\b/i, 'Crackers') : 'A.R.S Crackers Shop') + ' — Price List & Self Estimation'; }catch(e){}
   var screen = document.getElementById('publicPriceScreen');
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
@@ -5217,7 +5375,11 @@ function pubBranchPaint(){
   var same = phones.length > 1 && phones.every(function(p){ return p === phones[0]; });
   var tel = function(p){ return p ? '<a href="tel:' + p.replace(/\s/g, '') + '" style="color:inherit; text-decoration:none; white-space:nowrap;">&#128222; ' + estEsc(p) + '</a>' : ''; };
   // each piece stays whole; pieces wrap to the next line without leaving a separator behind
-  var parts = brs.map(function(b, i){ return '<span style="white-space:nowrap;">&#128205; ' + estEsc(b.name || b.short || '') + (same || !phones[i] ? '' : ' ' + tel(phones[i])) + '</span>'; });
+  var parts = brs.map(function(b, i){
+    var m = branchMap(b), nm = '&#128205; ' + estEsc(b.name || b.short || '');
+    var place = m ? '<a href="' + estEsc(m) + '" target="_blank" rel="noopener" title="Open in Google Maps" style="color:inherit; text-decoration:underline dotted; text-underline-offset:3px;">' + nm + ' <span style="display:inline-block; padding:0 5px; border-radius:6px; background:#ffd34d; color:#7a1414; font-size:9.5px; font-weight:800; text-decoration:none; vertical-align:1px;">Map</span></a>' : nm;
+    return '<span style="white-space:nowrap;">' + place + (same || !phones[i] ? '' : ' ' + tel(phones[i])) + '</span>';
+  });
   if(same && phones[0]) parts.push(tel(phones[0]));
   var html = '<span style="display:inline-flex; flex-wrap:wrap; justify-content:center; column-gap:12px;">' + parts.join('') + '</span>';
   document.querySelectorAll('.pubBranchLine').forEach(function(el){ el.innerHTML = html; });
@@ -5947,6 +6109,7 @@ function histInDates(x){
   return !(histDates.from && d < histDates.from) && !(histDates.to && d > histDates.to);
 }
 function toggleHistDates(){
+  listReset('hist');
   if(histDates.from || histDates.to){ histDates = { from: '', to: '' }; render(); return; }
   var today = saleLocalDate(new Date()), first = today;
   (SALES || []).forEach(function(x){ if(x.sellerId === session.id){ var d = saleLocalDate(x.time); if(d < first) first = d; } });
@@ -5954,6 +6117,7 @@ function toggleHistDates(){
   render();
 }
 function onHistDateChange(){
+  listReset('hist');
   var f = (document.getElementById('histFrom') || {}).value || '', t = (document.getElementById('histTo') || {}).value || '';
   if(f && t && f > t){ var x = f; f = t; t = x; }
   histDates = { from: f, to: t };
@@ -5997,7 +6161,7 @@ function historySellerSelectHtml(){
   opts += ids.map(function(id){ return o(id, names[id]); }).join('');
   var dOn = !isAdmin && !!(histDates.from || histDates.to);
   return '<div style="display:flex; align-items:center; gap:8px; margin:8px 0;"><span style="font-size:12px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>' +
-    '<select id="historySellerSel" onchange="historySellerFilter = this.value; render();" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">' + opts + '</select>' +
+    '<select id="historySellerSel" onchange="historySellerFilter = this.value; listReset(\'hist\'); render();" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">' + opts + '</select>' +
     (isAdmin ? '' : '<button type="button" onclick="toggleHistDates()" title="' + (dOn ? 'Show all dates' : 'My present days (dates)') + '" aria-label="Date filter" style="flex:0 0 auto; width:48px; height:42px; border-radius:10px; border:1.5px solid var(--maroon); background:' + (dOn ? 'var(--maroon)' : '#fff8e6') + '; color:' + (dOn ? '#fff8e6' : 'var(--maroon)') + '; font-size:20px; cursor:pointer;">&#128197;</button>') +
     '</div>' + (dOn ? histAttendanceHtml() : '');
 }
@@ -6162,8 +6326,8 @@ function renderHistoryList(){
   if(list.length === 0){
     return html + `<div class="empty-state">${historySellerFilter ? 'No bills for this seller here yet.' : 'No sales yet.<br/>விற்பனை இல்லை.'}</div>`;
   }
-  list.forEach(s => {
-    const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+  list.slice(0, _listLimit.hist).forEach(s => {
+    const dt = fmtBillTime(s.time);
     const status = saleStatus(s);
     const statusBadge = status === 'cancelled'
       ? '<span class="status-badge cancelled">Cancelled</span>'
@@ -6192,14 +6356,15 @@ function renderHistoryList(){
         </div>
         <div class="sale-detail" id="detail-h-${s.id}">${itemsHtml}
           <div class="sale-card-actions">
-            ${isAdmin && status === 'confirmed' ? `<button class="btn-edit-bill" onclick="event.stopPropagation(); openSaleEdit('${s.id}')" title="Change qty / price">&#9998; Edit</button>` : ''}
-            ${s.buyerPhone ? `<button class="btn-whatsapp-sm" onclick="event.stopPropagation(); sharePastBillImageViaWhatsApp('${s.id}')">${WHATSAPP_ICON_SVG_SM}WhatsApp Image</button>` : ''}
-            <button class="btn-share-pdf-sm" onclick="event.stopPropagation(); shareSaleImage('${s.id}', this)" title="Share the bill as a picture (PNG)">${SHARE_ICON_SVG_SM}Share</button>
-            <button class="btn-share-pdf-sm" style="background:#0b5fd8;" onclick="event.stopPropagation(); printSaleById('${s.id}')" title="Print this bill">&#128424; Print</button>
+            ${isAdmin && status === 'confirmed' ? `<button class="btn-edit-bill ico-only" onclick="event.stopPropagation(); openSaleEdit('${s.id}')" title="Edit bill (qty / price)" aria-label="Edit bill">&#9998;</button>` : ''}
+            ${s.buyerPhone ? `<button class="btn-whatsapp-sm ico-only" onclick="event.stopPropagation(); sharePastBillImageViaWhatsApp('${s.id}')" title="WhatsApp to the customer" aria-label="WhatsApp to the customer">${WHATSAPP_ICON_SVG_SM}</button>` : ''}
+            <button class="btn-share-pdf-sm ico-only" onclick="event.stopPropagation(); shareSaleImage('${s.id}', this)" title="Share the bill picture" aria-label="Share the bill picture">${SHARE_ICON_SVG_SM}</button>
+            <button class="btn-share-pdf-sm ico-only" style="background:#0b5fd8;" onclick="event.stopPropagation(); printSaleById('${s.id}')" title="Print this bill" aria-label="Print this bill">&#128424;</button>
           </div>
         </div>
       </div>`;
   });
+  html += listMoreBtn('hist', list.length);
   return html;
 }
 
@@ -6494,7 +6659,9 @@ async function shareSaleImage(saleId, btn){
   if(!s) return;
   const sig = saleId + '|' + (s.edited ? s.edited.at : '') + '|' + s.total + '|' + saleStatus(s);
   let files = _billPngReady[sig];
-  const label = SHARE_ICON_SVG_SM + 'Share';
+  if(btn && !btn.dataset.label) btn.dataset.label = btn.innerHTML;
+  const label = (btn && btn.dataset.label) || (SHARE_ICON_SVG_SM + 'Share');
+  if(btn) btn.classList.remove('ready');
   if(!files){
     if(btn){ btn.disabled = true; btn.innerHTML = '&hellip;'; }
     try{
@@ -6511,7 +6678,12 @@ async function shareSaleImage(saleId, btn){
     try{ await navigator.share({ files: files }); delete _billPngReady[sig]; return; }   // picture(s) only, no caption
     catch(e){
       if(e && e.name === 'AbortError'){ delete _billPngReady[sig]; return; }
-      if(e && e.name === 'NotAllowedError'){ _billPngReady[sig] = files; if(btn) btn.innerHTML = SHARE_ICON_SVG_SM + 'Tap to share'; return; }
+      if(e && e.name === 'NotAllowedError'){
+        _billPngReady[sig] = files;
+        if(btn){ if(btn.classList.contains('ico-only')){ btn.innerHTML = label; btn.classList.add('ready'); } else btn.innerHTML = SHARE_ICON_SVG_SM + 'Tap to share'; }
+        try{ scanToast('Bill picture ready \u2014 tap Share again', 'blue'); }catch(e2){}
+        return;
+      }
     }
   }
   delete _billPngReady[sig];
@@ -7479,6 +7651,7 @@ async function autoSaveOnExit(){
 }
 function setAdminTab(t){
   if(adminScope() && !{ sales:1, items:1, branch:1 }[t]) t = 'sales';
+  if(t !== adminTab){ listReset('sales'); listReset('logins'); }
   if(t === 'items' && adminTab !== 'items'){ adminPriceView = 'list'; adminItemsBranch = adminScope() || ''; }   // Price Edit always opens on the full list view
   adminTab = t;
   document.getElementById('adminTabSalesBtn').classList.toggle('active', t==='sales');
@@ -7676,6 +7849,7 @@ function applySalesFilters(salesList){
   });
 }
 function onSalesFilterChange(){
+  listReset('sales');
   salesFilters.seller = document.getElementById('filterSeller').value;
   renderAdmin();
 }
@@ -7686,12 +7860,14 @@ function customerSummaryHtml(list){
   return `<div style="font-size:13px; font-weight:800; color:#7a1414; margin:2px 2px 10px;">${cs.length} bill(s) &middot; Total Paid &#8377;${paid.toLocaleString('en-IN')}</div>`;
 }
 function clearSalesFilters(){
+  listReset('sales');
   salesFilters = { seller:'', billNo:'', phone:'', branch: salesFilters.branch || '', from:'', to:'' };   // the branch chip stays
   renderAdmin();
 }
 function toggleSalesStats(){ salesStatsOpen = !salesStatsOpen; renderAdmin(); }
 /* 📅 next to the search: on = From / To dates (first bill day .. today to start with), off = all dates. */
 function toggleSalesDates(){
+  listReset('sales');
   if(salesFilters.from || salesFilters.to){ salesFilters.from = ''; salesFilters.to = ''; renderAdmin(); return; }
   var today = saleLocalDate(new Date()), first = today;
   (SALES || []).forEach(function(x){ if(saleInBranch(x, salesFilters.branch)){ var d = saleLocalDate(x.time); if(d < first) first = d; } });
@@ -7699,13 +7875,14 @@ function toggleSalesDates(){
   renderAdmin();
 }
 function onSalesDateChange(){
+  listReset('sales');
   var f = (document.getElementById('salesFrom') || {}).value || '', t = (document.getElementById('salesTo') || {}).value || '';
   if(f && t && f > t){ var x = f; f = t; t = x; }
   salesFilters.from = f; salesFilters.to = t;
   if(!f && !t){ salesFilters.from = salesFilters.to = ''; }
   renderAdmin();
 }
-function salesPickSeller(id){ salesFilters.seller = salesFilters.seller === id ? '' : id; renderAdmin(); }
+function salesPickSeller(id){ listReset('sales'); salesFilters.seller = salesFilters.seller === id ? '' : id; renderAdmin(); }
 /* Present days in the chosen dates: a day counts when that person made at least one bill (in the branch shown). */
 function salesAttendance(){
   var by = new Map();
@@ -7720,6 +7897,7 @@ function salesAttendance(){
 function salesDateLabel(d){ try{ var p = d.split('-'); return Number(p[2]) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(p[1]) - 1]; }catch(e){ return d; } }
 /* One search box: a short number = bill no, 6+ digits = customer mobile. */
 function onSalesSearchInput(){
+  listReset('sales');
   var el = document.getElementById('salesSearch'), v = el ? el.value : '', d = v.replace(/\D/g, '');
   if(d.length >= 6){ salesFilters.phone = d; salesFilters.billNo = ''; } else { salesFilters.billNo = d; salesFilters.phone = ''; }
   renderAdmin();
@@ -7737,7 +7915,7 @@ function salesRecordsScope(){
 /* ---- Login History: summary at the top - today's numbers, then one line per person (last login, logins
    today, all logins, phones used). Tap a person to see only their logins. ---- */
 var loginFilterId = '';
-function loginPick(id){ loginFilterId = loginFilterId === id ? '' : id; renderAdmin(); }
+function loginPick(id){ loginFilterId = loginFilterId === id ? '' : id; listReset('logins'); renderAdmin(); }
 function loginSummaryHtml(){
   var list = LOGIN_HISTORY || [], today = saleLocalDate(new Date()), by = {}, devs = {}, devsToday = {}, todayN = 0;
   Object.keys(USERS || {}).forEach(function(id){ var u = USERS[id] || {}; by[id] = { id: id, name: u.name || id, role: u.role || 'seller', n: 0, nToday: 0, last: '', dev: {} }; });
@@ -7749,8 +7927,8 @@ function loginSummaryHtml(){
     if(d){ p.dev[d] = 1; devs[d] = 1; }
     if(saleLocalDate(l.time) === today){ p.nToday++; todayN++; if(d) devsToday[d] = 1; }
   });
-  var people = Object.keys(by).map(function(k){ return by[k]; });
-  people.sort(function(a, b){ return (b.nToday > 0) - (a.nToday > 0) || String(b.last).localeCompare(String(a.last)) || String(a.name).localeCompare(String(b.name)); });
+  var people = Object.keys(by).map(function(k){ var p = by[k], ls = (LAST_SEEN || {})[fbSafeKey(p.id)]; p.open = (ls && ls.time && (Date.parse(ls.time) || 0) > (Date.parse(p.last) || 0) + 120000) ? String(ls.time) : ''; p.act = p.open || p.last; return p; });
+  people.sort(function(a, b){ return (b.nToday > 0) - (a.nToday > 0) || String(b.act).localeCompare(String(a.act)) || String(a.name).localeCompare(String(b.name)); });
   var inToday = people.filter(function(p){ return p.nToday > 0; }).length, accounts = people.filter(function(p){ return !p.gone; }).length;
   var when = function(t){
     if(!t) return 'Never';
@@ -7762,18 +7940,19 @@ function loginSummaryHtml(){
     card(todayN, 'Logins today') + card(inToday + ' / ' + accounts, 'People logged in today') +
     card(Object.keys(devsToday).length, 'Phones used today') + card(list.length, 'All login records') + '</div>';
   h += '<div style="border:1px solid var(--line); border-radius:12px; background:var(--paper); overflow:hidden; margin-bottom:16px;">' +
-    '<div style="display:flex; gap:6px; padding:7px 10px; background:#fbeed2; font-size:10.5px; font-weight:800; color:var(--maroon-dark);"><span style="flex:1;">Person</span><span style="width:96px;">Last login</span><span style="width:38px; text-align:center;">Today</span><span style="width:34px; text-align:center;">All</span><span style="width:40px; text-align:center;">Phones</span></div>' +
+    '<div style="display:flex; gap:6px; padding:7px 10px; background:#fbeed2; font-size:10.5px; font-weight:800; color:var(--maroon-dark);"><span style="flex:1;">Person</span><span style="width:96px;">Last login / open</span><span style="width:38px; text-align:center;">Today</span><span style="width:34px; text-align:center;">All</span><span style="width:40px; text-align:center;">Phones</span></div>' +
     people.map(function(p){
       var sel = loginFilterId === p.id;
       return '<div onclick="loginPick(\'' + String(p.id).replace(/'/g, '') + '\')" style="display:flex; gap:6px; align-items:center; padding:8px 10px; border-top:1px solid var(--line); cursor:pointer; background:' + (sel ? '#fff3d6' : 'transparent') + ';">' +
         '<span style="flex:1; min-width:0;"><b style="font-size:12.5px; color:' + (p.nToday ? 'var(--ink)' : '#8a6a44') + ';">' + (p.nToday ? '&#128994; ' : '&#9898; ') + custEsc(p.name) + '</b>' +
           ' <span class="uer-role-badge ' + (p.role === 'admin' ? 'admin' : 'seller') + '" style="font-size:8.5px; padding:1px 6px;">' + (p.role === 'admin' ? 'Admin' : 'Seller') + '</span>' + (p.gone ? ' <span style="font-size:9px; color:#b3261e;">(deleted)</span>' : '') + '</span>' +
-        '<span style="width:96px; font-size:11px; color:' + (p.last ? 'var(--ink-soft)' : '#b3261e') + ';">' + when(p.last) + '</span>' +
+        '<span style="width:96px; font-size:11px; line-height:1.35; color:' + (p.last ? 'var(--ink-soft)' : '#b3261e') + ';">' + when(p.last) +
+          (p.open ? '<br><span style="font-size:10.5px; font-weight:800; color:#0b5fd8;">&#128241; Open ' + when(p.open).replace(/^Today /, '') + '</span>' : '') + '</span>' +
         '<span style="width:38px; text-align:center; font-size:13px; font-weight:800; color:' + (p.nToday ? 'var(--green)' : '#b9a68a') + ';">' + p.nToday + '</span>' +
         '<span style="width:34px; text-align:center; font-size:12.5px; font-weight:700;">' + p.n + '</span>' +
         '<span style="width:40px; text-align:center; font-size:12.5px; font-weight:700;">' + Object.keys(p.dev).length + '</span></div>';
     }).join('') +
-    '<div style="padding:6px 10px; border-top:1px solid var(--line); font-size:10px; color:#8a6a44;">&#128994; logged in today &bull; tap a person to see only their logins</div></div>';
+    '<div style="padding:6px 10px; border-top:1px solid var(--line); font-size:10px; color:#8a6a44;">&#128994; logged in today &bull; &#128241; Open = last time the app was opened after 1 hour or more &bull; sellers sign in again every day from 12 am &bull; tap a person to see only their logins</div></div>';
   return h;
 }
 
@@ -8235,8 +8414,8 @@ function renderAdmin(){
       html += `<div class="empty-admin">${SALES.length===0 ? 'No sales recorded yet.' : 'No sales match the selected filters.'}</div>`;
     } else {
       const lastSeen = loadJSON('ars_admin_last_seen_sales', 0);
-      [...filteredSales].reverse().forEach(s => {
-        const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+      [...filteredSales].reverse().slice(0, _listLimit.sales).forEach(s => {
+        const dt = fmtBillTime(s.time);
         const status = saleStatus(s);
         const statusBadge = status === 'cancelled'
           ? '<span class="status-badge cancelled">Cancelled</span>'
@@ -8270,6 +8449,7 @@ function renderAdmin(){
             </div>
           </div>`;
       });
+      html += listMoreBtn('sales', filteredSales.length);
     }
     main.innerHTML = html;
 
@@ -8419,8 +8599,8 @@ function renderAdmin(){
     if(loginsList.length===0){
       html += `<div class="empty-admin">No login history yet.</div>`;
     } else {
-      loginsList.forEach(l => {
-        const dt = new Date(l.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+      loginsList.slice(0, _listLimit.logins).forEach(l => {
+        const dt = fmtBillTime(l.time);
         html += `<div class="sale-card">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div><b>${l.name}</b> <span style="font-size:10px;color:#8a6a44;">(${l.id})</span>
@@ -8430,6 +8610,7 @@ function renderAdmin(){
             ${l.device ? `<div style="font-size:11px; color:#6b4b2a; margin-top:4px; line-height:1.5;">&#128241; ${deviceLabel(l.device) || 'Device'}<br><span style="font-size:10px; color:#8a6a44;">Screen ${l.device.screen || '-'} &middot; ${l.device.language || ''} &middot; ${l.device.timezone || ''}${l.device.installed ? ' &middot; Installed app' : ' &middot; Browser'} &middot; ID ${l.device.deviceId || '-'}</span></div>` : ''}
           </div>`;
       });
+      html += listMoreBtn('logins', loginsList.length);
     }
     main.innerHTML = html;
 
@@ -8569,6 +8750,11 @@ function renderAdmin(){
             <input type="text" id="brOwner" value="${(br.owner || '').replace(/"/g, '&quot;')}" placeholder="Owner name" style="${_fld}">
             <label class="field-label">Contact number</label>
             <input type="tel" id="brPhone" inputmode="tel" value="${(br.phone || '').replace(/"/g, '&quot;')}" placeholder="${fmtPhones(SHOP.phones.join(' / '))}" style="${_fld}">
+            <label class="field-label">Short address (shown to customers)</label>
+            <input type="text" id="brAddr" maxlength="90" value="${branchAddr(br).replace(/"/g, '&quot;')}" placeholder="e.g. Main Road, near bus stand, Thanneerpandhal" style="${_fld}">
+            <label class="field-label">Google Maps link</label>
+            <input type="text" id="brMap" inputmode="url" value="${branchMap(br).replace(/"/g, '&quot;')}" placeholder="https://maps.app.goo.gl/...  or  11.30682, 79.71580" style="${_fld}">
+            <div style="font-size:10.5px; color:#8a6a44; margin:-3px 0 8px; line-height:1.45;">Google Maps app &rarr; open your shop &rarr; <b>Share</b> &rarr; <b>Copy link</b> &rarr; paste here (or paste the pin&#39;s point location, e.g. <b>11.30682, 79.71580</b>). Customers then get a <b>Map</b> button on the price list, a <b>Directions</b> button on their voucher, and the link in WhatsApp offers.</div>
             <button onclick="saveBranchDetails('${bid}')" style="width:100%; padding:10px; background:var(--maroon); color:#fff8e6; border:none; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer;">Save details</button>
             <div style="font-size:10.5px; color:#8a6a44; margin-top:6px;">Owner is kept here only &mdash; it is not printed on the price list.</div>
           </div>
@@ -8683,7 +8869,7 @@ var _bkShow = { sheet:false, fb:false };
 /* ================= ADMIN: CUSTOMERS =================
    Price-list views, self-estimates (EST) and bills, per customer:
    visitors (from the self-order page) + bills (customer name / mobile, and bills made from a scanned estimate). */
-var _custQ = '', _custShown = [], _custFilter = 'all';
+var _custQ = '', _custShown = [], _custFilter = 'all', _custDates = { from: '', to: '' }, _custLimit = 40;
 var _visitors = loadJSON('ars_visitors_cache', {}) || {}, _vstats = loadJSON('ars_vstats_cache', {}) || {}, _visLoadedAt = 0, _visLoading = false;
 var _pcontacts = loadJSON('ars_pcontacts_cache', {}) || {};   // customers given the offer on WhatsApp from the History panel (promoContacts/<mobile>)
 function custEsc(t){ return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
@@ -8696,6 +8882,15 @@ async function custLoadVisitors(force){
     var r = await fbTimeout(Promise.all([_fbDb.ref('visitors').once('value'), _fbDb.ref('visitStats').once('value'), _fbDb.ref('promoContacts').once('value')]), 15000, 'Customers');
     _visitors = r[0].val() || {}; _vstats = r[1].val() || {}; _pcontacts = r[2].val() || {};
     _visLoadedAt = Date.now();
+    try{   // older records: one-time tidy to the simple format
+      var upd = {}, nUpd = 0;
+      Object.keys(_visitors).forEach(function(k){
+        var v = _visitors[k]; if(!v || typeof v !== 'object') return;
+        if(v.device && typeof v.device === 'object'){ if(!v.deviceLabel) upd[k + '/deviceLabel'] = v.deviceLabel = deviceLabel(v.device) || 'Unknown device'; upd[k + '/device'] = null; delete v.device; nUpd++; }
+        if(v.last && !v.lastVisit){ upd[k + '/lastVisit'] = v.lastVisit = custWhen(v.last); nUpd++; }
+      });
+      if(nUpd && !_fbReadOnly) _fbDb.ref('visitors').update(upd).catch(function(){});
+    }catch(e){}
     _rawSaveJSON('ars_visitors_cache', _visitors); _rawSaveJSON('ars_vstats_cache', _vstats); _rawSaveJSON('ars_pcontacts_cache', _pcontacts);
   }catch(e){ fbNoteError(e); }
   _visLoading = false;
@@ -8704,22 +8899,23 @@ async function custLoadVisitors(force){
 function custRows(){
   var rows = {}, order = [], vidPhone = {};
   function row(key){
-    if(!rows[key]){ rows[key] = { key: key, dev: '', name: '', phone: '', visits: 0, est: 0, bills: 0, estBills: 0, total: 0, first: '', last: '', optin: false, wa: 0, ids: [], vids: [] }; order.push(key); }
+    if(!rows[key]){ rows[key] = { key: key, dev: '', name: '', phone: '', visits: 0, est: 0, bills: 0, estBills: 0, total: 0, first: '', last: '', optin: false, wa: 0, ids: [], vids: [], times: [] }; order.push(key); }
     return rows[key];
   }
-  function seen(r, t){ t = String(t || ''); if(!t) return; if(!r.first || t < r.first) r.first = t; if(t > r.last) r.last = t; }
+  function seen(r, t){ t = String(t || ''); if(!t) return; r.times.push(t); if(!r.first || t < r.first) r.first = t; if(t > r.last) r.last = t; }
   Object.keys(_visitors).forEach(function(k){
     var v = _visitors[k]; if(!v) return;
     var vid = v.vid || k, ph = custDigits(v.mobile);
     if(ph) vidPhone[vid] = ph;
-    if(!ph && !v.name && !(v.est > 0)) return;              // only browsed, no details: counted in the totals above only
+    if(!ph && !v.name && !(v.est > 0) && !v.lastItems) return;   // only browsed, chose nothing, no details: counted in the totals above only
     var r = row(ph ? 'p' + ph : 'v' + vid);
     r.visits += (v.visits || 0); r.est += (v.est || 0);
     if(v.name && !r.name) r.name = v.name;
     if(ph) r.phone = ph;
     if(v.optin) r.optin = true;
     if(v.deviceLabel && !r.dev) r.dev = v.deviceLabel;
-    r.vids.push(vid); seen(r, v.first); seen(r, v.last);
+    if(v.lastItems && String(v.last || '') >= String(r.selAt || '')){ r.selItems = v.lastItems; r.selTotal = v.lastTotal || ''; r.selWhen = v.lastItemsAt || ''; r.selAt = String(v.last || ''); }
+    r.vids.push(vid); seen(r, v.first); seen(r, v.last); seen(r, v.estLast);
   });
   Object.keys(_pcontacts || {}).forEach(function(k){
     var c = _pcontacts[k]; if(!c) return;
@@ -8777,11 +8973,24 @@ function renderCustomersTab(main){
   var upd = _visLoadedAt ? new Date(_visLoadedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
   var chips = [['all', 'All'], ['est', 'EST'], ['follow', 'Follow up'], ['billed', 'Billed'], ['repeat', 'Repeat'], ['optin', 'Keep in touch']].map(function(c){
     var on = _custFilter === c[0];
-    return '<button onclick="_custFilter=\'' + c[0] + '\'; custRepaintList(); custChipPaint();" data-cf="' + c[0] + '" style="padding:5px 10px; border-radius:14px; border:1px solid var(--maroon); background:' + (on ? 'var(--maroon)' : '#fff') + '; color:' + (on ? '#fff8e6' : 'var(--maroon)') + '; font-size:11.5px; font-weight:700; cursor:pointer;">' + c[1] + '</button>';
+    return '<button onclick="_custFilter=\'' + c[0] + '\'; _custLimit = 40; custRepaintList(); custChipPaint();" data-cf="' + c[0] + '" style="padding:5px 10px; border-radius:14px; border:1px solid var(--maroon); background:' + (on ? 'var(--maroon)' : '#fff') + '; color:' + (on ? '#fff8e6' : 'var(--maroon)') + '; font-size:11.5px; font-weight:700; cursor:pointer;">' + c[1] + '</button>';
   }).join('');
+  var dOn = !!(_custDates.from || _custDates.to), rs = dOn ? custRangeStats() : null;
+  var dLbl = dOn ? salesDateLabel(_custDates.from || _custDates.to) + (_custDates.to && _custDates.to !== _custDates.from ? ' &ndash; ' + salesDateLabel(_custDates.to) : '') : '';
+  var finder =
+    '<div style="display:flex; gap:8px; align-items:stretch; margin:12px 0 8px;">' +
+      '<input type="text" id="custSearch" value="' + custEsc(_custQ) + '" placeholder="&#128269; Search name or mobile" oninput="_custQ = this.value; _custLimit = 40; custRepaintList()" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); font-size:13.5px; background:#fff;">' +
+      '<button onclick="custToggleDates()" title="' + (dOn ? 'Show all dates' : 'Filter by dates') + '" aria-label="Date filter" style="flex:0 0 auto; width:48px; border-radius:10px; border:1.5px solid var(--maroon); background:' + (dOn ? 'var(--maroon)' : '#fff8e6') + '; color:' + (dOn ? '#fff8e6' : 'var(--maroon)') + '; font-size:20px; cursor:pointer;">&#128197;</button></div>' +
+    (dOn ? '<div style="display:flex; gap:6px; align-items:center; margin:0 0 8px; font-size:12px; font-weight:800; color:#5b4630;"><span>From</span><input id="custFrom" type="date" value="' + _custDates.from + '" onchange="custDateChange()" style="flex:1; min-width:0; padding:8px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:700; color:var(--maroon);"><span>To</span><input id="custTo" type="date" value="' + _custDates.to + '" onchange="custDateChange()" style="flex:1; min-width:0; padding:8px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:700; color:var(--maroon);"></div>' +
+      '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:2px 0 5px;">&#128197; ' + dLbl + '</div><div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">' +
+      custStatBox('Price list views', rs.visits) + custStatBox('New visitors', rs.newVisitors, '', '#1565c0') + custStatBox('Estimates (EST)', rs.estimates, '', '#b45309') + custStatBox('Bills from EST', rs.billed, 'full cycle', '#1e7a3c') + '</div>' : '') +
+    '<div id="custChips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + chips + '</div>' +
+    '<div id="custCount" style="font-size:11px; color:#8a6a44;"></div>' +
+    '<div id="custList"></div>';
   main.innerHTML =
     '<div style="display:flex; justify-content:space-between; align-items:center;"><div class="section-title" style="margin:0;">&#129489; Customers</div>' +
       '<button onclick="custLoadVisitors(true)" style="padding:5px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; font-size:11.5px; font-weight:700; cursor:pointer;">&#8635; ' + upd + '</button></div>' +
+    (dOn ? '' :
     '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:10px 0 5px;">TODAY</div>' +
     '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
       custStatBox('Price list views', st.td.visits || 0) + custStatBox('New visitors', st.td.newVisitors || 0, '', '#1565c0') +
@@ -8789,16 +8998,15 @@ function renderCustomersTab(main){
     '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:12px 0 5px;">ALL TIME</div>' +
     '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
       custStatBox('Customers', st.uniq, st.views + ' views') + custStatBox('Repeat visitors', st.repeat, '2+ visits', '#6a1b9a') +
-      custStatBox('Made EST', st.estCust, st.estTot + ' estimates', '#b45309') + custStatBox('EST → Bill', st.cycle, conv + '% of EST', '#1e7a3c') + '</div>' +
+      custStatBox('Made EST', st.estCust, st.estTot + ' estimates', '#b45309') + custStatBox('EST → Bill', st.cycle, conv + '% of EST', '#1e7a3c') + '</div>') +
+    finder +
+    '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:16px 0 5px;">LAST 7 DAYS</div>' +
     '<table style="width:100%; border-collapse:collapse; font-size:11.5px; margin:10px 0 4px; background:#fff; border:1px solid #ecd9b0; border-radius:8px;"><thead><tr style="background:#fbeed2;"><th style="text-align:left; padding:4px;">Day</th><th>Views</th><th>New</th><th>EST</th><th>Billed</th></tr></thead><tbody>' + days.join('') + '</tbody></table>' +
     '<div style="font-size:10px; color:#8a6a44; margin-bottom:10px;">A phone is counted once per visit (refreshing within 30 min is not counted again). Views are counted from this version on.</div>' +
     custAreaTable() +
     offerCardHtml() +
     '<button onclick="promoOpen()" style="width:100%; padding:11px; border:none; border-radius:10px; background:#1e7a3c; color:#fff; font-weight:800; font-size:13.5px; cursor:pointer; margin-bottom:10px;"><span class="wa-logo" style="width:20px; height:20px; margin-right:6px; vertical-align:-5px;"></span>Send WhatsApp offer to customers</button>' +
-    '<div id="promoPanel"></div>' +
-    '<input type="text" id="custSearch" value="' + custEsc(_custQ) + '" placeholder="Search name or mobile" oninput="_custQ = this.value; custRepaintList()" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' +
-    '<div id="custChips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">' + chips + '</div>' +
-    '<div id="custList"></div>';
+    '<div id="promoPanel"></div>';
   custRepaintList();
 }
 /* Which phones / browsers the price-list visitors use (all visitors, including those who gave no name / mobile). */
@@ -8807,7 +9015,7 @@ function custAreaTable(){
   SALES.forEach(function(x){ if(x.estVid && isCountedSale(x)) billedVid[x.estVid] = 1; });
   Object.keys(_visitors).forEach(function(k){
     var v = _visitors[k] || {}, d = v.device || {};
-    var a = d.model || (d.os ? d.os + (d.browser ? ' \u00B7 ' + d.browser : '') : '') || 'Unknown device';
+    var a = d.model || (d.os ? d.os + (d.browser ? ' \u00B7 ' + d.browser : '') : '') || String(v.deviceLabel || '').split(' \u00B7 ')[0] || 'Unknown device';
     var o = m[a] || (m[a] = { area: a, people: 0, views: 0, est: 0, billed: 0 });
     o.people++; o.views += (v.visits || 0); if((v.est || 0) > 0) o.est++; if(billedVid[v.vid || k]) o.billed++;
   });
@@ -8822,9 +9030,13 @@ function custAreaTable(){
 function custChipPaint(){
   document.querySelectorAll('#custChips button').forEach(function(b){ var on = b.getAttribute('data-cf') === _custFilter; b.style.background = on ? 'var(--maroon)' : '#fff'; b.style.color = on ? '#fff8e6' : 'var(--maroon)'; });
 }
+function custInDates(t){ var d = saleLocalDate(t); return !(_custDates.from && d < _custDates.from) && !(_custDates.to && d > _custDates.to); }
 function custFiltered(){
-  var all = custRows(), q = _custQ.toLowerCase().trim(), qd = q.replace(/\D/g, '');
+  var all = custRows(), q = _custQ.toLowerCase().trim(), qd = q.replace(/\D/g, ''), dOn = !!(_custDates.from || _custDates.to);
+  all.forEach(function(r){ r.act = r.last; if(dOn){ r.act = ''; r.times.forEach(function(t){ if(custInDates(t) && t > r.act) r.act = t; }); } });
+  all.sort(function(a, b){ return String(b.act).localeCompare(String(a.act)); });
   return all.filter(function(r){
+    if(dOn && !r.act) return false;
     if(q && !((r.name || '').toLowerCase().indexOf(q) >= 0 || (qd && r.phone.indexOf(qd) >= 0))) return false;
     if(_custFilter === 'est') return r.est > 0;
     if(_custFilter === 'follow') return r.est > 0 && r.bills === 0;
@@ -8834,23 +9046,62 @@ function custFiltered(){
     return true;
   });
 }
+/* Customer list, simple: grouped by day (Today / Yesterday / date), one short card per customer -
+   name, last time, mobile, visits / estimates / bills, last chosen items total. Tap a card for the details. */
 function custRepaintList(){
   var box = document.getElementById('custList'); if(!box) return;
   _custShown = custFiltered();
-  if(!_custShown.length){ box.innerHTML = '<div class="empty-admin">No customers here yet. Customers appear when they type a name / mobile on their estimate, make an estimate, or a seller types them on a bill.</div>'; return; }
-  box.innerHTML = '<div style="font-size:11px; color:#8a6a44; margin-bottom:6px;">' + _custShown.length + ' customer' + (_custShown.length === 1 ? '' : 's') + '</div>' + _custShown.map(function(g, i){
-    var last = g.last ? new Date(g.last).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '-';
-    var wa = g.phone ? '<a href="https://wa.me/91' + g.phone + '" target="_blank" rel="noopener" style="text-decoration:none; padding:7px 10px; border-radius:8px; background:#1e7a3c; color:#fff; font-weight:700; font-size:12px;">WhatsApp</a>' : '';
-    return '<div style="background:#fff; border:1px solid #ecd9b0; border-radius:10px; padding:9px 10px; margin-bottom:8px;">' +
-      '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;"><div style="min-width:0;"><div style="font-weight:800; font-size:14px;">' + custEsc(g.name || (g.phone ? 'Customer' : 'Customer (no mobile)')) + '</div><div style="font-size:12.5px; color:#44557a;">' + (g.phone ? '📞 ' + custEsc(fmtPhones(g.phone)) : 'No mobile') + '</div>' + (g.dev ? '<div style="font-size:11px; color:#8a6a44;">\uD83D\uDCF1 ' + custEsc(g.dev) + '</div>' : '') + '<div style="margin-top:4px;">' + custTags(g) + '</div></div>' +
-      '<div style="text-align:right; font-size:11.5px; white-space:nowrap;"><b>₹' + g.total.toLocaleString('en-IN') + '</b><br>' + g.visits + ' visit' + (g.visits === 1 ? '' : 's') + ' • ' + g.est + ' EST<br>' + g.bills + ' bill' + (g.bills === 1 ? '' : 's') + '<br><span style="color:#8a6a44;">' + last + '</span></div></div>' +
-      '<div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">' + wa +
-      '<button onclick="custEditToggle(' + i + ')" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:12px; cursor:pointer;">&#9998; Edit</button>' +
-      '<button onclick="custDelete(' + i + ')" style="padding:7px 10px; border-radius:8px; border:1px solid #b3261e; background:#fff; color:#b3261e; font-weight:700; font-size:12px; cursor:pointer;">&#128465; Delete</button></div>' +
-      '<div id="custEd' + i + '" style="display:none; margin-top:8px;"><input type="text" id="custEdName' + i + '" value="' + custEsc(g.name) + '" placeholder="Name" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px; font-size:13px;">' +
-      '<input type="tel" id="custEdPhone' + i + '" value="' + custEsc(g.phone) + '" placeholder="10-digit mobile" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px; font-size:13px;">' +
-      '<button onclick="custSave(' + i + ')" style="width:100%; padding:9px; border:none; border-radius:8px; background:var(--maroon); color:#fff8e6; font-weight:800; cursor:pointer;">Save</button></div></div>';
-  }).join('');
+  var cnt = document.getElementById('custCount'); if(cnt) cnt.textContent = _custShown.length + ' customer' + (_custShown.length === 1 ? '' : 's');
+  if(!_custShown.length){ box.innerHTML = '<div class="empty-admin">' + ((_custDates.from || _custDates.to || _custQ || _custFilter !== 'all') ? 'No customers for this search / dates.' : 'No customers here yet. Customers appear when they choose items, make an estimate, type a name / mobile, or a seller types them on a bill.') + '</div>'; return; }
+  var today = saleLocalDate(new Date()), yest = saleLocalDate(new Date(Date.now() - 86400000)), lastDay = '', h = '';
+  var dayLabel = function(d){ var l = salesDateLabel(d); return d === today ? 'Today &middot; ' + l : d === yest ? 'Yesterday &middot; ' + l : l; };
+  var perDay = {}; _custShown.forEach(function(g){ var d = g.act ? saleLocalDate(g.act) : ''; perDay[d] = (perDay[d] || 0) + 1; });
+  _custShown.slice(0, _custLimit).forEach(function(g, i){
+    var d = g.act ? saleLocalDate(g.act) : '';
+    if(d !== lastDay){ lastDay = d; h += '<div style="display:flex; justify-content:space-between; margin:10px 2px 5px; font-size:11.5px; font-weight:800; color:#5b4630;"><span>&#128197; ' + (d ? dayLabel(d) : 'No date') + '</span><span>' + (perDay[d] || 0) + '</span></div>'; }
+    var tm = g.act ? new Date(g.act).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : '';
+    var wa = g.phone ? '<a href="https://wa.me/91' + g.phone + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="text-decoration:none; padding:7px 10px; border-radius:8px; background:#1e7a3c; color:#fff; font-weight:700; font-size:12px;">WhatsApp</a>' : '';
+    var nums = [g.visits + ' visit' + (g.visits === 1 ? '' : 's'), g.est + ' EST', g.bills + ' bill' + (g.bills === 1 ? '' : 's') + (g.total ? ' &#8377;' + g.total.toLocaleString('en-IN') : '')].join(' &middot; ');
+    h += '<div style="background:#fff; border:1px solid #ecd9b0; border-radius:10px; padding:8px 10px; margin-bottom:6px;">' +
+      '<div onclick="custDetToggle(' + i + ')" style="cursor:pointer;">' +
+        '<div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline;"><div style="min-width:0; font-weight:800; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + custEsc(g.name || (g.phone ? 'Customer' : 'Visitor')) + '</div>' +
+          '<div style="flex:0 0 auto; font-size:11.5px; font-weight:700; color:#8a6a44;">' + tm + ' <span style="color:var(--maroon);">&#9662;</span></div></div>' +
+        '<div style="font-size:12px; color:#44557a; margin-top:1px;">' + (g.phone ? '&#128222; ' + custEsc(fmtPhones(g.phone)) + ' &middot; ' : '') + nums + '</div>' +
+        (g.selTotal ? '<div style="font-size:12px; font-weight:700; color:#1e7a3c; margin-top:2px;">&#129534; ' + custEsc(g.selTotal) + '</div>' : '') +
+        '<div style="margin-top:3px;">' + custTags(g) + '</div>' +
+      '</div>' +
+      '<div id="custDet' + i + '" style="display:none; margin-top:6px; padding-top:6px; border-top:1px dashed #ecd9b0;">' +
+        (g.selItems ? '<div style="font-size:11.5px; font-weight:800; color:#7a1414;">Last selected items' + (g.selWhen ? ' &middot; ' + custEsc(g.selWhen) : '') + '</div><div style="font-size:11.5px; line-height:1.55; color:#3a2a1a; margin-bottom:5px;">' + String(g.selItems).split(' | ').map(function(x){ return '&bull; ' + custEsc(x); }).join('<br>') + '</div>' : '') +
+        '<div style="font-size:11px; color:#8a6a44; line-height:1.5;">' + (g.dev ? '&#128241; ' + custEsc(g.dev) + '<br>' : '') + 'First seen: ' + (g.first ? custWhen(g.first) : '-') + ' &middot; Last: ' + (g.last ? custWhen(g.last) : '-') + '</div>' +
+        '<div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">' + wa +
+          '<button onclick="custEditToggle(' + i + ')" style="padding:7px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:12px; cursor:pointer;">&#9998; Edit</button>' +
+          '<button onclick="custDelete(' + i + ')" style="padding:7px 10px; border-radius:8px; border:1px solid #b3261e; background:#fff; color:#b3261e; font-weight:700; font-size:12px; cursor:pointer;">&#128465; Delete</button></div>' +
+        '<div id="custEd' + i + '" style="display:none; margin-top:8px;"><input type="text" id="custEdName' + i + '" value="' + custEsc(g.name) + '" placeholder="Name" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px; font-size:13px;">' +
+          '<input type="tel" id="custEdPhone' + i + '" value="' + custEsc(g.phone) + '" placeholder="10-digit mobile" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--line); margin-bottom:6px; font-size:13px;">' +
+          '<button onclick="custSave(' + i + ')" style="width:100%; padding:9px; border:none; border-radius:8px; background:var(--maroon); color:#fff8e6; font-weight:800; cursor:pointer;">Save</button></div>' +
+      '</div></div>';
+  });
+  if(_custShown.length > _custLimit) h += '<button onclick="_custLimit += 40; custRepaintList();" style="width:100%; padding:10px; margin:4px 0 10px; border-radius:10px; border:1.5px solid var(--maroon); background:#fff8e6; color:var(--maroon); font-weight:800; font-size:13px; cursor:pointer;">Show more (' + (_custShown.length - _custLimit) + ' more)</button>';
+  box.innerHTML = h;
+}
+function custDetToggle(i){ var e = document.getElementById('custDet' + i); if(e) e.style.display = (e.style.display === 'none') ? 'block' : 'none'; }
+/* 📅 Customers date filter: on = From / To (today to start with), off = all dates. */
+function custToggleDates(){
+  if(_custDates.from || _custDates.to) _custDates = { from: '', to: '' };
+  else { var t = saleLocalDate(new Date()); _custDates = { from: t, to: t }; }
+  _custLimit = 40; renderAdmin();
+}
+function custDateChange(){
+  var f = (document.getElementById('custFrom') || {}).value || '', t = (document.getElementById('custTo') || {}).value || '';
+  if(f && t && f > t){ var x = f; f = t; t = x; }
+  _custDates = { from: f, to: t }; _custLimit = 40; renderAdmin();
+}
+/* Numbers for the chosen dates (from the daily totals): views, new visitors, estimates, bills from an estimate. */
+function custRangeStats(){
+  var vs = _vstats || {}, o = { visits: 0, newVisitors: 0, estimates: 0, billed: 0 };
+  Object.keys(vs).forEach(function(d){ if(custInDates(d + 'T06:30:00.000Z')){ var x = vs[d] || {}; o.visits += x.visits || 0; o.newVisitors += x.newVisitors || 0; o.estimates += x.estimates || 0; } });
+  (SALES || []).forEach(function(x){ if(x.estVid && isCountedSale(x) && custInDates(x.time)) o.billed++; });
+  return o;
 }
 function custEditToggle(i){ var e = document.getElementById('custEd' + i); if(e) e.style.display = (e.style.display === 'none') ? 'block' : 'none'; }
 function custSave(i){
@@ -8902,7 +9153,7 @@ function offerCardHtml(){
     '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><div style="min-width:0;"><div style="font-weight:800; font-size:13.5px; color:#7a1414;">&#127873; Offer banner</div><div style="font-size:11px; font-weight:700; margin-top:2px;">' + st + '</div></div>' +
     '<button onclick="_offerEdit = !_offerEdit; offerCardRepaint();" style="flex:0 0 auto; padding:7px 14px; border-radius:8px; border:1.5px solid var(--maroon); background:#fff; color:var(--maroon); font-weight:800; font-size:12px; cursor:pointer;">' + (_offerEdit ? 'Close' : 'Edit') + '</button></div>' +
     body +
-    '<div style="font-size:10px; color:#8a6a44; margin-top:6px;">Shown on the customer self-estimate page, the estimate voucher and the price-list PDF. The discount is put on every new bill and estimate until the last day, then stops by itself.</div></div>';
+    '<div style="font-size:10px; color:#8a6a44; margin-top:6px;">Shown on the customer&#39;s estimate voucher and the price-list PDF (the offer price also shows in the self-estimate total). The discount is put on every new bill and estimate until the last day, then stops by itself.</div></div>';
 }
 function offerCardRepaint(){ var c = document.getElementById('offerCard'); if(c) c.outerHTML = offerCardHtml(); }
 function offerSave(){
@@ -8922,7 +9173,7 @@ function offerSave(){
 var _promo = { list: [], i: 0, who: 'optin', msg: '' };
 function promoDefaultMsg(){
   var link = /^https?:/.test(location.protocol) ? priceLinkFor('') : SELF_ORDER_URL;
-  return '🎆 ' + SHOP.name_ta + ' — ' + SHOP.name_en + '\n\nவணக்கம் {name}! ' + (offerActive() ? (OFFER.title || '') + ' ' + (OFFER.text || '') : 'எங்கள் புதிய விலைப் பட்டியலைப் பாருங்கள்.') + '\n\n👉 *Self Estimation* (price list, add qty, get voucher):\n' + link + '\n\n📍 ' + branchNamesText(plBranchId()) + '\n📞 ' + fmtPhones(SHOP.phones[0] || '');
+  return '🎆 ' + SHOP.name_ta + ' — ' + SHOP.name_en + '\n\nவணக்கம் {name}! ' + (offerActive() ? (OFFER.title || '') + ' ' + (OFFER.text || '') : 'எங்கள் புதிய விலைப் பட்டியலைப் பாருங்கள்.') + '\n\n👉 *Self Estimation* (price list, add qty, get voucher):\n' + link + '\n\n' + branchLocText(plBranchId()) + '\n📞 ' + fmtPhones(SHOP.phones[0] || '');
 }
 function promoRecipients(who){
   return custRows().filter(function(r){
@@ -10842,7 +11093,7 @@ function promoPaintOut(){
 function promoCaption(wa){
   var tag = wa ? '*Self Estimation*' : 'Self Estimation';          // *bold* only works in WhatsApp
   return '🎆 ' + SHOP.name_en + ' — ' + (PROMO.headline || '') + '\n' + (PROMO.offer || '') + '\n\n👉 ' + tag + ':\n' + promoLink() +
-    '\n\n📍 ' + branchNamesText(plBranchId()) + '\n📞 ' + branchPhoneText(BRANCHES[plBranchId()]);
+    '\n\n' + branchLocText(plBranchId()) + '\n📞 ' + branchPhoneText(BRANCHES[plBranchId()]);
 }
 async function promoBlob(key){ var r = await fetch(_promoImgs[key]); return r.blob(); }
 async function promoShareImg(key){
@@ -10939,7 +11190,11 @@ if(isPublicPriceRequest()){
   // Connect before login, so an account or price added on another phone is
   // already here by the time someone signs in on this one.
   initFirebase();
-  if(session && USERS[session.id]){
+  if(session && USERS[session.id] && sellerDayOver()){
+    session = null; saveJSON('ars_session', null);           // a seller's sign-in ends at 12 am
+    initLoginScreen();
+    document.getElementById('loginError').textContent = SELLER_NEW_DAY_MSG;
+  } else if(session && USERS[session.id]){
     // enterApp() uses functions defined in the script blocks below (branch selector etc.),
     // so wait until the whole page has loaded — otherwise a saved login opens an empty app.
     if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ if(session) enterApp(); });
@@ -11054,7 +11309,9 @@ function saveBranchDetails(id){
   const v = x => (document.getElementById(x) || {}).value ? document.getElementById(x).value.trim() : '';
   const name = v('brName');
   if(!name){ alert('Branch name cannot be empty.'); return; }
-  br.name = name; br.title = v('brTitle'); br.owner = v('brOwner'); br.phone = v('brPhone');
+  const map = mapFromPoint(v('brMap')) || v('brMap').replace(/[?&]g_st=[^&]*$/, '');
+  if(map && !branchMap({ map: map })){ alert('Please paste a Google Maps link (it starts with https://maps.app.goo.gl/ or https://www.google.com/maps/) or a point location like 11.30682, 79.71580.'); return; }
+  br.name = name; br.title = v('brTitle'); br.owner = v('brOwner'); br.phone = v('brPhone'); br.addr = v('brAddr'); br.map = map;
   saveJSON('ars_branches', BRANCHES);
   try{ populateBranchSelector(); updateUserTag(); }catch(e){}
   renderAdmin();
