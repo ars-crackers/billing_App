@@ -2296,7 +2296,8 @@ function custTrackVisit(){
     return cur;
   }).then(function(r){
     var v = (r && r.snapshot && r.snapshot.val()) || {};
-    return Promise.all([custStatInc('visits'), v.visits === 1 ? custStatInc('newVisitors') : null]);
+    var hr = new Date().getHours();
+    return Promise.all([custStatInc('visits'), custStatInc('h' + (hr < 10 ? '0' : '') + hr), v.visits === 1 ? custStatInc('newVisitors') : null]);
   }).catch(function(){});
 }
 /* The customer's phone + browser (e.g. "SM-A346E \u00B7 Android 14 \u00B7 Chrome 129"), saved on the visitor once per visit.
@@ -2356,6 +2357,7 @@ function custSaveProfile(addEst, total, viaLeave){
       if(sel){ cur.lastItems = sel.items; cur.lastTotal = sel.total; cur.lastItemsAt = custWhen(now); }
       if(cu.name) cur.name = cu.name;
       if(cu.mobile) cur.mobile = cu.mobile;
+      if(cu.place) cur.place = cu.place;
       cur.optin = opt;
       return cur;
     }).then(function(){
@@ -2363,12 +2365,47 @@ function custSaveProfile(addEst, total, viaLeave){
       if(addEst) w.push(custStatInc('estimates'));
       if(newSel){
         var d = new Date(), p = function(x){ return (x < 10 ? '0' : '') + x; };
-        var line = (cu.name || 'Customer') + (cu.mobile ? ' ' + cu.mobile : '') + ' \u00B7 ' + sel.total + ' \u00B7 ' + sel.short + (viaLeave ? ' (did not open the voucher)' : '');
+        var line = (cu.name || 'Customer') + (cu.mobile ? ' ' + cu.mobile : '') + (cu.place ? ' (' + cu.place + ')' : '') + ' \u00B7 ' + sel.total + ' \u00B7 ' + sel.short + (viaLeave ? ' (did not open the voucher)' : '');
         w.push(_fbDb.ref('estimateLog/' + custDay(d) + '/' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '_' + vid).set(line.slice(0, 1500)));
       }
       return Promise.all(w);
     });
   });
+}
+/* Customer page: the WhatsApp logo next to the shop's number opens the shop's own WhatsApp chat with "interested to buy"
+   already typed (plus the items chosen so far, if any). The tap is noted on the visitor (Admin -> Customers). */
+function custWaText(){
+  var cu = estCustClean(), sel = null;
+  try{ sel = custSelection(); }catch(e){}
+  var t = 'Hi ' + ((typeof SHOP !== 'undefined' && SHOP.name_en) || 'A.R.S Crackers Shop') + ', I am interested to buy crackers.\n\u0BAA\u0B9F\u0BCD\u0B9F\u0BBE\u0B9A\u0BC1 \u0BB5\u0BBE\u0B99\u0BCD\u0B95 \u0BB5\u0BBF\u0BB0\u0BC1\u0BAA\u0BCD\u0BAA\u0BAE\u0BCD.';
+  if(sel) t += '\n\nMy estimate: ' + sel.total + '\n' + sel.short;
+  var who = [cu.name, cu.place].filter(Boolean).join(', ');
+  if(who) t += '\n\n' + who;
+  return t.slice(0, 1800);
+}
+function custWaGo(a, digits){
+  var d = String(digits || '').replace(/\D/g, '').slice(-10);
+  if(d.length !== 10) return false;
+  a.href = 'https://wa.me/91' + d + '?text=' + encodeURIComponent(custWaText());
+  try{ custWaNote(); }catch(e){}
+  return true;
+}
+function custWaNote(){
+  if(!_fbReadOnly || !_fbDb) return;
+  var vid = custVid(), now = new Date().toISOString();
+  custNetRun(function(){
+    return _fbDb.ref('visitors/' + vid).transaction(function(cur){
+      cur = cur || { vid: vid, first: now, last: now, visits: 1, est: 0 };
+      cur.waChat = (cur.waChat || 0) + 1; cur.waChatLast = now; cur.waChatAt = custWhen(now);
+      return cur;
+    }).then(function(){ return custStatInc('whatsappChats'); });
+  });
+}
+/* the green logo + "Chat" (header) or a full button (voucher) */
+function custWaBtn(phoneText, big){
+  var d = String(phoneText || '').replace(/\D/g, '').slice(-10); if(d.length !== 10) return '';
+  if(big) return '<a href="#" target="_blank" rel="noopener" onclick="return custWaGo(this,\'' + d + '\')" style="display:inline-flex; align-items:center; gap:6px; margin-top:6px; padding:5px 12px 5px 6px; border-radius:16px; background:#1e9e4a; color:#fff; font-size:12px; font-weight:800; text-decoration:none; line-height:1.2; text-align:left;"><span class="wa-logo" style="width:24px; height:24px;"></span><span>WhatsApp: Interested to buy<br><span style="font-size:10px; font-weight:700;">\u0BB5\u0BBE\u0B99\u0BCD\u0B95 \u0BB5\u0BBF\u0BB0\u0BC1\u0BAA\u0BCD\u0BAA\u0BAE\u0BCD &mdash; \u0B9A\u0BC6\u0BAF\u0BCD\u0BA4\u0BBF \u0B85\u0BA9\u0BC1\u0BAA\u0BCD\u0BAA\u0BB5\u0BC1\u0BAE\u0BCD</span></span></a>';
+  return '<a href="#" target="_blank" rel="noopener" onclick="return custWaGo(this,\'' + d + '\')" title="WhatsApp us - interested to buy" aria-label="WhatsApp us" style="display:inline-flex; align-items:center; gap:3px; margin-left:6px; padding:1px 7px 1px 2px; border-radius:11px; background:#fff; color:#1e7a3c; font-size:10px; font-weight:800; text-decoration:none; vertical-align:middle; line-height:1.4;"><span class="wa-logo" style="width:17px; height:17px;"></span>Chat</a>';
 }
 /* Customer leaves the page (closes / switches app) after choosing items without opening the voucher: save the selection. */
 document.addEventListener('visibilitychange', function(){
@@ -4617,10 +4654,11 @@ var _estCust = { name: '', mobile: '' };
 try{ _estCust = JSON.parse(localStorage.getItem('ars_est_cust') || '{}') || { name: '', mobile: '' }; }catch(e){ _estCust = { name: '', mobile: '' }; }
 function estCustClean(){
   var nm = String(_estCust.name || '').replace(/[\r\n|]/g, ' ').trim().slice(0, 40);
+  var pl = String(_estCust.place || '').replace(/[\r\n|~]/g, ' ').trim().slice(0, 40);
   var ph = String(_estCust.mobile || '').replace(/\D/g, '');
   if(ph.length === 12 && ph.indexOf('91') === 0) ph = ph.slice(2);
   if(ph.length !== 10) ph = '';
-  return { name: nm, mobile: ph };
+  return { name: nm, mobile: ph, place: pl };
 }
 function estPayload(){
   var parts = [], tot = 0;
@@ -4682,7 +4720,7 @@ function estVoucherHtml(forScreen){
       '<div style="font-size:10.5px; font-weight:700; color:#b3261e; margin-top:5px;">மதிப்பீட்டு சீட்டு — முறையான பில் அல்ல &nbsp;|&nbsp; NOT A BILL</div>' +
     '</div>' +
     '<div style="display:flex; justify-content:space-between; padding:2px 10px 6px; font-size:10px; color:#44557a;"><span>Ref: <b>' + ref + '</b></span><span>' + when + '</span></div>' +
-    (function(){ var cu = estCustClean(); return (cu.name || cu.mobile) ? '<div style="padding:0 10px 6px; font-size:11px; color:#10213f;">Customer: <b>' + estEsc(cu.name) + '</b>' + (cu.mobile ? ' &nbsp;&#128222; ' + estEsc(fmtPhones(cu.mobile)) : '') + '</div>' : ''; })() +
+    (function(){ var cu = estCustClean(); return (cu.name || cu.mobile || cu.place) ? '<div style="padding:0 10px 6px; font-size:11px; color:#10213f;">Customer: <b>' + estEsc(cu.name) + '</b>' + (cu.mobile ? ' &nbsp;&#128222; ' + estEsc(fmtPhones(cu.mobile)) : '') + (cu.place ? ' &nbsp;&#128205; ' + estEsc(cu.place) : '') + '</div>' : ''; })() +
     '<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><colgroup><col style="width:28px;"><col><col style="width:34px;"><col style="width:52px;"><col style="width:62px;"></colgroup>' +
       '<thead><tr style="background:#dce7fb;"><th style="padding:5px 4px; font-size:9.5px; text-align:left;">#</th><th style="padding:5px 4px; font-size:9.5px; text-align:left;">Item</th><th style="padding:5px 4px; font-size:9.5px;">Qty</th><th style="padding:5px 4px; font-size:9.5px; text-align:right;">Rate &#8377;</th><th style="padding:5px 4px; font-size:9.5px; text-align:right;">Amount &#8377;</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>' +
@@ -4697,7 +4735,7 @@ function estVoucherHtml(forScreen){
         '<div style="text-align:right; padding:0 10px 5px; font-size:10px; font-weight:700; color:#b3261e;">' + pct + '% offer price valid' + (till ? ' up to ' + till : '') + '</div>';
     })() +
     (offerActive() ? '<div style="margin:0 10px 8px; padding:6px 10px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:9px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border:1px solid #f0c969; color:#7a1414; font-size:12.5px; font-weight:800; text-align:center;"><span style="font-size:20px; vertical-align:middle;">&#127873;</span> <div style="display:inline-block; vertical-align:middle; text-align:left;"><div style="font-size:13.5px; font-weight:800;">' + estEsc(OFFER.title || '') + '</div><div style="font-size:11.5px; font-weight:700; line-height:1.35; margin-top:1px;">' + estEsc(OFFER.text || '') + '</div></div></div>' : '') + qrBlock +
-    '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + (forScreen ? telLinks(estEsc(branchPhoneText(br))) + ' <span style="display:inline-block; vertical-align:middle; margin:4px 0 0 4px; text-align:left; font-size:10px; font-weight:800; line-height:1.25; color:#1b3a78;">&#128072; Tap to call<br><span style="font-size:9px; font-weight:700;">அழைக்க தொடவும்</span></span>' : estEsc(branchPhoneText(br))) +
+    '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + (forScreen ? telLinks(estEsc(branchPhoneText(br))) + ' <span style="display:inline-block; vertical-align:middle; margin:4px 0 0 4px; text-align:left; font-size:10px; font-weight:800; line-height:1.25; color:#1b3a78;">&#128072; Tap to call<br><span style="font-size:9px; font-weight:700;">அழைக்க தொடவும்</span></span><br>' + custWaBtn(branchPhoneText(br).split(' / ')[0], true) : estEsc(branchPhoneText(br))) +
       (function(){
         var links = liveBranches().filter(function(b){ return branchMap(b) || branchAddr(b); });
         if(!links.length) return '';
@@ -5001,14 +5039,15 @@ function estScreenPaint(){
 }
 function estKeepMsgHtml(){
   var cu = estCustClean();
-  return (cu.name || cu.mobile) ? '<span style="color:#1e7a3c; font-weight:800; font-size:15px; line-height:1;" title="Saved">&#10004;</span>' : 'Optional / விருப்பம்';
+  return (cu.name || cu.mobile || cu.place) ? '<span style="color:#1e7a3c; font-weight:800; font-size:15px; line-height:1;" title="Saved">&#10004;</span>' : 'Optional / விருப்பம்';
 }
 function estQrSlotPaint(){
   var slot = document.getElementById('estQrSlot'); if(!slot) return;
   var inp = 'width:100%; box-sizing:border-box; padding:8px 7px; border:1px solid #9db4e0; border-radius:8px; font-size:12.5px;';
   var left = '<div style="font-size:11.5px; font-weight:800; color:#1b3a78; margin-bottom:5px;">🤝 Keep in touch / தொடர்பில் இருங்கள்</div>' +
     '<input type="text" id="estCustName" maxlength="40" placeholder="Name / பெயர்" autocomplete="off" value="' + estEsc(_estCust.name || '') + '" oninput="estDetailsInput()" onblur="estDetailsInput(true)" style="' + inp + ' margin-bottom:5px;">' +
-    '<input type="tel" id="estCustMobile" maxlength="14" inputmode="numeric" placeholder="Mobile / கைபேசி" autocomplete="off" value="' + estEsc(_estCust.mobile || '') + '" oninput="estDetailsInput()" onblur="estDetailsInput(true)" style="' + inp + '">' +
+    '<input type="tel" id="estCustMobile" maxlength="14" inputmode="numeric" placeholder="Mobile / கைபேசி" autocomplete="off" value="' + estEsc(_estCust.mobile || '') + '" oninput="estDetailsInput()" onblur="estDetailsInput(true)" style="' + inp + ' margin-bottom:5px;">' +
+    '<input type="text" id="estCustPlace" maxlength="40" placeholder="&#128205; Place / ஊர்" autocomplete="off" value="' + estEsc(_estCust.place || '') + '" oninput="estDetailsInput()" onblur="estDetailsInput(true)" style="' + inp + '">' +
     '<div id="estKeepMsg" style="font-size:9.5px; color:#44557a; margin-top:4px;">' + estKeepMsgHtml() + '</div>' +
     '<div style="font-size:9px; color:#44557a; margin-top:3px; line-height:1.3;">&#128274; Only our shop sees this &mdash; never shared.<br>கடை மட்டுமே பார்க்கும்.</div>';
   slot.innerHTML = '<div style="display:flex; gap:10px; align-items:flex-start; border-top:1px dashed #c9d3e6; padding:10px 10px 8px;">' +
@@ -5053,9 +5092,9 @@ function estReadDetails(silent){
   if(!nmEl) return true;
   var d = estMobileDigits();
   if(d && d.length !== 10){ if(!silent) alert('Enter a 10-digit mobile number, or leave it empty. / 10 இலக்க எண்ணை உள்ளிடவும்.'); return false; }
-  var nm = nmEl.value.trim();
-  if(nm === (_estCust.name || '') && d === (_estCust.mobile || '')) return true;
-  _estCust = { name: nm, mobile: d, optin: !!d };          // giving a mobile under "Keep in touch" = agreed to be contacted
+  var nm = nmEl.value.trim(), plEl = document.getElementById('estCustPlace'), pl = plEl ? plEl.value.trim() : String(_estCust.place || '');
+  if(nm === (_estCust.name || '') && d === (_estCust.mobile || '') && pl === (_estCust.place || '')) return true;
+  _estCust = { name: nm, mobile: d, optin: !!d, place: pl };          // giving a mobile under "Keep in touch" = agreed to be contacted
   try{ localStorage.setItem('ars_est_cust', JSON.stringify(_estCust)); }catch(e){}
   custSaveProfile(false);
   return true;
@@ -5072,7 +5111,7 @@ function estDetailsInput(now){
     if(!estReadDetails(true)) return;
     if(msg) msg.innerHTML = estKeepMsgHtml();
     var cu = estCustClean();
-    if(!(cu.name || cu.mobile) && !_estQrShown) return;
+    if(!(cu.name || cu.mobile || cu.place) && !_estQrShown) return;
     _estQrShown = true; _estQrFailed = false;
     estQrRightPaint();
     var run = function(n){                                  // fast typing: make sure the QR shown holds the latest details
@@ -5384,7 +5423,7 @@ async function showPublicPriceList(){
 function pubBranchPaint(){
   var brs = liveBranches(), phones = brs.map(function(b){ return (branchPhoneText(b).split(' / ')[0] || '').trim(); });
   var same = phones.length > 1 && phones.every(function(p){ return p === phones[0]; });
-  var tel = function(p){ return p ? '<a href="tel:' + p.replace(/\s/g, '') + '" style="color:inherit; text-decoration:none; white-space:nowrap;">&#128222; ' + estEsc(p) + '</a>' : ''; };
+  var tel = function(p){ return p ? '<span style="white-space:nowrap;"><a href="tel:' + p.replace(/\s/g, '') + '" style="color:inherit; text-decoration:none;">&#128222; ' + estEsc(p) + '</a>' + custWaBtn(p) + '</span>' : ''; };
   // each piece stays whole; pieces wrap to the next line without leaving a separator behind
   var parts = brs.map(function(b, i){
     var m = branchMap(b), nm = '&#128205; ' + estEsc(b.name || b.short || '');
@@ -7627,6 +7666,7 @@ function showAdmin(){
   closeQtySheets();
   adminItemsBranch = adminScope() || '';                 // a branch's own price view never sticks
   salesStatsOpen = false;                                // Sales totals start hidden (eye button shows them)
+  _custGraphOpen = false;                                // Customers graph too
   applyAdminTabAccess();
   document.getElementById('app').classList.add('hidden');
   document.getElementById('adminScreen').classList.remove('hidden');
@@ -8880,7 +8920,64 @@ var _bkShow = { sheet:false, fb:false };
 /* ================= ADMIN: CUSTOMERS =================
    Price-list views, self-estimates (EST) and bills, per customer:
    visitors (from the self-order page) + bills (customer name / mobile, and bills made from a scanned estimate). */
-var _custQ = '', _custShown = [], _custFilter = 'all', _custDates = { from: '', to: '' }, _custLimit = 40;
+var _custQ = '', _custShown = [], _custFilter = 'all', _custDates = { from: '', to: '' }, _custLimit = 40, _custGraph = 'time', _custGraphOpen = false;   // graph hidden until the admin taps the eye
+/* ---- Visitors graph (Customers tab): "By time" = price-list visits in each hour of the day, "By day" = visits per day.
+   Uses the daily totals visitStats/<date> (visits, and h00..h23 = visits started in that hour). Dates: the 📅 filter,
+   else today (By time) / the last 7 days (By day). ---- */
+function custGraphDays(maxN){
+  var out = [], dOn = !!(_custDates.from || _custDates.to);
+  if(dOn){
+    var f = _custDates.from || _custDates.to, t = _custDates.to || _custDates.from, d = new Date(t + 'T12:00:00');
+    while(out.length < maxN){ var k = custDay(d); if(k < f) break; out.unshift(k); d.setDate(d.getDate() - 1); }
+  } else {
+    var n = _custGraph === 'time' ? 1 : 7;
+    for(var i = n - 1; i >= 0; i--){ var dt = new Date(); dt.setDate(dt.getDate() - i); out.push(custDay(dt)); }
+  }
+  return out;
+}
+function custHourLbl(h, long){ var x = (h % 12) || 12, ap = h < 12 ? (long ? ' AM' : 'a') : (long ? ' PM' : 'p'); return x + ap; }
+function custBarsHtml(bars){
+  var max = 1; bars.forEach(function(b){ if(b.v > max) max = b.v; });
+  return '<div style="display:flex; align-items:flex-end; gap:2px; height:118px; padding:0 2px; border-bottom:1.5px solid #c9b48a;">' + bars.map(function(b){
+      return '<div style="flex:1 1 0; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center;">' +
+        '<div style="font-size:9px; font-weight:800; color:' + (b.hi ? '#b3261e' : '#5b4630') + '; line-height:1; margin-bottom:2px;">' + (b.v || '') + '</div>' +
+        '<div title="' + b.tip + '" style="width:100%; max-width:28px; height:' + Math.round(b.v * 92 / max) + 'px; min-height:' + (b.v ? 3 : 0) + 'px; border-radius:4px 4px 0 0; background:' + (b.hi ? '#e8590c' : 'var(--maroon)') + ';"></div></div>';
+    }).join('') + '</div>' +
+    '<div style="display:flex; gap:2px; padding:3px 2px 0;">' + bars.map(function(b){
+      return '<div style="flex:1 1 0; min-width:0; text-align:center; font-size:8.5px; font-weight:700; color:' + (b.hi ? '#b3261e' : '#8a6a44') + '; line-height:1.15; white-space:nowrap;">' + b.lab + '</div>';
+    }).join('') + '</div>';
+}
+function custGraphHtml(){
+  var eye = '<button onclick="_custGraphOpen = !_custGraphOpen; custGraphPaint();" title="' + (_custGraphOpen ? 'Hide graph' : 'Show graph') + '" aria-label="' + (_custGraphOpen ? 'Hide graph' : 'Show graph') + '" style="flex:0 0 auto; display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:10px; border:1.5px solid var(--maroon); background:' + (_custGraphOpen ? 'var(--maroon)' : '#fff8e6') + '; color:' + (_custGraphOpen ? '#fff8e6' : 'var(--maroon)') + '; font-weight:800; font-size:12px; cursor:pointer;"><span style="font-size:16px; line-height:1;">' + (_custGraphOpen ? '&#128584;' : '&#128065;&#65039;') + '</span>' + (_custGraphOpen ? 'Hide' : 'Show') + '</button>';
+  if(!_custGraphOpen) return '<div style="display:flex; align-items:center; gap:8px;"><div style="flex:1; min-width:0; font-size:11.5px; font-weight:800; color:#5b4630;">&#128200; VISITORS GRAPH</div>' + eye + '</div>';
+  var vs = _vstats || {}, days = custGraphDays(_custGraph === 'time' ? 366 : 31), dOn = !!(_custDates.from || _custDates.to);
+  var range = days.length ? (days.length === 1 ? (days[0] === custDay() ? 'Today &middot; ' : '') + salesDateLabel(days[0]) : salesDateLabel(days[0]) + ' &ndash; ' + salesDateLabel(days[days.length - 1])) : '';
+  var tab = function(k, t){ var on = _custGraph === k; return '<button onclick="_custGraph=\'' + k + '\'; custGraphPaint();" style="padding:5px 10px; border-radius:14px; border:1.5px solid var(--maroon); background:' + (on ? 'var(--maroon)' : '#fff') + '; color:' + (on ? '#fff8e6' : 'var(--maroon)') + '; font-size:11.5px; font-weight:800; cursor:pointer;">' + t + '</button>'; };
+  var body = '', note = '';
+  if(_custGraph === 'time'){
+    var hrs = []; for(var h = 0; h < 24; h++) hrs.push(0);
+    var tot = 0, visits = 0;
+    days.forEach(function(d){ var o = vs[d] || {}; visits += o.visits || 0; for(var h2 = 0; h2 < 24; h2++){ var c = Number(o['h' + (h2 < 10 ? '0' : '') + h2]) || 0; hrs[h2] += c; tot += c; } });
+    var a = 6, b = 23; for(var h3 = 0; h3 < 6; h3++) if(hrs[h3]){ a = h3; break; }
+    var best = -1; for(var h4 = 0; h4 < 24; h4++) if(hrs[h4] && (best < 0 || hrs[h4] > hrs[best])) best = h4;
+    var many = (b - a) > 17, bars = []; for(var h5 = a; h5 <= b; h5++) bars.push({ v: hrs[h5], lab: (many && h5 % 2 && h5 !== best) ? '' : custHourLbl(h5), hi: h5 === best, tip: custHourLbl(h5, true) + ' - ' + custHourLbl((h5 + 1) % 24, true) + ': ' + hrs[h5] });
+    body = custBarsHtml(bars);
+    note = tot ? '&#9200; Busiest time: <b>' + custHourLbl(best, true) + ' &ndash; ' + custHourLbl((best + 1) % 24, true) + '</b> &middot; ' + hrs[best] + ' visit' + (hrs[best] === 1 ? '' : 's') + ' &nbsp;|&nbsp; Total ' + tot
+      : (visits ? 'Counting visits by time started with this update - older visits have no time.' : 'No price-list visits ' + (dOn ? 'on these dates' : 'yet today') + '.');
+  } else {
+    var vals = days.map(function(d){ return Number((vs[d] || {}).visits) || 0; }), bestD = -1, totD = 0;
+    vals.forEach(function(v, i){ totD += v; if(v && (bestD < 0 || v > vals[bestD])) bestD = i; });
+    var wk = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    body = custBarsHtml(days.map(function(d, i){ var dt = new Date(d + 'T12:00:00'), dn = dt.getDate(); return { v: vals[i], hi: i === bestD, tip: salesDateLabel(d) + ': ' + vals[i], lab: days.length <= 10 ? wk[dt.getDay()] + '<br>' + dn : (days.length > 16 && i % 2 ? '' : String(dn)) }; }));
+    note = totD ? '&#128197; Busiest day: <b>' + wk[new Date(days[bestD] + 'T12:00:00').getDay()] + ' ' + salesDateLabel(days[bestD]) + '</b> &middot; ' + vals[bestD] + ' visit' + (vals[bestD] === 1 ? '' : 's') + ' &nbsp;|&nbsp; Total ' + totD
+      : 'No price-list visits on these days.';
+  }
+  return '<div style="display:flex; align-items:center; gap:8px; margin-bottom:7px;"><div style="flex:1; min-width:0; font-size:11.5px; font-weight:800; color:#5b4630;">&#128200; VISITORS GRAPH <span style="font-weight:700; color:#8a6a44;">&middot; ' + range + '</span></div>' + eye + '</div>' +
+      '<div style="display:flex; gap:5px; margin-bottom:6px;">' + tab('time', '&#9200; By time') + tab('day', '&#128197; By day') + '</div>' +
+    body + '<div style="font-size:11.5px; color:#3a2a14; margin-top:6px; line-height:1.4;">' + note + '</div>' +
+    (dOn ? '' : '<div style="font-size:10px; color:#8a6a44; margin-top:2px;">' + (_custGraph === 'time' ? 'Today. Tap &#128197; next to the search to see other dates.' : 'Last 7 days. Tap &#128197; next to the search to choose dates.') + '</div>');
+}
+function custGraphPaint(){ var g = document.getElementById('custGraph'); if(g) g.innerHTML = custGraphHtml(); }
 var _visitors = loadJSON('ars_visitors_cache', {}) || {}, _vstats = loadJSON('ars_vstats_cache', {}) || {}, _visLoadedAt = 0, _visLoading = false;
 var _pcontacts = loadJSON('ars_pcontacts_cache', {}) || {};   // customers given the offer on WhatsApp from the History panel (promoContacts/<mobile>)
 function custEsc(t){ return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
@@ -8910,7 +9007,7 @@ async function custLoadVisitors(force){
 function custRows(){
   var rows = {}, order = [], vidPhone = {};
   function row(key){
-    if(!rows[key]){ rows[key] = { key: key, dev: '', name: '', phone: '', visits: 0, est: 0, bills: 0, estBills: 0, total: 0, first: '', last: '', optin: false, wa: 0, ids: [], vids: [], times: [] }; order.push(key); }
+    if(!rows[key]){ rows[key] = { key: key, dev: '', name: '', phone: '', place: '', waChat: 0, visits: 0, est: 0, bills: 0, estBills: 0, total: 0, first: '', last: '', optin: false, wa: 0, ids: [], vids: [], times: [] }; order.push(key); }
     return rows[key];
   }
   function seen(r, t){ t = String(t || ''); if(!t) return; r.times.push(t); if(!r.first || t < r.first) r.first = t; if(t > r.last) r.last = t; }
@@ -8918,10 +9015,12 @@ function custRows(){
     var v = _visitors[k]; if(!v) return;
     var vid = v.vid || k, ph = custDigits(v.mobile);
     if(ph) vidPhone[vid] = ph;
-    if(!ph && !v.name && !(v.est > 0) && !v.lastItems) return;   // only browsed, chose nothing, no details: counted in the totals above only
+    if(!ph && !v.name && !v.place && !(v.est > 0) && !v.lastItems && !(v.waChat > 0)) return;   // only browsed, chose nothing, no details: counted in the totals above only
     var r = row(ph ? 'p' + ph : 'v' + vid);
     r.visits += (v.visits || 0); r.est += (v.est || 0);
     if(v.name && !r.name) r.name = v.name;
+    if(v.place && !r.place) r.place = v.place;
+    if(v.waChat > 0){ r.waChat += v.waChat; seen(r, v.waChatLast); }
     if(ph) r.phone = ph;
     if(v.optin) r.optin = true;
     if(v.deviceLabel && !r.dev) r.dev = v.deviceLabel;
@@ -8957,6 +9056,7 @@ function custTags(r){
   if(r.est > 0 && r.bills === 0) t.push(['FOLLOW UP', '#b3261e']);
   if(r.optin) t.push(['KEEP IN TOUCH', '#0b7285']);
   if(r.wa > 0) t.push(['WHATSAPP OFFER', '#1faa59']);
+  if(r.waChat > 0) t.push(['CHATTED ON WHATSAPP', '#128c4a']);
   return t.map(function(x){ return '<span style="display:inline-block; padding:1px 6px; margin:0 3px 3px 0; border-radius:8px; background:' + x[1] + '; color:#fff; font-size:9.5px; font-weight:800; letter-spacing:.3px;">' + x[0] + '</span>'; }).join('');
 }
 function custStats(){
@@ -8987,14 +9087,15 @@ function renderCustomersTab(main){
     return '<button onclick="_custFilter=\'' + c[0] + '\'; _custLimit = 40; custRepaintList(); custChipPaint();" data-cf="' + c[0] + '" style="padding:5px 10px; border-radius:14px; border:1px solid var(--maroon); background:' + (on ? 'var(--maroon)' : '#fff') + '; color:' + (on ? '#fff8e6' : 'var(--maroon)') + '; font-size:11.5px; font-weight:700; cursor:pointer;">' + c[1] + '</button>';
   }).join('');
   var dOn = !!(_custDates.from || _custDates.to), rs = dOn ? custRangeStats() : null;
+  var graphBox = '<div id="custGraph" style="background:#fff; border:1px solid #ecd9b0; border-radius:10px; padding:9px 9px 8px; margin:' + (dOn ? '0 0 10px' : '12px 0 0') + ';">' + custGraphHtml() + '</div>';
   var dLbl = dOn ? salesDateLabel(_custDates.from || _custDates.to) + (_custDates.to && _custDates.to !== _custDates.from ? ' &ndash; ' + salesDateLabel(_custDates.to) : '') : '';
   var finder =
     '<div style="display:flex; gap:8px; align-items:stretch; margin:12px 0 8px;">' +
-      '<input type="text" id="custSearch" value="' + custEsc(_custQ) + '" placeholder="&#128269; Search name or mobile" oninput="_custQ = this.value; _custLimit = 40; custRepaintList()" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); font-size:13.5px; background:#fff;">' +
+      '<input type="text" id="custSearch" value="' + custEsc(_custQ) + '" placeholder="&#128269; Search name, mobile or place" oninput="_custQ = this.value; _custLimit = 40; custRepaintList()" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); font-size:13.5px; background:#fff;">' +
       '<button onclick="custToggleDates()" title="' + (dOn ? 'Show all dates' : 'Filter by dates') + '" aria-label="Date filter" style="flex:0 0 auto; width:48px; border-radius:10px; border:1.5px solid var(--maroon); background:' + (dOn ? 'var(--maroon)' : '#fff8e6') + '; color:' + (dOn ? '#fff8e6' : 'var(--maroon)') + '; font-size:20px; cursor:pointer;">&#128197;</button></div>' +
     (dOn ? '<div style="display:flex; gap:6px; align-items:center; margin:0 0 8px; font-size:12px; font-weight:800; color:#5b4630;"><span>From</span><input id="custFrom" type="date" value="' + _custDates.from + '" onchange="custDateChange()" style="flex:1; min-width:0; padding:8px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:700; color:var(--maroon);"><span>To</span><input id="custTo" type="date" value="' + _custDates.to + '" onchange="custDateChange()" style="flex:1; min-width:0; padding:8px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:700; color:var(--maroon);"></div>' +
       '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:2px 0 5px;">&#128197; ' + dLbl + '</div><div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">' +
-      custStatBox('Price list views', rs.visits) + custStatBox('New visitors', rs.newVisitors, '', '#1565c0') + custStatBox('Estimates (EST)', rs.estimates, '', '#b45309') + custStatBox('Bills from EST', rs.billed, 'full cycle', '#1e7a3c') + '</div>' : '') +
+      custStatBox('Price list views', rs.visits) + custStatBox('New visitors', rs.newVisitors, '', '#1565c0') + custStatBox('Estimates (EST)', rs.estimates, '', '#b45309') + custStatBox('Bills from EST', rs.billed, 'full cycle', '#1e7a3c') + '</div>' + graphBox : '') +
     '<div id="custChips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + chips + '</div>' +
     '<div id="custCount" style="font-size:11px; color:#8a6a44;"></div>' +
     '<div id="custList"></div>';
@@ -9009,7 +9110,7 @@ function renderCustomersTab(main){
     '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:12px 0 5px;">ALL TIME</div>' +
     '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
       custStatBox('Customers', st.uniq, st.views + ' views') + custStatBox('Repeat visitors', st.repeat, '2+ visits', '#6a1b9a') +
-      custStatBox('Made EST', st.estCust, st.estTot + ' estimates', '#b45309') + custStatBox('EST → Bill', st.cycle, conv + '% of EST', '#1e7a3c') + '</div>') +
+      custStatBox('Made EST', st.estCust, st.estTot + ' estimates', '#b45309') + custStatBox('EST → Bill', st.cycle, conv + '% of EST', '#1e7a3c') + '</div>' + graphBox) +
     finder +
     '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:16px 0 5px;">LAST 7 DAYS</div>' +
     '<table style="width:100%; border-collapse:collapse; font-size:11.5px; margin:10px 0 4px; background:#fff; border:1px solid #ecd9b0; border-radius:8px;"><thead><tr style="background:#fbeed2;"><th style="text-align:left; padding:4px;">Day</th><th>Views</th><th>New</th><th>EST</th><th>Billed</th></tr></thead><tbody>' + days.join('') + '</tbody></table>' +
@@ -9048,7 +9149,7 @@ function custFiltered(){
   all.sort(function(a, b){ return String(b.act).localeCompare(String(a.act)); });
   return all.filter(function(r){
     if(dOn && !r.act) return false;
-    if(q && !((r.name || '').toLowerCase().indexOf(q) >= 0 || (qd && r.phone.indexOf(qd) >= 0))) return false;
+    if(q && !((r.name || '').toLowerCase().indexOf(q) >= 0 || (r.place || '').toLowerCase().indexOf(q) >= 0 || (qd && r.phone.indexOf(qd) >= 0))) return false;
     if(_custFilter === 'est') return r.est > 0;
     if(_custFilter === 'follow') return r.est > 0 && r.bills === 0;
     if(_custFilter === 'billed') return r.bills > 0;
@@ -9077,7 +9178,7 @@ function custRepaintList(){
       '<div onclick="custDetToggle(' + i + ')" style="cursor:pointer;">' +
         '<div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline;"><div style="min-width:0; font-weight:800; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + custEsc(g.name || (g.phone ? 'Customer' : 'Visitor')) + '</div>' +
           '<div style="flex:0 0 auto; font-size:11.5px; font-weight:700; color:#8a6a44;">' + tm + ' <span style="color:var(--maroon);">&#9662;</span></div></div>' +
-        '<div style="font-size:12px; color:#44557a; margin-top:1px;">' + (g.phone ? '&#128222; ' + custEsc(fmtPhones(g.phone)) + ' &middot; ' : '') + nums + '</div>' +
+        '<div style="font-size:12px; color:#44557a; margin-top:1px;">' + (g.phone ? '&#128222; ' + custEsc(fmtPhones(g.phone)) + ' &middot; ' : '') + (g.place ? '&#128205; ' + custEsc(g.place) + ' &middot; ' : '') + nums + '</div>' +
         (g.selTotal ? '<div style="font-size:12px; font-weight:700; color:#1e7a3c; margin-top:2px;">&#129534; ' + custEsc(g.selTotal) + '</div>' : '') +
         '<div style="margin-top:3px;">' + custTags(g) + '</div>' +
       '</div>' +
