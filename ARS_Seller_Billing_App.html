@@ -534,10 +534,16 @@
        line. Price and Qty are kept equal to each other (same width, same
        text size) and sit close to Total near the right edge, which stays
        wide enough for amounts like ₹4,750 and never wraps. */
-    #printArea .br-table .br-col-item{ width:50% !important; }
-    #printArea .br-table .br-col-price{ width:15% !important; white-space:nowrap !important; }
-    #printArea .br-table .br-col-qty{ width:12% !important; white-space:nowrap !important; text-align:center !important; }
-    #printArea .br-table .br-col-total{ width:23% !important; white-space:nowrap !important; }
+    #printArea .br-table .br-col-item{ width:48% !important; }
+    #printArea .br-table .br-col-price{ width:16% !important; white-space:nowrap !important; }
+    #printArea .br-table .br-col-qty{ width:11% !important; white-space:nowrap !important; text-align:center !important; }
+    #printArea .br-table .br-col-total{ width:25% !important; white-space:nowrap !important; }
+    /* Tamil: extra bold, plain solid black (no outline) */
+    #printArea .br-tam{ font-weight:800 !important; }
+    #printArea .br-tam-big{ font-weight:900 !important; }
+    #printArea .br-tam-item{ font-weight:700 !important; }
+    #printArea .br-table td{ border-bottom-color:#000 !important; }
+    #printArea .br-table tr.br-ta-row td{ border-bottom:none !important; }
     /* thermal paper: grey prints faint - every bit of text solid black */
     #printArea .br-page, #printArea .br-page *{ color:#000 !important; }
     /* Keep the summary/total lines from colliding at narrow widths. */
@@ -583,10 +589,15 @@
   /* Item gets noticeably more room to breathe; Price and Qty are given the
      SAME width as each other (and the same text size, set inline per-row)
      so the three number columns read as one consistent right-hand block. */
-  .br-table .br-col-item{width:50%;}
-  .br-table .br-col-price{width:13%;}
-  .br-table .br-col-qty{width:13%;}
-  .br-table .br-col-total{width:24%;}
+  .br-table .br-col-item{width:48%;}
+  .br-table .br-col-price{width:16%;}
+  .br-table .br-col-qty{width:11%;}
+  .br-table .br-col-total{width:25%;}
+  /* printed bill: the Tamil name on its own full-width line, English + Price / Qty / Total on the line under it */
+  .br-table tr.br-ta-row td{border-bottom:none; padding:6px 6px 0;}
+  .br-tam{font-weight:800; color:#000;}
+  .br-tam-big{font-weight:900;}
+  .br-tam-item{font-weight:700; color:#000;}
   .br-en{color:#000; font-size:9.5px;}
   .br-summary{padding:6px 10px 0; box-sizing:border-box;}
   .br-row{display:flex; justify-content:space-between; gap:6px; font-size:10px; color:#000; padding:2px 0;}
@@ -6378,9 +6389,9 @@ function renderHistoryList(){
    then uses that same size, so the receipt reads as one consistent block:
    exactly one Tamil line + one English line per item, never more. */
 let _receiptMeasureCtx = null;
-function receiptTextWidth(text, fontPx, fontFamily){
+function receiptTextWidth(text, fontPx, fontFamily, weight){
   if(!_receiptMeasureCtx) _receiptMeasureCtx = document.createElement('canvas').getContext('2d');
-  _receiptMeasureCtx.font = fontPx + 'px ' + fontFamily;
+  _receiptMeasureCtx.font = (weight ? weight + ' ' : '') + fontPx + 'px ' + fontFamily;
   return _receiptMeasureCtx.measureText(text || '').width;
 }
 function fitReceiptFontSize(texts, maxWidthPx, fontFamily, startPx, minPx){
@@ -6519,43 +6530,40 @@ function buildBillReceiptHTML(s){
   const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
   const pageWidthPx = 226.772;
   const availableTextWidth = Math.max(30, pageWidthPx * RECEIPT_ITEM_COL_FRACTION - RECEIPT_ITEM_TEXT_RESERVE_PX);
-  const taFontPx = fitReceiptFontSize(s.items.map(it=>it.ta), availableTextWidth, RECEIPT_FONT_FAMILY, 12, 7);
   const enName = billEnNamer();
-  const enFontPx = fitReceiptFontSize(s.items.map(it=>enName(it)), availableTextWidth, RECEIPT_FONT_FAMILY, 9.5, 7);
-  // Price & Qty are the same size as each other but NOT bold; Total stays bold
-  // (the one number that matters most) and gets a touch of right padding so
-  // it sits a little in from the paper's very edge instead of flush against it.
-  // Printed on thermal paper: thin or grey text comes out faint, so the numbers are bold and black - the Qty
-  // biggest and boldest (the number the customer checks), Price bold, Total bold.
-  const priceStyle = 'font-size:10.5px; font-weight:700; color:#000;';
-  const qtyStyle = 'font-size:13px; font-weight:900; color:#000; text-align:center;';
-  const totalStyle = 'font-size:10.5px; font-weight:800; color:#000; padding-right:8px;';
-  // When a discount applies to the bill, show each line's discounted amount too,
-  // so the customer can see what every item actually cost them.
-  let rows = s.items.map((it, idx) => `<tr><td class="br-col-item"><div style="display:flex; align-items:baseline; min-width:0;"><span style="flex:0 0 auto; margin-right:4px; font-size:${taFontPx}px; font-weight:700;">${idx+1}.</span><div style="min-width:0; overflow:hidden;">
-        <div style="white-space:nowrap; overflow:hidden; font-size:${taFontPx}px; font-weight:700;">${it.ta}</div>
-        <div class="br-en" style="overflow-wrap:anywhere; line-height:1.2; font-size:${enFontPx}px; font-weight:600;">${enName(it)}</div>
-      </div></div></td>
-      <td class="num br-col-price" style="${priceStyle}">&#8377;${it.price.toLocaleString('en-IN')}</td><td class="num br-col-qty" style="${qtyStyle}">${it.qty}</td>
-      <td class="num br-col-total" style="${totalStyle}">&#8377;${(it.price*it.qty).toLocaleString('en-IN')}</td></tr>`).join('');
-  let summary = `<div class="br-row" style="font-weight:700;"><span>Grand Total / மொத்தம்</span><span>&#8377;${s.subtotal.toLocaleString('en-IN')}</span></div>`;
-  if(s.discount>0) summary += `<div class="br-row br-disc"><span>Discount / தள்ளுபடி (${s.discountPercent}%)</span><span>-&#8377;${s.discount.toLocaleString('en-IN')}</span></div>`;
+  const enFontPx = fitReceiptFontSize(s.items.map(it=>enName(it)), availableTextWidth, RECEIPT_FONT_FAMILY, 9.5, 7);   // English: unchanged
+  // 80mm thermal roll: each item's Tamil name gets its own line across the full paper width, always 14px bold;
+  // a very long name wraps to a second line.
+  const idxW = Math.ceil(receiptTextWidth(s.items.length + '.', 13, RECEIPT_FONT_FAMILY, '800')) + 8;
+  const taFontPx = 14;
+  // Price and Qty the same size; Qty extra bold (the number the customer checks); Total bold.
+  const priceStyle = 'font-size:12px; font-weight:600; color:#000;';
+  const qtyStyle = 'font-size:12px; font-weight:900; color:#000; text-align:center;';
+  const totalStyle = 'font-size:12px; font-weight:900; color:#000; padding-right:6px;';
+  // a rare very big number steps down a little so it never runs into the next column
+  const fitNum = (st, txt, max) => txt.length <= max ? st : st.replace('font-size:12px', 'font-size:' + (txt.length <= max + 2 ? 10.5 : 9.5) + 'px');
+  let rows = s.items.map((it, idx) => `<tr class="br-ta-row"><td colspan="4"><div style="display:flex; align-items:baseline;"><span style="flex:0 0 ${idxW}px; font-size:13px; font-weight:800;">${idx+1}.</span><span class="br-tam-item" style="flex:1 1 auto; min-width:0; font-size:${taFontPx}px; line-height:1.3;">${it.ta}</span></div></td></tr>
+      <tr><td class="br-col-item" style="padding-left:14px; padding-top:1px;"><div class="br-en" style="overflow-wrap:anywhere; line-height:1.2; font-size:${enFontPx}px; font-weight:600;">${enName(it)}</div></td>
+      <td class="num br-col-price" style="${fitNum(priceStyle, it.price.toLocaleString('en-IN'), 5)} padding-top:1px;">&#8377;${it.price.toLocaleString('en-IN')}</td><td class="num br-col-qty br-qty" style="${fitNum(qtyStyle, String(it.qty), 3)} padding-top:1px;">${it.qty}</td>
+      <td class="num br-col-total" style="${fitNum(totalStyle, (it.price*it.qty).toLocaleString('en-IN'), 6)} padding-top:1px;">&#8377;${(it.price*it.qty).toLocaleString('en-IN')}</td></tr>`).join('');
+  let summary = `<div class="br-row" style="font-size:12px; font-weight:800;"><span>Grand Total / <span class="br-tam">மொத்தம்</span></span><span style="font-weight:900;">&#8377;${s.subtotal.toLocaleString('en-IN')}</span></div>`;
+  if(s.discount>0) summary += `<div class="br-row br-disc" style="font-size:11.5px; font-weight:800;"><span>Discount / <span class="br-tam">தள்ளுபடி</span> (${s.discountPercent}%)</span><span style="font-weight:900;">-&#8377;${s.discount.toLocaleString('en-IN')}</span></div>`;
   const cancelledNote = saleStatus(s)==='cancelled' ? '<div style="text-align:center;color:#000;font-weight:800;padding:6px 10px;border-top:1.5px dashed #000;">&#9888; ORDER CANCELLED</div>' : '';
   // Fixed 80mm width (226.772px) for thermal printer - height grows with items
   return `<div class="br-page" style="width:${pageWidthPx}px;">
       <div class="br-head">
-        <div class="br-ta">${branchTitle(branchOfSale(s)) || SHOP.name_ta}</div>
+        <div class="br-ta br-tam br-tam-big" style="font-size:17px;">${branchTitle(branchOfSale(s)) || SHOP.name_ta}</div>
         <div style="font-size:10px; color:#000; margin-top:3px;">Branch: ${(branchOfSale(s) || {}).name || 'Thanneerpandhal'}</div>
         <div style="font-size:10.5px; color:#000; font-weight:700; margin-top:1px;">${billPhoneHtml(branchOfSale(s))}</div>
-        <div style="font-size:11px; color:#000; font-weight:800; margin-top:4px;">Bill No: ${s.billNo || '-'}</div>
+        <div style="font-size:12px; color:#000; font-weight:900; margin-top:4px;">Bill No: ${s.billNo || '-'}</div>
       </div>
       <div class="br-meta"><span>${dt}</span><span>Seller: ${s.sellerName}</span></div>
       <table class="br-table">
-        <thead><tr><th class="br-col-item" style="text-align:center;">Item</th><th class="num br-col-price" style="font-size:10px;">Price</th><th class="num br-col-qty" style="font-size:10.5px; font-weight:900; text-align:center;">Qty</th><th class="num br-col-total" style="font-size:10px; padding-right:8px;">Total</th></tr></thead>
+        <thead><tr><th class="br-col-item" style="font-size:10.5px; font-weight:800;">Item / <span class="br-tam">பொருள்</span></th><th class="num br-col-price" style="font-size:10.5px; font-weight:800;">Price</th><th class="num br-col-qty" style="font-size:10.5px; font-weight:900; text-align:center;">Qty</th><th class="num br-col-total" style="font-size:10.5px; font-weight:800; padding-right:6px;">Total</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <div class="br-summary">${summary}</div>
-      <div class="br-total-row"><span style="font-size:10px; font-weight:700; white-space:nowrap;">Paid Amount<br><span style="font-size:9px; font-weight:600; white-space:nowrap;">செலுத்திய தொகை</span></span><span style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;"><span style="font-size:13px; font-weight:800;">&#8377;${(s.paidAmount||0).toLocaleString('en-IN')}</span>${s.paymentMethod ? '<span style="font-size:8px; font-weight:600; color:#555; white-space:nowrap;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>
+      <div class="br-total-row"><span style="font-size:12px; font-weight:800; white-space:nowrap;">Paid Amount<br><span class="br-tam" style="font-size:11.5px; white-space:nowrap;">செலுத்திய தொகை</span></span><span style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;"><span style="font-size:17px; font-weight:900;">&#8377;${(s.paidAmount||0).toLocaleString('en-IN')}</span>${s.paymentMethod ? '<span style="font-size:9px; font-weight:700; color:#000; white-space:nowrap;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>
       <div style="padding:6px 10px 4px; font-size:8.5px; color:#000; text-align:center;">Thank you from ${SHOP.name_ta}!</div>
       ${cancelledNote}
     </div>`;
