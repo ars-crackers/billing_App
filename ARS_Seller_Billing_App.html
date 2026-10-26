@@ -3578,6 +3578,7 @@ function hideSyncWaitBanner(){
   if(b) b.style.display = 'none';
 }
 function enterApp(){
+  try{ histDates = { from: '', to: '' }; }catch(e){}   // a new login starts without a date filter
   historySellerFilter = ''; historyPhoneFilter = '';     // a new login starts on its own bills
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
@@ -5932,7 +5933,48 @@ function historyScope(){
     else list = all.filter(function(x){ return saleInBranch(x, myBr) && !isAdminBill(x) && (f === 'all' || x.sellerId === f); });
     title = !f ? session.name + ' \u2014 Sales History' : f === 'all' ? 'All Sellers \u2014 ' + ((BRANCHES[myBr] || {}).name || '') : ((list[0] && list[0].sellerName) || (USERS[f] && USERS[f].name) || f) + ' \u2014 Sales History';
   }
+  if(!isAdmin && (histDates.from || histDates.to)){
+    list = list.filter(histInDates);
+    title += ' \u2014 ' + salesDateLabel(histDates.from || histDates.to) + (histDates.to && histDates.to !== histDates.from ? ' \u2013 ' + salesDateLabel(histDates.to) : '');
+  }
   return { list: list, title: title, isAdmin: isAdmin };
+}
+/* Seller's own History tab: 📅 From / To dates and the seller's present days (a day counts when they made at least
+   one bill). Only for the person logged in - sellers never see other people's attendance. */
+var histDates = { from: '', to: '' };
+function histInDates(x){
+  var d = saleLocalDate(x.time);
+  return !(histDates.from && d < histDates.from) && !(histDates.to && d > histDates.to);
+}
+function toggleHistDates(){
+  if(histDates.from || histDates.to){ histDates = { from: '', to: '' }; render(); return; }
+  var today = saleLocalDate(new Date()), first = today;
+  (SALES || []).forEach(function(x){ if(x.sellerId === session.id){ var d = saleLocalDate(x.time); if(d < first) first = d; } });
+  histDates = { from: first, to: today };
+  render();
+}
+function onHistDateChange(){
+  var f = (document.getElementById('histFrom') || {}).value || '', t = (document.getElementById('histTo') || {}).value || '';
+  if(f && t && f > t){ var x = f; f = t; t = x; }
+  histDates = { from: f, to: t };
+  render();
+}
+function histAttendanceHtml(){
+  var days = {}, bills = 0;
+  (SALES || []).forEach(function(x){ if(x.sellerId === session.id && histInDates(x)){ days[saleLocalDate(x.time)] = 1; bills++; } });
+  var list = Object.keys(days).sort();
+  var inp = 'flex:1; min-width:0; padding:8px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:700; color:var(--maroon);';
+  return '<div style="display:flex; gap:6px; align-items:center; margin:0 0 8px; font-size:12px; font-weight:800; color:#5b4630;">' +
+      '<span>From</span><input id="histFrom" type="date" value="' + histDates.from + '" onchange="onHistDateChange()" style="' + inp + '">' +
+      '<span>To</span><input id="histTo" type="date" value="' + histDates.to + '" onchange="onHistDateChange()" style="' + inp + '"></div>' +
+    '<div style="margin:0 0 10px; padding:10px 12px; border-radius:12px; background:#fff3d6; border:1px solid #e9c77a;">' +
+      '<div style="display:flex; align-items:center; gap:10px;">' +
+        '<div style="flex:0 0 auto; min-width:52px; height:52px; padding:0 8px; border-radius:12px; background:var(--maroon); color:#fff8e6; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800;">' + list.length + '</div>' +
+        '<div style="flex:1; min-width:0;"><div style="font-size:14px; font-weight:800; color:var(--maroon);">&#128197; My present days / வருகை நாட்கள்</div>' +
+        '<div style="font-size:11px; color:#8a6a44; margin-top:2px;">' + custEsc(session.name || '') + ' &bull; days with at least 1 bill &bull; ' + bills + ' bill' + (bills === 1 ? '' : 's') + '</div></div></div>' +
+      (list.length ? '<div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;">' + list.map(function(d){ return '<span style="padding:3px 8px; border-radius:999px; background:#fff; border:1px solid #e0c48a; font-size:11px; font-weight:700; color:#5b4630;">' + salesDateLabel(d) + '</span>'; }).join('') + '</div>'
+        : '<div style="font-size:12px; color:#8a6a44; margin-top:6px;">No bills in these dates.</div>') +
+    '</div>';
 }
 /* Seller-name filter (replaces the search boxes on the History tab). */
 function historySellerSelectHtml(){
@@ -5953,8 +5995,11 @@ function historySellerSelectHtml(){
   var o = function(v, label){ return '<option value="' + custEsc(v) + '"' + (f === v ? ' selected' : '') + '>' + custEsc(label) + '</option>'; };
   opts = isAdmin ? o('', 'All sellers') : o('', 'My bills') + (ids.length ? o('all', 'All sellers (my branch)') : '');
   opts += ids.map(function(id){ return o(id, names[id]); }).join('');
+  var dOn = !isAdmin && !!(histDates.from || histDates.to);
   return '<div style="display:flex; align-items:center; gap:8px; margin:8px 0;"><span style="font-size:12px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>' +
-    '<select id="historySellerSel" onchange="historySellerFilter = this.value; render();" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">' + opts + '</select></div>';
+    '<select id="historySellerSel" onchange="historySellerFilter = this.value; render();" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">' + opts + '</select>' +
+    (isAdmin ? '' : '<button type="button" onclick="toggleHistDates()" title="' + (dOn ? 'Show all dates' : 'My present days (dates)') + '" aria-label="Date filter" style="flex:0 0 auto; width:48px; height:42px; border-radius:10px; border:1.5px solid var(--maroon); background:' + (dOn ? 'var(--maroon)' : '#fff8e6') + '; color:' + (dOn ? '#fff8e6' : 'var(--maroon)') + '; font-size:20px; cursor:pointer;">&#128197;</button>') +
+    '</div>' + (dOn ? histAttendanceHtml() : '');
 }
 
 /* History tab Share menu: promotion poster (full screen), print and history PDF.
@@ -7689,6 +7734,49 @@ function salesRecordsScope(){
   return { list: list, title: 'Sales Records' + (nm ? ' \u2014 ' + nm : '') + (br ? ' \u2014 ' + br : '') + (dt ? ' \u2014 ' + dt : '') };
 }
 
+/* ---- Login History: summary at the top - today's numbers, then one line per person (last login, logins
+   today, all logins, phones used). Tap a person to see only their logins. ---- */
+var loginFilterId = '';
+function loginPick(id){ loginFilterId = loginFilterId === id ? '' : id; renderAdmin(); }
+function loginSummaryHtml(){
+  var list = LOGIN_HISTORY || [], today = saleLocalDate(new Date()), by = {}, devs = {}, devsToday = {}, todayN = 0;
+  Object.keys(USERS || {}).forEach(function(id){ var u = USERS[id] || {}; by[id] = { id: id, name: u.name || id, role: u.role || 'seller', n: 0, nToday: 0, last: '', dev: {} }; });
+  list.forEach(function(l){
+    if(!l || !l.id) return;
+    var p = by[l.id] || (by[l.id] = { id: l.id, name: l.name || l.id, role: l.role || 'seller', n: 0, nToday: 0, last: '', dev: {}, gone: true });
+    p.n++; if(!p.last || String(l.time) > p.last) p.last = String(l.time);
+    var d = (l.device && (l.device.deviceId || deviceLabel(l.device))) || '';
+    if(d){ p.dev[d] = 1; devs[d] = 1; }
+    if(saleLocalDate(l.time) === today){ p.nToday++; todayN++; if(d) devsToday[d] = 1; }
+  });
+  var people = Object.keys(by).map(function(k){ return by[k]; });
+  people.sort(function(a, b){ return (b.nToday > 0) - (a.nToday > 0) || String(b.last).localeCompare(String(a.last)) || String(a.name).localeCompare(String(b.name)); });
+  var inToday = people.filter(function(p){ return p.nToday > 0; }).length, accounts = people.filter(function(p){ return !p.gone; }).length;
+  var when = function(t){
+    if(!t) return 'Never';
+    var d = new Date(t), tm = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+    return saleLocalDate(t) === today ? 'Today ' + tm : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ', ' + tm;
+  };
+  var card = function(v, l){ return '<div class="stat-card"><div class="sv">' + v + '</div><div class="sl">' + l + '</div></div>'; };
+  var h = '<div class="section-title" style="margin-top:0;">Summary</div><div class="stat-grid">' +
+    card(todayN, 'Logins today') + card(inToday + ' / ' + accounts, 'People logged in today') +
+    card(Object.keys(devsToday).length, 'Phones used today') + card(list.length, 'All login records') + '</div>';
+  h += '<div style="border:1px solid var(--line); border-radius:12px; background:var(--paper); overflow:hidden; margin-bottom:16px;">' +
+    '<div style="display:flex; gap:6px; padding:7px 10px; background:#fbeed2; font-size:10.5px; font-weight:800; color:var(--maroon-dark);"><span style="flex:1;">Person</span><span style="width:96px;">Last login</span><span style="width:38px; text-align:center;">Today</span><span style="width:34px; text-align:center;">All</span><span style="width:40px; text-align:center;">Phones</span></div>' +
+    people.map(function(p){
+      var sel = loginFilterId === p.id;
+      return '<div onclick="loginPick(\'' + String(p.id).replace(/'/g, '') + '\')" style="display:flex; gap:6px; align-items:center; padding:8px 10px; border-top:1px solid var(--line); cursor:pointer; background:' + (sel ? '#fff3d6' : 'transparent') + ';">' +
+        '<span style="flex:1; min-width:0;"><b style="font-size:12.5px; color:' + (p.nToday ? 'var(--ink)' : '#8a6a44') + ';">' + (p.nToday ? '&#128994; ' : '&#9898; ') + custEsc(p.name) + '</b>' +
+          ' <span class="uer-role-badge ' + (p.role === 'admin' ? 'admin' : 'seller') + '" style="font-size:8.5px; padding:1px 6px;">' + (p.role === 'admin' ? 'Admin' : 'Seller') + '</span>' + (p.gone ? ' <span style="font-size:9px; color:#b3261e;">(deleted)</span>' : '') + '</span>' +
+        '<span style="width:96px; font-size:11px; color:' + (p.last ? 'var(--ink-soft)' : '#b3261e') + ';">' + when(p.last) + '</span>' +
+        '<span style="width:38px; text-align:center; font-size:13px; font-weight:800; color:' + (p.nToday ? 'var(--green)' : '#b9a68a') + ';">' + p.nToday + '</span>' +
+        '<span style="width:34px; text-align:center; font-size:12.5px; font-weight:700;">' + p.n + '</span>' +
+        '<span style="width:40px; text-align:center; font-size:12.5px; font-weight:700;">' + Object.keys(p.dev).length + '</span></div>';
+    }).join('') +
+    '<div style="padding:6px 10px; border-top:1px solid var(--line); font-size:10px; color:#8a6a44;">&#128994; logged in today &bull; tap a person to see only their logins</div></div>';
+  return h;
+}
+
 /* ---------------- ADMIN REPORTS TAB ---------------- */
 function onReportFilterChange(){
   reportFilters.date = document.getElementById('reportFilterDate').value;
@@ -8319,13 +8407,14 @@ function renderAdmin(){
     renderCustomersTab(main);
   } else if(adminTab === 'logins'){
     LOGIN_HISTORY = loadJSON('ars_login_history', []);
-    const loginsList = [...LOGIN_HISTORY].reverse();
-    let html = `<div class="history-head-row">
-        <div class="section-title" style="margin:0;">Login History (latest first)</div>
+    if(loginFilterId && !LOGIN_HISTORY.some(l => l.id === loginFilterId) && !USERS[loginFilterId]) loginFilterId = '';
+    const loginsList = [...LOGIN_HISTORY].reverse().filter(l => !loginFilterId || l.id === loginFilterId);
+    let html = loginSummaryHtml() + `<div class="history-head-row">
+        <div class="section-title" style="margin:0;">Login History (latest first)${loginFilterId ? ' &mdash; ' + custEsc((USERS[loginFilterId] && USERS[loginFilterId].name) || loginFilterId) : ''}</div>
         <button onclick="shareLoginHistoryPDF()" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF</button>
       </div>
       <div class="empty-admin" style="text-align:left; padding:0 4px 10px; font-size:11.5px;">
-        Logins from every phone, stored on the Firebase server. ${loginsList.length} record(s).
+        Logins from every phone, stored on the Firebase server. ${loginsList.length} record(s).${loginFilterId ? ' <a href="javascript:void(0)" onclick="loginPick(\'\')" style="color:var(--maroon); font-weight:800;">Show all</a>' : ''}
       </div>`;
     if(loginsList.length===0){
       html += `<div class="empty-admin">No login history yet.</div>`;
