@@ -534,10 +534,12 @@
        line. Price and Qty are kept equal to each other (same width, same
        text size) and sit close to Total near the right edge, which stays
        wide enough for amounts like ₹4,750 and never wraps. */
-    #printArea .br-table .br-col-item{ width:54% !important; }
-    #printArea .br-table .br-col-price{ width:12% !important; white-space:nowrap !important; }
-    #printArea .br-table .br-col-qty{ width:12% !important; white-space:nowrap !important; }
-    #printArea .br-table .br-col-total{ width:22% !important; white-space:nowrap !important; }
+    #printArea .br-table .br-col-item{ width:50% !important; }
+    #printArea .br-table .br-col-price{ width:15% !important; white-space:nowrap !important; }
+    #printArea .br-table .br-col-qty{ width:12% !important; white-space:nowrap !important; text-align:center !important; }
+    #printArea .br-table .br-col-total{ width:23% !important; white-space:nowrap !important; }
+    /* thermal paper: grey prints faint - every bit of text solid black */
+    #printArea .br-page, #printArea .br-page *{ color:#000 !important; }
     /* Keep the summary/total lines from colliding at narrow widths. */
     #printArea .br-row, #printArea .br-total-row{ gap:6px !important; }
     #printArea .br-row span:last-child,
@@ -6313,15 +6315,18 @@ function buildBillReceiptHTML(s){
   // Price & Qty are the same size as each other but NOT bold; Total stays bold
   // (the one number that matters most) and gets a touch of right padding so
   // it sits a little in from the paper's very edge instead of flush against it.
-  const priceQtyStyle = 'font-size:10px; font-weight:500;';
-  const totalStyle = 'font-size:10px; font-weight:800; padding-right:8px;';
+  // Printed on thermal paper: thin or grey text comes out faint, so the numbers are bold and black - the Qty
+  // biggest and boldest (the number the customer checks), Price bold, Total bold.
+  const priceStyle = 'font-size:10.5px; font-weight:700; color:#000;';
+  const qtyStyle = 'font-size:13px; font-weight:900; color:#000; text-align:center;';
+  const totalStyle = 'font-size:10.5px; font-weight:800; color:#000; padding-right:8px;';
   // When a discount applies to the bill, show each line's discounted amount too,
   // so the customer can see what every item actually cost them.
-  let rows = s.items.map((it, idx) => `<tr><td class="br-col-item"><div style="display:flex; align-items:baseline; min-width:0;"><span style="flex:0 0 auto; margin-right:4px; font-size:${taFontPx}px;">${idx+1}.</span><div style="min-width:0; overflow:hidden;">
+  let rows = s.items.map((it, idx) => `<tr><td class="br-col-item"><div style="display:flex; align-items:baseline; min-width:0;"><span style="flex:0 0 auto; margin-right:4px; font-size:${taFontPx}px; font-weight:700;">${idx+1}.</span><div style="min-width:0; overflow:hidden;">
         <div style="white-space:nowrap; overflow:hidden; font-size:${taFontPx}px; font-weight:700;">${it.ta}</div>
-        <div class="br-en" style="overflow-wrap:anywhere; line-height:1.2; font-size:${enFontPx}px;">${enName(it)}</div>
+        <div class="br-en" style="overflow-wrap:anywhere; line-height:1.2; font-size:${enFontPx}px; font-weight:600;">${enName(it)}</div>
       </div></div></td>
-      <td class="num br-col-price" style="${priceQtyStyle}">&#8377;${it.price.toLocaleString('en-IN')}</td><td class="num br-col-qty" style="${priceQtyStyle}">${it.qty}</td>
+      <td class="num br-col-price" style="${priceStyle}">&#8377;${it.price.toLocaleString('en-IN')}</td><td class="num br-col-qty" style="${qtyStyle}">${it.qty}</td>
       <td class="num br-col-total" style="${totalStyle}">&#8377;${(it.price*it.qty).toLocaleString('en-IN')}</td></tr>`).join('');
   let summary = `<div class="br-row" style="font-weight:700;"><span>Grand Total / மொத்தம்</span><span>&#8377;${s.subtotal.toLocaleString('en-IN')}</span></div>`;
   if(s.discount>0) summary += `<div class="br-row br-disc"><span>Discount / தள்ளுபடி (${s.discountPercent}%)</span><span>-&#8377;${s.discount.toLocaleString('en-IN')}</span></div>`;
@@ -6336,7 +6341,7 @@ function buildBillReceiptHTML(s){
       </div>
       <div class="br-meta"><span>${dt}</span><span>Seller: ${s.sellerName}</span></div>
       <table class="br-table">
-        <thead><tr><th class="br-col-item" style="text-align:center;">Item</th><th class="num br-col-price" style="font-size:10px;">Price</th><th class="num br-col-qty" style="font-size:10px;">Qty</th><th class="num br-col-total" style="font-size:10px; padding-right:8px;">Total</th></tr></thead>
+        <thead><tr><th class="br-col-item" style="text-align:center;">Item</th><th class="num br-col-price" style="font-size:10px;">Price</th><th class="num br-col-qty" style="font-size:10.5px; font-weight:900; text-align:center;">Qty</th><th class="num br-col-total" style="font-size:10px; padding-right:8px;">Total</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <div class="br-summary">${summary}</div>
