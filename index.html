@@ -673,6 +673,30 @@
   .seller-row .sr-info b{font-size:13px;} .seller-row .sr-info div{font-size:10.5px; color:var(--ink-soft);}
   .seller-row button{background:var(--danger); color:#fff; border:none; padding:7px 11px; border-radius:8px; font-size:11px; font-weight:700;}
   .add-seller-card, .discount-card, .backup-card{background:#fbeed2; border:1px solid #e9c98a; border-radius:12px; padding:14px; margin-bottom:14px;}
+  /* Backup tab (simple): status + 2 buttons, then the restore list */
+  .bk2-hero{background:linear-gradient(135deg,#1e7a3c,#2f9e57); color:#fff; border-radius:16px; padding:14px; margin-bottom:12px; box-shadow:0 6px 16px rgba(30,122,60,.25);}
+  .bk2-row{display:flex; align-items:center; gap:10px;}
+  .bk2-ico{flex:0 0 42px; height:42px; border-radius:12px; background:rgba(255,255,255,.18); display:flex; align-items:center; justify-content:center; font-size:22px;}
+  .bk2-title{font-size:16px; font-weight:800; line-height:1.2;}
+  .bk2-sub{font-size:12px; font-weight:600; opacity:.92; margin-top:2px;}
+  .bk2-chip{flex:0 0 auto; padding:4px 9px; border-radius:20px; background:rgba(255,255,255,.2); font-size:11px; font-weight:800; white-space:nowrap;}
+  .bk2-btns{display:flex; gap:8px; margin-top:12px;}
+  .bk2-btn{flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:11px 6px; border-radius:11px; border:none; background:#fff; color:#1e7a3c; font-weight:800; font-size:13px; cursor:pointer; text-align:center;}
+  .bk2-hero .bk2-btn.ghost{background:rgba(255,255,255,.16); color:#fff; border:1.5px solid rgba(255,255,255,.7);}
+  .bk2-card{background:#fff; border:1px solid #e3eee5; border-radius:16px; padding:12px; margin-bottom:12px;}
+  .bk2-h{font-size:13.5px; font-weight:800; color:#1b3a20; margin:0 2px 8px;}
+  .bk2-item{display:flex; align-items:center; gap:10px; padding:9px 4px; border-top:1px solid #eef3ef;}
+  .bk2-item:first-child{border-top:none;}
+  .bk2-dot{flex:0 0 10px; height:10px; border-radius:50%; background:#2f9e57;}
+  .bk2-dot.man{background:#c9962b;} .bk2-dot.bad{background:#b3261e;}
+  .bk2-when{font-size:13px; font-weight:800; color:#1b3a20;}
+  .bk2-meta{font-size:11.5px; color:#6b7c70; margin-top:1px;}
+  .bk2-eye{flex:0 0 auto; width:38px; height:36px; border-radius:50%; border:1.5px solid #cfe3d2; background:#fff; font-size:17px; line-height:1; cursor:pointer; padding:0;}
+  .bk2-eye.on{background:#1e7a3c; border-color:#1e7a3c;}
+  .bk2-rs{flex:0 0 auto; padding:8px 13px; border-radius:20px; border:1.5px solid #1e7a3c; background:#eef8f1; color:#1e7a3c; font-weight:800; font-size:12.5px; cursor:pointer;}
+  .bk2-card .bk2-btn{background:#f3f8f4; border:1.5px solid #cfe3d2; font-size:12.5px;}
+  .bk2-link{display:block; width:100%; margin-top:4px; padding:8px; border:none; background:none; color:#1e7a3c; font-weight:800; font-size:12.5px; cursor:pointer;}
+  .bk2-more{display:flex; justify-content:space-between; align-items:center; width:100%; padding:12px 14px; border-radius:14px; border:1px solid #e9c98a; background:#fffaf0; color:#6b4a2e; font-weight:800; font-size:13px; cursor:pointer; margin-bottom:12px;}
   .add-seller-card input, .discount-card input{width:100%; padding:10px; margin-bottom:7px; border-radius:8px; border:1px solid var(--line); font-size:13px;}
   .add-seller-card button, .discount-card button{width:100%; padding:11px; background:var(--maroon); color:#fff8e6; border:none; border-radius:8px; font-weight:800; font-size:13px;}
   .upi-qr-preview-wrap{
@@ -2291,7 +2315,8 @@ function rsSummary(list){
 }
 function restoreCardHtml(){
   var mine = Object.keys(rescueRead('sales').bills).length, h = '';
-  if(_rsArch === null) h += '<div style="font-size:12px; color:#5b4630;">Tap <b>Find deleted bills</b> to see what can be put back.</div>';
+  if(_rsArch === null && !mine) return '';
+  if(_rsArch === null) h += '';
   else if(_rsArch === 'err') h += '<div style="font-size:12px; color:#b3261e;">Could not read the server. Check the internet and try again.</div>';
   else {
     var keys = Object.keys(_rsArch).sort().reverse();
@@ -2328,26 +2353,256 @@ async function restoreRun(list, btn, done){
 }
 function restoreFromArchive(ts, btn){ var a = (_rsArch && _rsArch[ts]) || {}; restoreRun(Object.keys(a).map(function(k){ return a[k]; }), btn); }
 function restoreFromPhone(btn){ var r = rescueRead('sales').bills; restoreRun(Object.keys(r).map(function(k){ return r[k]; }), btn); }
-/* Backup file on the phone: every bill this phone holds, as one file (keep it in Google Drive / WhatsApp to yourself). */
-function backupDownload(){
-  var bills = loadJSON('ars_sales', []) || [];
-  if(!bills.length){ alert('No bills on this phone to save.'); return; }
-  var d = new Date(), p = function(x){ return (x < 10 ? '0' : '') + x; };
-  var file = { app: 'ARS Billing', kind: 'sales-backup', at: d.toISOString(), count: bills.length, bills: bills };
-  estDownload(new Blob([JSON.stringify(file)], { type: 'application/json' }), 'ARS_Bills_Backup_' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + '.json');
-  try{ localStorage.setItem('ars_backup_file_at', d.toISOString()); }catch(e){}
-  setTimeout(renderAdmin, 300);
-}
+/* Restore from a backup file: a full server backup (pick the types) or an older bills-only file. */
 function backupFilePick(inp){
   var f = inp.files && inp.files[0]; if(!f) return;
   var rd = new FileReader();
   rd.onload = function(){
     var data = null; try{ data = JSON.parse(rd.result); }catch(e){}
+    if(data && data.kind === 'full-backup' && data.data){ bkRestoreOpen('', data.data, 'Backup file of ' + bkWhen(data.at)); return; }
     var list = data && (Array.isArray(data) ? data : data.bills);
-    if(!Array.isArray(list)){ alert('This is not an A.R.S bills backup file.'); return; }
+    if(!Array.isArray(list)){ alert('This is not an A.R.S backup file.'); return; }
     restoreRun(list.filter(function(b){ return b && b.id && b.time; }), null);
   };
   rd.readAsText(f); inp.value = '';
+}
+/* ================= FULL SERVER BACKUP =================
+   The main admin's phone copies the whole server once a day by itself (bills, price list & stock, accounts,
+   branches / UPI / offer / settings, login history, customers) and keeps the last 10 days, plus the copy with the most
+   bills, in the phone's own storage (IndexedDB). Admin -> Backup: back up now, save a backup file, and restore any
+   copy (or a file) to the server - all data or only the types ticked; "missing only" never changes what the server has. */
+const BK_NODES = [['sales', 'bills', 1], ['saleEdits', 'bills', 1], ['pricelist', 'prices', 0], ['priceChanges', 'prices', 1], ['users', 'accounts', 1],
+  ['branches', 'shop', 1], ['settings', 'shop', 1], ['meta', 'shop', 2], ['loginHistory', 'logins', 1],
+  ['visitors', 'customers', 1], ['visitStats', 'customers', 1], ['estimateLog', 'customers', 1], ['promoContacts', 'customers', 1]];   // 1 = record by record, 0 = one piece, 2 = special
+const BK_TYPES = [['bills', '&#129534; Bills'], ['prices', '&#128176; Price list &amp; stock'], ['accounts', '&#128100; Accounts (users &amp; PINs)'],
+  ['shop', '&#127968; Branches, UPI, offer &amp; settings'], ['logins', '&#128272; Login history'], ['customers', '&#129489; Customers &amp; visitors']];
+const BK_KEEP = 10;
+var _bkDbP = null, _bkRunning = false, _bkList = null;
+function bkDb(){
+  if(_bkDbP) return _bkDbP;
+  _bkDbP = new Promise(function(res, rej){
+    try{ var rq = indexedDB.open('ars_backups', 1);
+      rq.onupgradeneeded = function(){ var db = rq.result; if(!db.objectStoreNames.contains('info')) db.createObjectStore('info', { keyPath: 'id' }); if(!db.objectStoreNames.contains('data')) db.createObjectStore('data', { keyPath: 'id' }); };
+      rq.onsuccess = function(){ res(rq.result); }; rq.onerror = function(){ rej(rq.error); };
+    }catch(e){ rej(e); }
+  });
+  _bkDbP.catch(function(){ _bkDbP = null; });
+  return _bkDbP;
+}
+function bkTx(stores, mode, fn){
+  return bkDb().then(function(db){ return new Promise(function(res, rej){
+    var tx = db.transaction(stores, mode), out; var r = fn(tx); if(r) r.onsuccess = function(){ out = r.result; };
+    tx.oncomplete = function(){ res(out); }; tx.onerror = function(){ rej(tx.error); }; tx.onabort = function(){ rej(tx.error); };
+  }); });
+}
+function bkInfos(){ return bkTx(['info'], 'readonly', function(tx){ return tx.objectStore('info').getAll(); }).then(function(a){ return (a || []).sort(function(x, y){ return y.at - x.at; }); }); }
+function bkData(id){ return bkTx(['data'], 'readonly', function(tx){ return tx.objectStore('data').get(id); }).then(function(r){ return r && r.data; }); }
+function bkCounts(data){
+  var n = function(o){ return o && typeof o === 'object' ? Object.keys(o).length : 0; }, items = 0;
+  try{ ((data.pricelist && data.pricelist.categories) || []).forEach(function(c){ items += (c && c.items ? (Array.isArray(c.items) ? c.items.length : Object.keys(c.items).length) : 0); }); }catch(e){}
+  return { bills: n(data.sales), prices: items, accounts: n(data.users), shop: n(data.branches), logins: n(data.loginHistory), customers: n(data.visitors) };
+}
+function bkCountsText(c){ return 'Bills ' + (c.bills || 0) + ' · Price items ' + (c.prices || 0) + ' · Accounts ' + (c.accounts || 0) + ' · Customers ' + (c.customers || 0) + ' · Logins ' + (c.logins || 0); }
+function bkIsMainAdmin(){ return !!(typeof session !== 'undefined' && session && session.role === 'admin' && !adminScope()); }
+/* Reads the whole server (all the data above) and keeps it on this phone. */
+async function bkMake(kind){
+  if(!_fbDb || _fbReadOnly) throw new Error('Not connected to the server');
+  var vals = await Promise.all(BK_NODES.map(function(nd){ return fbTimeout(_fbDb.ref(nd[0]).once('value'), 60000, 'Backup').then(function(sn){ return sn.val(); }); }));
+  var data = {}; BK_NODES.forEach(function(nd, i){ if(vals[i] != null) data[nd[0]] = vals[i]; });
+  var at = Date.now(), id = 'B' + at, counts = bkCounts(data), size = 0;
+  try{ size = JSON.stringify(data).length; }catch(e){}
+  var info = { id: id, at: at, day: arsToday(), kind: kind || 'auto', by: (session && session.name) || '', counts: counts, size: size };
+  await bkTx(['info', 'data'], 'readwrite', function(tx){ tx.objectStore('info').put(info); tx.objectStore('data').put({ id: id, data: data }); return null; });
+  // keep the last BK_KEEP copies + the one with the most bills
+  var all = await bkInfos(), best = all.slice().sort(function(a, b){ return (b.counts.bills || 0) - (a.counts.bills || 0) || b.at - a.at; })[0];
+  var drop = all.slice(BK_KEEP).filter(function(x){ return !best || x.id !== best.id; });
+  if(drop.length) await bkTx(['info', 'data'], 'readwrite', function(tx){ drop.forEach(function(x){ tx.objectStore('info').delete(x.id); tx.objectStore('data').delete(x.id); }); return null; });
+  try{ localStorage.setItem('ars_bk_last_day', info.day); }catch(e){}
+  _bkList = null;
+  bkCheckWiped(info, all.filter(function(x){ return x.id !== id; }));
+  return info;
+}
+/* Once a day, by itself, on the main admin's phone (a minute after opening, when online). */
+function bkAutoMaybe(){
+  if(_bkRunning || !bkIsMainAdmin() || !_fbDb || _fbReadOnly || !window.indexedDB) return;
+  var last = ''; try{ last = localStorage.getItem('ars_bk_last_day') || ''; }catch(e){}
+  if(last === arsToday()) return;
+  _bkRunning = true;
+  bkMake('auto').catch(function(){}).then(function(){ _bkRunning = false; if(adminTab === 'backup' && !document.getElementById('adminScreen').classList.contains('hidden')) bkPaint(); });
+}
+/* The server suddenly has far fewer bills (or no accounts / price list) than the last copy: say so, with one tap to restore. */
+function bkCheckWiped(now, older){
+  var prev = older.filter(function(x){ return !x.wiped; })[0]; if(!prev) return;
+  var c = now.counts, p = prev.counts, why = [];
+  var resetLately = false; try{ var m = loadJSON('ars_fb_meta', {}) || {}; resetLately = (Date.now() - (Number(m.sales) || 0)) < 3 * 86400000; }catch(e){}
+  if(!resetLately && (p.bills || 0) >= 20 && (c.bills || 0) < (p.bills || 0) * 0.5) why.push('bills ' + (c.bills || 0) + ' (was ' + p.bills + ')');
+  if((p.accounts || 0) > 0 && !(c.accounts > 0)) why.push('accounts 0 (was ' + p.accounts + ')');
+  if((p.prices || 0) > 0 && !(c.prices > 0)) why.push('price list empty (was ' + p.prices + ' items)');
+  if(!why.length) return;
+  now.wiped = true; bkTx(['info'], 'readwrite', function(tx){ return tx.objectStore('info').put(now); }).catch(function(){});
+  bkWipedBanner(prev, why.join(', '));
+}
+function bkWipedBanner(prev, why){
+  var old = document.getElementById('bkWipedBanner'); if(old) old.remove();
+  var b = document.createElement('div'); b.id = 'bkWipedBanner';
+  b.style.cssText = 'position:fixed; left:10px; right:10px; top:calc(10px + env(safe-area-inset-top)); z-index:99990; background:#b3261e; color:#fff; padding:12px 14px; border-radius:12px; font-size:13px; font-weight:700; line-height:1.45; box-shadow:0 6px 20px rgba(0,0,0,.35);';
+  b.innerHTML = '⚠️ Server data looks deleted: ' + estEsc(why) + '.<br>Backup of ' + estEsc(new Date(prev.at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })) + ' has ' + estEsc(bkCountsText(prev.counts)) + '.' +
+    '<div style="display:flex; gap:8px; margin-top:8px;"><button id="bkWbGo" style="flex:2; padding:9px; border:none; border-radius:9px; background:#fff; color:#b3261e; font-weight:800; font-size:13px; cursor:pointer;">♻️ Restore now</button><button id="bkWbX" style="flex:1; padding:9px; border:1.5px solid #fff; border-radius:9px; background:transparent; color:#fff; font-weight:800; font-size:13px; cursor:pointer;">Later</button></div>';
+  document.body.appendChild(b);
+  document.getElementById('bkWbX').onclick = function(){ b.remove(); };
+  document.getElementById('bkWbGo').onclick = function(){ b.remove(); try{ showAdmin(); setAdminTab('backup'); }catch(e){} bkRestoreOpen(prev.id); };
+}
+/* Restore: for the ticked types, "missing only" adds what the server does not have (records / settings); "overwrite"
+   also puts back the backup's copy of records and settings that changed. Nothing newer on the server is ever removed. */
+async function bkRestore(data, types, overwrite){
+  if(!_fbDb || _fbReadOnly) throw new Error('Not connected to the server');
+  var want = {}; types.forEach(function(t){ want[t] = 1; });
+  var upd = {}, got = {}, bills = [];
+  for(var i = 0; i < BK_NODES.length; i++){
+    var nd = BK_NODES[i], name = nd[0], typ = nd[1], mode = nd[2], bk = data[name];
+    if(!want[typ] || bk == null || mode === 2) continue;
+    var cur = (await fbTimeout(_fbDb.ref(name).once('value'), 60000, 'Restore')).val();
+    if(mode === 1 && typeof bk === 'object'){
+      Object.keys(bk).forEach(function(k){
+        if(cur && cur[k] != null && !overwrite) return;
+        if(cur && cur[k] != null && JSON.stringify(cur[k]) === JSON.stringify(bk[k])) return;
+        upd[name + '/' + k] = bk[k]; got[typ] = (got[typ] || 0) + 1;
+        if(name === 'sales' && bk[k] && bk[k].id) bills.push(bk[k]);
+      });
+    } else if(cur == null || overwrite){ upd[name] = bk; got[typ] = (got[typ] || 0) + 1; }
+  }
+  if(want.bills || want.shop){
+    var cm = (await fbTimeout(_fbDb.ref('meta').once('value'), 30000, 'Restore')).val() || {}, bm = data.meta || {}, maxNo = 0;
+    Object.keys(data.sales || {}).forEach(function(k){ var b = data.sales[k]; if(b && Number(b.billNo) > maxNo) maxNo = Number(b.billNo); });
+    upd['meta/billCounter'] = Math.max(Number(cm.billCounter) || 0, Number(bm.billCounter) || 0, want.bills ? maxNo : 0);
+    if(want.bills){ upd['meta/salesResetAt'] = null; upd['meta/salesRestoreAt'] = Date.now(); }
+  }
+  var keys = Object.keys(upd);
+  for(var j = 0; j < keys.length; j += 400){                 // in parts, so a big season of bills goes up safely
+    var part = {}; keys.slice(j, j + 400).forEach(function(k){ part[k] = upd[k]; });
+    await fbTimeout(_fbDb.ref().update(part), 90000, 'Restore');
+  }
+  var p = loadJSON('ars_fb_pending_reset', {}) || {}; if(want.bills && p.sales){ delete p.sales; _rawSaveJSON('ars_fb_pending_reset', p); }
+  if(bills.length){ bills.forEach(function(b){ if(!Array.isArray(b.items)) b.items = fbToArr(b.items); }); mergeRemoteSales(bills); }
+  return got;
+}
+/* ---- Backup tab ---- */
+function bkWhen(t){ try{ return new Date(t).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }); }catch(e){ return ''; } }
+function bkDayWhen(t){
+  try{ var d = new Date(t), k = function(x){ var y = new Date(x); return y.getFullYear() + '-' + y.getMonth() + '-' + y.getDate(); };
+    var tm = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+    if(k(d) === k(Date.now())) return 'Today, ' + tm;
+    if(k(d) === k(Date.now() - 86400000)) return 'Yesterday, ' + tm;
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ', ' + tm; }catch(e){ return ''; }
+}
+var _bkShowAll = false, _bkMore = false, _bkOpen = {}, _bkDet = {};
+/* 👁️ on a backup: its details (each type, bills ₹ total and dates, who / how it was made, size). */
+function bkEye(id){
+  _bkOpen[id] = !_bkOpen[id]; bkPaint();
+  if(_bkOpen[id] && !_bkDet[id]) bkData(id).then(function(data){
+    var t = 0, a = '', z = '', sales = (data && data.sales) || {};
+    Object.keys(sales).forEach(function(k){ var b = sales[k]; if(!b) return; if(isCountedSale(b)) t += Number(b.total) || 0; var d = String(b.time || ''); if(d && (!a || d < a)) a = d; if(d > z) z = d; });
+    _bkDet[id] = { total: t, from: a, to: z }; bkPaint();
+  }).catch(function(){ _bkDet[id] = { err: 1 }; bkPaint(); });
+}
+function bkDetHtml(x){
+  var c = x.counts || {}, d = _bkDet[x.id], dl = function(v){ try{ return new Date(v).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); }catch(e){ return ''; } };
+  var tile = function(ico, lab, val, sub){ return '<div style="background:#f3f8f4; border-radius:10px; padding:7px 8px;"><div style="font-size:10.5px; font-weight:700; color:#6b7c70;">' + ico + ' ' + lab + '</div><div style="font-size:15px; font-weight:800; color:#1b3a20; line-height:1.2;">' + val + '</div>' + (sub ? '<div style="font-size:10px; color:#6b7c70;">' + sub + '</div>' : '') + '</div>'; };
+  var billSub = !d ? 'loading&hellip;' : (d.err ? '' : '&#8377;' + Math.round(d.total).toLocaleString('en-IN') + (d.from ? ' &middot; ' + dl(d.from) + (dl(d.to) !== dl(d.from) ? ' &ndash; ' + dl(d.to) : '') : ''));
+  var kb = x.size || 0, sz = kb > 1048576 ? (kb / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(kb / 1024)) + ' KB';
+  return '<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:2px 0 4px 20px;">' +
+    tile('&#129534;', 'Bills', c.bills || 0, billSub) + tile('&#128176;', 'Price items', c.prices || 0) +
+    tile('&#128100;', 'Accounts', c.accounts || 0) + tile('&#127968;', 'Branches', c.shop || 0) +
+    tile('&#129489;', 'Customers', c.customers || 0) + tile('&#128272;', 'Logins', c.logins || 0) + '</div>' +
+    '<div style="font-size:11px; color:#6b7c70; margin:0 0 6px 20px;">' + (x.kind === 'auto' ? '&#128338; Automatic' : '&#9995; Manual') + (x.by ? ' &middot; ' + estEsc(x.by) : '') + ' &middot; ' + bkWhen(x.at) + ' &middot; ' + sz + '</div>';
+}
+function bkLastText(){
+  if(!_bkList || !_bkList.length) return _bkList === null ? 'Checking&hellip;' : 'No backup yet';
+  var x = _bkList[0]; return 'Last: ' + bkDayWhen(x.at) + ' &middot; ' + ((x.counts || {}).bills || 0) + ' bills';
+}
+function bkCardHtml(){
+  if(_bkList === null) return '<div class="bk2-meta" style="padding:6px 4px;">Loading&hellip;</div>';
+  if(!_bkList.length) return '<div class="bk2-meta" style="padding:6px 4px;">No backup on this phone yet &mdash; tap <b>Back up now</b>.</div>';
+  var rows = _bkShowAll ? _bkList : _bkList.slice(0, 3), h = '';
+  rows.forEach(function(x){
+    var c = x.counts || {};
+    var on = !!_bkOpen[x.id];
+    h += '<div class="bk2-item"><span class="bk2-dot' + (x.wiped ? ' bad' : (x.kind === 'auto' ? '' : ' man')) + '" title="' + (x.kind === 'auto' ? 'Automatic' : 'Manual') + '"></span>' +
+      '<div style="flex:1; min-width:0;"><div class="bk2-when">' + bkDayWhen(x.at) + '</div><div class="bk2-meta">' +
+      (x.wiped ? '<b style="color:#b3261e;">&#9888;&#65039; server looked empty</b>' : (c.bills || 0) + ' bills') + '</div></div>' +
+      '<button class="bk2-eye' + (on ? ' on' : '') + '" onclick="bkEye(\'' + x.id + '\')" title="' + (on ? 'Hide details' : 'Show details') + '" aria-label="' + (on ? 'Hide details' : 'Show details') + '">' + (on ? '&#128584;' : '&#128065;&#65039;') + '</button>' +
+      '<button class="bk2-rs" onclick="bkRestoreOpen(\'' + x.id + '\')">&#9851;&#65039; Restore</button></div>' + (on ? bkDetHtml(x) : '');
+  });
+  if(_bkList.length > 3) h += '<button class="bk2-link" onclick="_bkShowAll=!_bkShowAll; bkPaint();">' + (_bkShowAll ? 'Show less &#9652;' : 'Show all (' + _bkList.length + ') &#9662;') + '</button>';
+  return h;
+}
+function bkPaint(){
+  var b = document.getElementById('bkBox'); if(!b) return;
+  var last = function(){ var l = document.getElementById('bkLast'); if(l) l.innerHTML = bkLastText(); };
+  if(_bkList === null){ b.innerHTML = bkCardHtml(); last(); bkInfos().then(function(a){ _bkList = a; var b2 = document.getElementById('bkBox'); if(b2) b2.innerHTML = bkCardHtml(); last(); }).catch(function(){ _bkList = []; var b3 = document.getElementById('bkBox'); if(b3) b3.innerHTML = bkCardHtml(); last(); }); return; }
+  b.innerHTML = bkCardHtml(); last();
+}
+async function bkNow(btn){
+  if(!_fbDb){ alert('Connect to the internet first.'); return; }
+  if(_bkRunning) return; _bkRunning = true;
+  var old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = 'Backing up the server&hellip;'; }
+  try{ var info = await bkMake('manual'); alert('✓ Backup saved on this phone.\n' + bkCountsText(info.counts)); }
+  catch(e){ alert('Could not back up: ' + ((e && e.message) || e) + '\nCheck the internet and try again.'); }
+  _bkRunning = false; if(btn){ btn.disabled = false; btn.innerHTML = old; }
+  _bkList = null; bkPaint();
+}
+/* Restore sheet: tick the types, choose missing-only or overwrite. */
+var _bkRestoreData = null;
+async function bkRestoreOpen(id, fileData, fileLabel){
+  var data = fileData || null, label = fileLabel || '';
+  if(!data){ try{ data = await bkData(id); }catch(e){} var inf = (_bkList || []).filter(function(x){ return x.id === id; })[0]; label = inf ? 'Backup of ' + bkWhen(inf.at) : 'Backup'; }
+  if(!data){ alert('This backup could not be read.'); return; }
+  _bkRestoreData = data;
+  var c = bkCounts(data), cnt = { bills: c.bills, prices: c.prices + ' items', accounts: c.accounts, shop: c.shop + ' branches', logins: c.logins, customers: c.customers };
+  var old = document.getElementById('bkRestoreOv'); if(old) old.remove();
+  var ov = document.createElement('div'); ov.id = 'bkRestoreOv';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:9100; background:rgba(0,0,0,0.45); display:flex; align-items:flex-end; justify-content:center;';
+  ov.innerHTML = '<div style="background:#fffaf0; width:100%; max-width:480px; max-height:92vh; overflow:auto; border-radius:18px 18px 0 0; padding:14px 14px calc(14px + env(safe-area-inset-bottom));">' +
+    '<div style="font-weight:800; font-size:15px; color:#1e7a3c;">&#9851;&#65039; Restore to server</div><div style="font-size:12px; color:#8a6a44; margin:2px 0 10px;">' + estEsc(label) + '</div>' +
+    '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin-bottom:6px;">WHAT TO RESTORE</div>' +
+    BK_TYPES.map(function(t){ return '<label style="display:flex; align-items:center; gap:9px; padding:8px 4px; border-bottom:1px solid #f0e3c6; font-size:13.5px; font-weight:700; color:#3a2a14; cursor:pointer;"><input type="checkbox" class="bkT" value="' + t[0] + '" checked style="width:19px; height:19px;"><span style="flex:1;">' + t[1] + '</span><span style="font-size:12px; color:#8a6a44;">' + cnt[t[0]] + '</span></label>'; }).join('') +
+    '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:12px 0 6px;">HOW</div>' +
+    '<label style="display:flex; gap:9px; align-items:flex-start; font-size:13px; color:#3a2a14; margin-bottom:8px; cursor:pointer;"><input type="radio" name="bkMode" value="missing" checked style="width:18px; height:18px; margin-top:1px;"><span><b>Put back only what is missing</b> (safe)<br><span style="font-size:11.5px; color:#8a6a44;">Anything the server has now stays as it is.</span></span></label>' +
+    '<label style="display:flex; gap:9px; align-items:flex-start; font-size:13px; color:#3a2a14; margin-bottom:12px; cursor:pointer;"><input type="radio" name="bkMode" value="over" style="width:18px; height:18px; margin-top:1px;"><span><b>Overwrite with this backup</b><br><span style="font-size:11.5px; color:#8a6a44;">Changes made after the backup (edited bills, prices, PINs) go back to the backup copy. New bills are kept.</span></span></label>' +
+    '<button id="bkRsGo" onclick="bkRestoreGo(this)" style="display:block; width:100%; padding:13px; border:none; border-radius:11px; background:#1e7a3c; color:#fff; font-weight:800; font-size:15px; cursor:pointer; margin-bottom:8px;">&#9851;&#65039; Restore</button>' +
+    '<button onclick="document.getElementById(\'bkRestoreOv\').remove()" style="display:block; width:100%; padding:10px; border:none; background:none; color:#8a6a44; font-weight:800; font-size:13px; cursor:pointer;">Cancel</button></div>';
+  ov.addEventListener('click', function(e){ if(e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+async function bkRestoreGo(btn){
+  var types = [].slice.call(document.querySelectorAll('#bkRestoreOv .bkT')).filter(function(x){ return x.checked; }).map(function(x){ return x.value; });
+  if(!types.length){ alert('Tick at least one type.'); return; }
+  var over = !!(document.querySelector('#bkRestoreOv input[name=bkMode]:checked') || {}).value && document.querySelector('#bkRestoreOv input[name=bkMode]:checked').value === 'over';
+  if(over && !(await showConfirm('Overwrite the server with this backup for the ticked types?\nChanges made after the backup go back to the backup copy. New bills are kept.'))) return;
+  if(!_fbDb){ alert('Connect to the internet first.'); return; }
+  var old = btn.innerHTML; btn.disabled = true; btn.innerHTML = 'Restoring&hellip;';
+  try{
+    var got = await bkRestore(_bkRestoreData, types, over), lines = BK_TYPES.filter(function(t){ return got[t[0]]; }).map(function(t){ return t[1].replace(/&[^;]+;/g, '').trim() + ': ' + got[t[0]]; });
+    var ov = document.getElementById('bkRestoreOv'); if(ov) ov.remove();
+    alert(lines.length ? '✓ Restored to the server:\n' + lines.join('\n') + '\n\nOther phones get it the next time the app is opened.' : '✓ Nothing was missing - the server already has everything in this backup.');
+    renderAdmin();
+  }catch(e){ alert('Could not restore: ' + ((e && e.message) || e) + '\nCheck the internet and try again.'); btn.disabled = false; btn.innerHTML = old; }
+}
+/* Backup file: the newest full copy (made now if this phone has none today) as one file to keep anywhere. */
+async function bkSaveFile(btn){
+  var old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = 'Preparing&hellip;'; }
+  try{
+    var list = await bkInfos().catch(function(){ return []; }), info = list.filter(function(x){ return !x.wiped; })[0], data = null;
+    if((!info || info.day !== arsToday()) && _fbDb){ var fresh = await bkMake('manual'); if(!fresh.wiped || !info) info = fresh; }   // never a copy taken while the server looked deleted
+    if(info) data = await bkData(info.id);
+    if(!data) throw new Error('No backup yet - connect to the internet and try again');
+    var d = new Date(info.at), p = function(x){ return (x < 10 ? '0' : '') + x; };
+    var file = { app: 'ARS Billing', kind: 'full-backup', at: new Date(info.at).toISOString(), counts: info.counts, data: data };
+    estDownload(new Blob([JSON.stringify(file)], { type: 'application/json' }), 'ARS_Full_Backup_' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + '.json');
+    try{ localStorage.setItem('ars_backup_file_at', new Date().toISOString()); }catch(e){}
+  }catch(e){ alert('Could not save the file: ' + ((e && e.message) || e)); }
+  if(btn){ btn.disabled = false; btn.innerHTML = old; }
+  _bkList = null; bkPaint();
 }
 function fbApplyMeta(meta){
   var known = loadJSON('ars_fb_meta', {}) || {};
@@ -3879,7 +4134,7 @@ document.addEventListener('visibilitychange', function(){
   if(session) markAppOpen();
 });
 document.addEventListener('pointerdown', function(){ if(session) noteAppUse(); }, true);
-setInterval(function(){ if(session){ sellerDayTick(); lastSeenSend(); lastSeenAttach(); } }, 60000);
+setInterval(function(){ if(session){ sellerDayTick(); lastSeenSend(); lastSeenAttach(); try{ bkAutoMaybe(); }catch(e){} } }, 60000);
 function forceLogout(msg){
   session = null;
   saveJSON('ars_session', null);
@@ -3954,7 +4209,8 @@ function enterApp(){
   }
   if(session && session.role === 'admin'){ fbAttachAdminColls(); if(usersHashPins()) saveJSON('ars_users', USERS); }
   else { try{ var _tr = salesTrimForPhone(loadJSON('ars_sales', []) || []); if(_tr.length !== SALES.length){ SALES = _tr; _rawSaveJSON('ars_sales', SALES); } }catch(e){} }
-  setTimeout(function(){ try{ markAppOpen(); lastSeenAttach(); }catch(e){} }, 1200);   // opened after 1 hour+ (or a login): save the open time
+  setTimeout(function(){ try{ markAppOpen(); lastSeenAttach(); }catch(e){} }, 1200);
+  setTimeout(function(){ try{ bkAutoMaybe(); }catch(e){} }, 20000);   // main admin: today's full server backup, by itself   // opened after 1 hour+ (or a login): save the open time
   initFirebase();   // open live listeners so other devices' bills appear instantly
   startFbFullSyncTimer();   // plus a full re-sync every 40 minutes
   fbFullSync();
@@ -4680,7 +4936,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v62';
+var APP_BUILD = 'v63';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -9041,17 +9297,27 @@ function renderAdmin(){
 
   } else if(adminTab === 'backup'){
     var _bfAt = ''; try{ _bfAt = localStorage.getItem('ars_backup_file_at') || ''; }catch(e){}
-    main.innerHTML = `<div class="backup-card" style="background:#e9f7ec; border-color:#1e7a3c;">
-        <div class="section-title" style="margin-top:0; color:#1e7a3c;">&#9851;&#65039; Restore deleted bills</div>
-        <button onclick="restoreFind(this)" style="width:100%; padding:11px; background:#fff; color:#1e7a3c; border:2px solid #1e7a3c; border-radius:9px; font-weight:800; font-size:13.5px; cursor:pointer; margin-bottom:9px;">&#128269; Find deleted bills</button>
-        <div id="restoreBox">${restoreCardHtml()}</div>
-        <div style="font-size:11.5px; font-weight:800; color:#1b3a20; margin:10px 0 6px;">&#128190; Backup file (all bills on this phone)</div>
-        <div style="display:flex; gap:8px;">
-          <button onclick="backupDownload()" style="flex:1; padding:10px 6px; background:#1e7a3c; color:#fff; border:none; border-radius:9px; font-weight:800; font-size:12.5px; cursor:pointer;">&#11015;&#65039; Save backup file</button>
-          <label style="flex:1; display:flex; align-items:center; justify-content:center; padding:10px 6px; background:#fff; color:#1e7a3c; border:2px solid #1e7a3c; border-radius:9px; font-weight:800; font-size:12.5px; cursor:pointer; text-align:center;">&#11014;&#65039; Restore from file<input type="file" accept=".json,application/json" onchange="backupFilePick(this)" style="display:none;"></label>
+    main.innerHTML = `<div class="bk2-hero">
+        <div class="bk2-row"><div class="bk2-ico">&#128737;&#65039;</div>
+          <div style="flex:1; min-width:0;"><div class="bk2-title">Server backup</div><div class="bk2-sub" id="bkLast">${bkLastText()}</div></div>
+          ${bkIsMainAdmin() ? '<span class="bk2-chip">&#10003; Auto daily</span>' : ''}</div>
+        <div class="bk2-btns">
+          <button class="bk2-btn" onclick="bkNow(this)">&#128737;&#65039; Back up now</button>
+          <button class="bk2-btn ghost" onclick="bkSaveFile(this)">&#11015;&#65039; Save file</button>
         </div>
-        <div style="font-size:10.5px; color:#44557a; margin-top:6px; line-height:1.45;">${_bfAt ? 'Last backup file: ' + new Date(_bfAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) + '. ' : ''}Keep the file safe (Google Drive, or WhatsApp it to yourself). Restoring adds only the bills the server does not have.</div>
       </div>
+      <div class="bk2-card">
+        <div class="bk2-h" style="display:flex; justify-content:space-between; align-items:center;"><span>&#9851;&#65039; Restore</span><span style="font-size:10.5px; font-weight:700; color:#6b7c70;"><span class="bk2-dot" style="display:inline-block; width:8px; height:8px;"></span> Auto &nbsp;<span class="bk2-dot man" style="display:inline-block; width:8px; height:8px;"></span> Manual</span></div>
+        <div id="bkBox">${bkCardHtml()}</div>
+        <div class="bk2-btns">
+          <label class="bk2-btn">&#11014;&#65039; From file<input type="file" accept=".json,application/json" onchange="backupFilePick(this)" style="display:none;"></label>
+          <button class="bk2-btn" onclick="restoreFind(this)">&#128465; Removed by Reset</button>
+        </div>
+        <div id="restoreBox" style="margin-top:8px;">${restoreCardHtml()}</div>
+        <div class="bk2-meta" style="margin:8px 2px 0;">${_bfAt ? 'Last file saved ' + bkDayWhen(_bfAt) + '. ' : ''}Keep the saved file in Google Drive or WhatsApp it to yourself.</div>
+      </div>
+      <button class="bk2-more" onclick="_bkMore=!_bkMore; renderAdmin();"><span>&#9881;&#65039; More (Google Sheet, Firebase, Reset)</span><span>${_bkMore ? '&#9652;' : '&#9662;'}</span></button>
+      <div style="display:${_bkMore ? 'block' : 'none'};">
       <div class="backup-card" style="background:#eef7ee; border-color:#2e7d32;">
         <div class="section-title" style="margin-top:0; margin-bottom:0; color:#2e7d32; display:flex; align-items:center; justify-content:space-between;"><span>&#128190; Google Sheet Backup (manual)</span><button onclick="bkEyeToggle('sheet')" title="Show / hide" style="width:auto; margin:0; padding:4px 10px; background:#fff; border:1px solid #2e7d32; border-radius:8px; font-size:16px; cursor:pointer;">${_bkShow.sheet?'&#128065;':'&#128584;'}</button></div>
         <div style="display:${_bkShow.sheet?'block':'none'}; margin-top:10px;">
@@ -9086,7 +9352,9 @@ function renderAdmin(){
           <button class="icon-square-btn" onclick="resetLoginHistory()" style="background:var(--danger); color:#fff;" title="Reset Login History">🗑️<span>Logins</span></button>
         </div>
       </div>
+      </div>
       <div class="empty-admin" style="text-align:left; padding:0 4px;" id="backupStatus"></div>`;
+    _bkList = null; bkPaint();
   }
 }
 
