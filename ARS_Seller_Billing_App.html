@@ -2200,10 +2200,10 @@ function mergeRemotePriceChanges(list){
    and on every other phone. The reset time is published under meta/, so a phone
    that was switched off at the time drops its old copies when it next connects
    instead of uploading them all again. */
-function fbResetCollection(name){
+function fbResetCollection(name, ts){
   if(_fbReadOnly) return;
   var pending = loadJSON('ars_fb_pending_reset', {}) || {};
-  pending[name] = Date.now();
+  pending[name] = ts || Date.now();
   _rawSaveJSON('ars_fb_pending_reset', pending);
   fbFlushPendingResets();
 }
@@ -2214,14 +2214,14 @@ function fbFlushPendingResets(){
     var c = FB_COLL[name], ts = pending[name], keptMax = 0;
     if(!c){ return; }
     _fbDb.ref(c.path).once('value').then(function(snap){
-      var all = snap.val() || {}, upd = {};
+      var all = snap.val() || {}, upd = {}, gone = {};
       Object.keys(all).forEach(function(k){
         var t = Date.parse(all[k] && all[k].time);
-        if(!(t > ts)) upd[k] = null;                   // remove everything recorded up to the reset
+        if(!(t > ts)){ gone[k] = 1; upd[c.path + '/' + k] = null; upd[c.path + 'Archive/' + ts + '/' + k] = all[k]; }   // removed, but kept in the archive (Backup -> Restore)
       });
       keptMax = 0;
-      Object.keys(all).forEach(function(k){ if(!upd.hasOwnProperty(k) && all[k] && all[k].billNo > keptMax) keptMax = all[k].billNo; });
-      return Object.keys(upd).length ? _fbDb.ref(c.path).update(upd) : null;
+      Object.keys(all).forEach(function(k){ if(!gone[k] && all[k] && all[k].billNo > keptMax) keptMax = all[k].billNo; });
+      return Object.keys(upd).length ? _fbDb.ref().update(upd) : null;
     }).then(function(){
       return name === 'sales' ? _fbDb.ref('meta/billCounter').set(keptMax) : null;   // the next bill number starts again after a reset
     }).then(function(){
@@ -2233,13 +2233,130 @@ function fbFlushPendingResets(){
     }).catch(fbNoteError);
   });
 }
+/* ---- Bills are never lost by a reset ----
+   Before bills are cleared (Backup -> Reset, or a reset that arrives from another phone), every bill being removed is
+   kept on this phone ("ars_rescue_sales") and copied to the server under salesArchive/<reset time>/<bill id>.
+   Admin -> Backup -> "Restore deleted bills" puts them back. A backup file can also be saved and restored. */
+function rescueRead(name){
+  try{ var raw = localStorage.getItem('ars_rescue_' + name); if(!raw) return { at: 0, bills: {} }; var o = JSON.parse(LZString.decompressFromUTF16(raw) || '{}') || {}; o.bills = o.bills || {}; return o; }catch(e){ return { at: 0, bills: {} }; }
+}
+function rescueKeep(name, list, ts){
+  var c = FB_COLL[name]; if(!c || !list || !list.length) return;
+  try{
+    var cur = rescueRead(name);
+    list.forEach(function(r){ var k = c.keyOf(r); if(k) cur.bills[k] = r; });
+    cur.at = Math.max(Number(ts) || 0, cur.at || 0);
+    localStorage.setItem('ars_rescue_' + name, LZString.compressToUTF16(JSON.stringify(cur)));
+  }catch(e){}
+  if(_fbDb && !_fbReadOnly){
+    var upd = {}; list.forEach(function(r){ var k = c.keyOf(r); if(k) upd[k] = fbClean(r); });
+    try{ _fbDb.ref(c.path + 'Archive/' + ts).update(upd).catch(fbNoteError); }catch(e){}
+  }
+}
+/* Read a list from the server again from the start (after a restore). */
+function fbReloadColl(name){
+  var c = FB_COLL[name]; if(!c || !_fbDb || !c.attached) return;
+  var m = loadJSON('ars_fb_synced', {}) || {}; delete m[name]; _rawSaveJSON('ars_fb_synced', m);
+  try{ c.query.off('child_added', c.onAdd); c.query.off('child_changed', c.onChg); }catch(e){}
+  c.attached = false; c.loaded = false; c.loadAsked = false; c.remote = new Set();
+  fbLoadColl(name);
+}
+/* Puts bills back on the server (only the ones it does not have) and on this phone. Returns how many were added. */
+async function restoreBills(bills){
+  bills = (bills || []).filter(function(b){ return b && b.id && b.time; });
+  bills.forEach(function(b){ if(!Array.isArray(b.items)) b.items = fbToArr(b.items); });
+  var maxNo = 0; bills.forEach(function(b){ if(Number(b.billNo) > maxNo) maxNo = Number(b.billNo); });
+  var p = loadJSON('ars_fb_pending_reset', {}) || {}; if(p.sales){ delete p.sales; _rawSaveJSON('ars_fb_pending_reset', p); }   // a reset not yet sent must not remove them again
+  var added = bills.length;
+  if(_fbDb && !_fbReadOnly){
+    var have = (await fbTimeout(_fbDb.ref('sales').once('value'), 30000, 'Restore')).val() || {};
+    var meta = (await fbTimeout(_fbDb.ref('meta').once('value'), 15000, 'Restore')).val() || {};
+    var upd = {}; added = 0;
+    bills.forEach(function(b){ if(!have[b.id]){ upd['sales/' + b.id] = fbClean(b); added++; } });
+    upd['meta/billCounter'] = Math.max(Number(meta.billCounter) || 0, maxNo);
+    upd['meta/salesResetAt'] = null;                         // phones that still hold bills keep them
+    upd['meta/salesRestoreAt'] = Date.now();
+    await fbTimeout(_fbDb.ref().update(upd), 60000, 'Restore');
+  }
+  mergeRemoteSales(bills);
+  if(maxNo > BILL_COUNTER){ BILL_COUNTER = maxNo; _rawSaveJSON('ars_bill_counter', BILL_COUNTER); }
+  return added;
+}
+var _rsArch = null, _rsBusy = false;
+function rsMoney(n){ return '₹' + (Math.round(Number(n) || 0)).toLocaleString('en-IN'); }
+function rsSummary(list){
+  var t = 0, a = '', z = ''; list.forEach(function(b){ if(isCountedSale(b)) t += Number(b.total) || 0; var d = String(b.time || ''); if(!a || d < a) a = d; if(d > z) z = d; });
+  var dl = function(x){ try{ return new Date(x).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); }catch(e){ return ''; } };
+  return list.length + ' bill' + (list.length === 1 ? '' : 's') + (a ? ' · ' + dl(a) + (dl(z) !== dl(a) ? ' – ' + dl(z) : '') : '') + ' · ' + rsMoney(t);
+}
+function restoreCardHtml(){
+  var mine = Object.keys(rescueRead('sales').bills).length, h = '';
+  if(_rsArch === null) h += '<div style="font-size:12px; color:#5b4630;">Tap <b>Find deleted bills</b> to see what can be put back.</div>';
+  else if(_rsArch === 'err') h += '<div style="font-size:12px; color:#b3261e;">Could not read the server. Check the internet and try again.</div>';
+  else {
+    var keys = Object.keys(_rsArch).sort().reverse();
+    if(!keys.length && !mine) h += '<div style="font-size:12px; color:#1e7a3c; font-weight:700;">No deleted bills found.</div>';
+    keys.forEach(function(ts){
+      var list = Object.keys(_rsArch[ts] || {}).map(function(k){ return _rsArch[ts][k]; });
+      h += '<div style="background:#fff; border:1px solid #cfe3d2; border-radius:10px; padding:9px 10px; margin-bottom:7px;">' +
+        '<div style="font-size:12.5px; font-weight:800; color:#1b3a20;">&#128465; Deleted on ' + estEsc(new Date(Number(ts)).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })) + '</div>' +
+        '<div style="font-size:12px; color:#44557a; margin:2px 0 7px;">' + rsSummary(list) + '</div>' +
+        '<button onclick="restoreFromArchive(\'' + ts + '\', this)" style="width:100%; padding:10px; border:none; border-radius:9px; background:#1e7a3c; color:#fff; font-weight:800; font-size:13.5px; cursor:pointer;">&#9851;&#65039; Restore these bills</button></div>';
+    });
+  }
+  if(mine) h += '<div style="background:#fff; border:1px solid #cfe3d2; border-radius:10px; padding:9px 10px; margin-bottom:7px;"><div style="font-size:12.5px; font-weight:800; color:#1b3a20;">&#128241; Saved on this phone before a reset</div>' +
+    '<div style="font-size:12px; color:#44557a; margin:2px 0 7px;">' + rsSummary(Object.keys(rescueRead('sales').bills).map(function(k){ return rescueRead('sales').bills[k]; })) + '</div>' +
+    '<button onclick="restoreFromPhone(this)" style="width:100%; padding:10px; border:none; border-radius:9px; background:#1e7a3c; color:#fff; font-weight:800; font-size:13.5px; cursor:pointer;">&#9851;&#65039; Restore these bills</button></div>';
+  return h;
+}
+function restorePaint(){ var b = document.getElementById('restoreBox'); if(b) b.innerHTML = restoreCardHtml(); }
+async function restoreFind(btn){
+  if(!_fbDb){ alert('Connect to the internet first.'); return; }
+  var old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = 'Looking…'; }
+  try{ _rsArch = (await fbTimeout(_fbDb.ref('salesArchive').once('value'), 30000, 'Restore')).val() || {}; }catch(e){ _rsArch = 'err'; }
+  if(btn){ btn.disabled = false; btn.innerHTML = old; }
+  restorePaint();
+}
+async function restoreRun(list, btn, done){
+  if(_rsBusy) return; if(!list.length){ alert('Nothing to restore.'); return; }
+  if(!(await showConfirm('Restore ' + rsSummary(list) + '?\n\nBills the server already has are not changed.'))) return;
+  _rsBusy = true; var old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = 'Restoring…'; }
+  try{ var n = await restoreBills(list); if(done) done(); alert('✓ ' + n + ' bill' + (n === 1 ? '' : 's') + ' restored. Other phones get them the next time the app is opened.'); }
+  catch(e){ alert('Could not restore: ' + ((e && e.message) || e) + '\nCheck the internet and try again.'); }
+  _rsBusy = false; if(btn){ btn.disabled = false; btn.innerHTML = old; }
+  renderAdmin();
+}
+function restoreFromArchive(ts, btn){ var a = (_rsArch && _rsArch[ts]) || {}; restoreRun(Object.keys(a).map(function(k){ return a[k]; }), btn); }
+function restoreFromPhone(btn){ var r = rescueRead('sales').bills; restoreRun(Object.keys(r).map(function(k){ return r[k]; }), btn); }
+/* Backup file on the phone: every bill this phone holds, as one file (keep it in Google Drive / WhatsApp to yourself). */
+function backupDownload(){
+  var bills = loadJSON('ars_sales', []) || [];
+  if(!bills.length){ alert('No bills on this phone to save.'); return; }
+  var d = new Date(), p = function(x){ return (x < 10 ? '0' : '') + x; };
+  var file = { app: 'ARS Billing', kind: 'sales-backup', at: d.toISOString(), count: bills.length, bills: bills };
+  estDownload(new Blob([JSON.stringify(file)], { type: 'application/json' }), 'ARS_Bills_Backup_' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + '.json');
+  try{ localStorage.setItem('ars_backup_file_at', d.toISOString()); }catch(e){}
+  setTimeout(renderAdmin, 300);
+}
+function backupFilePick(inp){
+  var f = inp.files && inp.files[0]; if(!f) return;
+  var rd = new FileReader();
+  rd.onload = function(){
+    var data = null; try{ data = JSON.parse(rd.result); }catch(e){}
+    var list = data && (Array.isArray(data) ? data : data.bills);
+    if(!Array.isArray(list)){ alert('This is not an A.R.S bills backup file.'); return; }
+    restoreRun(list.filter(function(b){ return b && b.id && b.time; }), null);
+  };
+  rd.readAsText(f); inp.value = '';
+}
 function fbApplyMeta(meta){
   var known = loadJSON('ars_fb_meta', {}) || {};
   var touched = false;
   [['sales', 'ars_sales'], ['loginHistory', 'ars_login_history']].forEach(function(pair){
     var ts = meta && meta[pair[0] + 'ResetAt'];
     if(!ts || !(ts > (known[pair[0]] || 0))) return;
-    var list = (loadJSON(pair[1], []) || []).filter(function(r){ return Date.parse(r.time) > ts; });
+    var all0 = loadJSON(pair[1], []) || [], list = all0.filter(function(r){ return Date.parse(r.time) > ts; });
+    rescueKeep(pair[0], all0.filter(function(r){ return !(Date.parse(r.time) > ts); }), ts);   // never lost: kept on this phone + the server archive
     _rawSaveJSON(pair[1], list);
     if(pair[0] === 'sales'){
       SALES = list;
@@ -2250,6 +2367,9 @@ function fbApplyMeta(meta){
     }
     known[pair[0]] = ts; touched = true;
   });
+  // bills were put back (Backup -> Restore): read the bill list again, so this phone gets them too
+  var rsAt = Number(meta && meta.salesRestoreAt) || 0;
+  if(rsAt && rsAt > (known.salesRestore || 0)){ var firstSeen = !known.salesRestore; known.salesRestore = rsAt; touched = true; if(!firstSeen || (loadJSON('ars_sales', []) || []).length === 0) fbReloadColl('sales'); }
   if(touched){
     _rawSaveJSON('ars_fb_meta', known);
     fbRefreshUI('sales'); fbRefreshUI('logins');
@@ -4560,7 +4680,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v61';
+var APP_BUILD = 'v62';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -8920,7 +9040,19 @@ function renderAdmin(){
       </div>`;
 
   } else if(adminTab === 'backup'){
-    main.innerHTML = `<div class="backup-card" style="background:#eef7ee; border-color:#2e7d32;">
+    var _bfAt = ''; try{ _bfAt = localStorage.getItem('ars_backup_file_at') || ''; }catch(e){}
+    main.innerHTML = `<div class="backup-card" style="background:#e9f7ec; border-color:#1e7a3c;">
+        <div class="section-title" style="margin-top:0; color:#1e7a3c;">&#9851;&#65039; Restore deleted bills</div>
+        <button onclick="restoreFind(this)" style="width:100%; padding:11px; background:#fff; color:#1e7a3c; border:2px solid #1e7a3c; border-radius:9px; font-weight:800; font-size:13.5px; cursor:pointer; margin-bottom:9px;">&#128269; Find deleted bills</button>
+        <div id="restoreBox">${restoreCardHtml()}</div>
+        <div style="font-size:11.5px; font-weight:800; color:#1b3a20; margin:10px 0 6px;">&#128190; Backup file (all bills on this phone)</div>
+        <div style="display:flex; gap:8px;">
+          <button onclick="backupDownload()" style="flex:1; padding:10px 6px; background:#1e7a3c; color:#fff; border:none; border-radius:9px; font-weight:800; font-size:12.5px; cursor:pointer;">&#11015;&#65039; Save backup file</button>
+          <label style="flex:1; display:flex; align-items:center; justify-content:center; padding:10px 6px; background:#fff; color:#1e7a3c; border:2px solid #1e7a3c; border-radius:9px; font-weight:800; font-size:12.5px; cursor:pointer; text-align:center;">&#11014;&#65039; Restore from file<input type="file" accept=".json,application/json" onchange="backupFilePick(this)" style="display:none;"></label>
+        </div>
+        <div style="font-size:10.5px; color:#44557a; margin-top:6px; line-height:1.45;">${_bfAt ? 'Last backup file: ' + new Date(_bfAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) + '. ' : ''}Keep the file safe (Google Drive, or WhatsApp it to yourself). Restoring adds only the bills the server does not have.</div>
+      </div>
+      <div class="backup-card" style="background:#eef7ee; border-color:#2e7d32;">
         <div class="section-title" style="margin-top:0; margin-bottom:0; color:#2e7d32; display:flex; align-items:center; justify-content:space-between;"><span>&#128190; Google Sheet Backup (manual)</span><button onclick="bkEyeToggle('sheet')" title="Show / hide" style="width:auto; margin:0; padding:4px 10px; background:#fff; border:1px solid #2e7d32; border-radius:8px; font-size:16px; cursor:pointer;">${_bkShow.sheet?'&#128065;':'&#128584;'}</button></div>
         <div style="display:${_bkShow.sheet?'block':'none'}; margin-top:10px;">
         <label class="field-label">Apps Script code</label>
@@ -9459,16 +9591,19 @@ function updateUnit(k, val){
 }
 
 async function resetAllSales(){
-  const ok = await showConfirm('⚠️ RESET ALL SALES?\n\nThis will delete ALL sales records and reset Bill Number to 1. This cannot be undone!\n\nContinue?');
+  const ok = await showConfirm('⚠️ RESET ALL SALES?\n\nThis removes ALL sales records from every phone and the server, and starts Bill Number again at 1.\n(The bills are kept in Backup → Restore deleted bills.)\n\nContinue?');
   if(!ok) return;
-  
+  var typed = window.prompt('To clear all sales, type DELETE');
+  if(String(typed || '').trim().toUpperCase() !== 'DELETE'){ alert('Not cleared.'); return; }
+  var resetTs = Date.now();
+  rescueKeep('sales', loadJSON('ars_sales', []) || [], resetTs);   // kept on this phone + the server archive first (same time as the reset)
   SALES = [];
   saveJSON('ars_sales', SALES);
   
   // Also reset Bill Number counter to 0 (so next bill will be 1)
   BILL_COUNTER = 0;
   saveJSON('ars_bill_counter', 0);
-  fbResetCollection('sales');   // clear them on the Firebase server and every other phone too
+  fbResetCollection('sales', resetTs);   // clear them on the Firebase server and every other phone too (kept in salesArchive/<time>)
   
   refreshNotifBadges();
   renderAdmin();
@@ -9476,8 +9611,10 @@ async function resetAllSales(){
 }
 
 async function resetLoginHistory(){
-  const ok = await showConfirm('⚠️ RESET LOGIN HISTORY?\n\nThis will delete ALL login history entries permanently. This cannot be undone!\n\nContinue?');
+  const ok = await showConfirm('⚠️ RESET LOGIN HISTORY?\n\nThis will delete ALL login history entries. This cannot be undone!\n\nContinue?');
   if(!ok) return;
+  var typed = window.prompt('To clear the login history, type DELETE');
+  if(String(typed || '').trim().toUpperCase() !== 'DELETE'){ alert('Not cleared.'); return; }
 
   LOGIN_HISTORY = [];
   saveJSON('ars_login_history', LOGIN_HISTORY);
