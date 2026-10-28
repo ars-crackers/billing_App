@@ -4560,7 +4560,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v60';
+var APP_BUILD = 'v61';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6325,9 +6325,8 @@ function promoQuickPrep(){
   _pqFileP = (async function(){
     try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
     await promoPhotoLoad();
-    var qr = null; try{ qr = await promoQrCanvas(promoLink(), 360); }catch(e){}
     var wc = PROMO_FMTS.filter(function(f){ return f.key === 'wc'; })[0];
-    var cv = await promoDraw(wc, promoItems(), qr, 'qr');   // always the Self-Order QR Poster, chat size 1200x800
+    var cv = await promoDraw(wc, promoItems(), null, 'brand');   // always the Shop Name Poster (same look as the link picture), chat size 1200x800
     var blob = await new Promise(function(res){ cv.toBlob(res, 'image/jpeg', 0.92); });   // JPEG: a few hundred KB, sends fast
     return new File([blob], 'ARS_Promotion.jpg', { type: 'image/jpeg' });
   })();
@@ -10433,6 +10432,7 @@ const PROMO_FMTS = [
   { key: 'fb', label: 'Facebook', icon: '🔵', w: 1200, h: 630, cols: 2, max: 4 }
 ];
 var PROMO = loadJSON('ars_promo', null) || { type: 'diwali', headline: 'Diwali Special Offer', offer: 'Extra 10% to 20% off with Self-Order — till 04 Nov 2026', items: [] };
+if(!PROMO.brandSeen){ if(!PROMO.style || PROMO.style === 'qr') PROMO.style = 'brand'; PROMO.brandSeen = 1; }   // the Shop Name Poster is the new default
 var _promoFmts = loadJSON('ars_promo_fmts', { wa: true, ig: true, fb: true }) || { wa: true, ig: true, fb: true };
 if(_promoFmts.wc === undefined) _promoFmts.wc = true;
 var _promoImgs = {}, _promoPickQ = '';
@@ -10507,7 +10507,7 @@ function promoPaintScreen(){
           '<label class="field-label">Offer line</label><textarea maxlength="120" onchange="PROMO.offer=this.value.trim(); promoSave(); _promoImgs={};" style="width:100%; box-sizing:border-box; height:56px; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' + estEsc(PROMO.offer || '') + '</textarea>'
         : '<div style="font-size:13px; font-weight:800; color:#7a1414;">' + estEsc(PROMO.headline || '') + '</div><div style="font-size:12px; color:#44557a; margin-bottom:8px;">' + estEsc(PROMO.offer || '') + '</div>') +
       '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:6px 0 6px;">POSTER STYLE</div>' +
-      '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + PROMO_STYLES.map(function(t, i){ var on = (PROMO.style || 'qr') === t[0]; return '<button ' + (adm ? 'onclick="promoSetStyle(\'' + t[0] + '\')"' : 'disabled') + ' style="padding:6px 10px; border-radius:14px; border:1.5px solid #1b3a78; background:' + (on ? '#1b3a78' : '#fff') + '; color:' + (on ? '#fff' : '#1b3a78') + '; font-size:12px; font-weight:700; cursor:pointer;">' + (i + 1) + '. ' + t[1] + '</button>'; }).join('') + '</div>' +
+      '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' + PROMO_STYLES.map(function(t, i){ var on = (PROMO.style || 'brand') === t[0]; return '<button ' + (adm ? 'onclick="promoSetStyle(\'' + t[0] + '\')"' : 'disabled') + ' style="padding:6px 10px; border-radius:14px; border:1.5px solid #1b3a78; background:' + (on ? '#1b3a78' : '#fff') + '; color:' + (on ? '#fff' : '#1b3a78') + '; font-size:12px; font-weight:700; cursor:pointer;">' + (i + 1) + '. ' + t[1] + '</button>'; }).join('') + '</div>' +
       '<button id="promoPrevBtn" onclick="promoPreviewAll(this)" style="width:100%; padding:9px; border-radius:9px; border:1.5px solid #1b3a78; background:#e8f0ff; color:#1b3a78; font-weight:800; font-size:12.5px; cursor:pointer; margin-bottom:6px;">\uD83D\uDC40 Preview all 6 styles</button>' +
       '<div id="promoStylePrev"></div>' +
       (adm ? '<label class="field-label">Tamil headline (QR poster)</label><input type="text" maxlength="60" value="' + estEsc(promoTa('headTa')) + '" onchange="PROMO.headTa=this.value.trim(); promoSave(); _promoImgs={};" style="width:100%; box-sizing:border-box; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:8px;">' +
@@ -10770,7 +10770,7 @@ async function promoDrawClassic(fmt, items, qr){
    the internet, so there is nothing to download and no copyright problem. The admin can add an own photo
    (shop / products) which the "Self-Order QR Poster" style shows in its photo band. */
 const PROMO_STYLES = [
-  ['qr', 'Self-Order QR Poster'], ['classic', 'Classic Cards'], ['lights', 'Festival Lights'],
+  ['brand', 'Shop Name Poster'], ['qr', 'Self-Order QR Poster'], ['classic', 'Classic Cards'], ['lights', 'Festival Lights'],
   ['burst', 'Big Offer'], ['board', 'Price Board'], ['royal', 'Royal Gold']
 ];
 const PROMO_TA_DEFAULTS = {
@@ -10977,6 +10977,112 @@ function kMaxPct(){
 function kItemPrice(it){ var d = Number(PROMO.disc) || 0, p = Number(it.price) || 0; return { now: d > 0 ? Math.round(p * (100 - d) / 100) : p, was: d > 0 ? p : 0 }; }
 
 /* ---- the styles (portrait 9:16 / 4:5 and landscape) ---- */
+/* ---- "Shop Name Poster" (the default, same look as the website link picture): maroon with gold fireworks, the ARS logo,
+   the shop name big in the middle, the running offer in a gold box, then the place and phone in small rounded boxes.
+   No QR - the message sent with the picture carries the link. Fonts: Baloo Thambi 2 / Poppins from the site (fonts/),
+   the phone's own fonts if they cannot load. ---- */
+var _promoFontsP = null, _promoLogoP = null;
+function promoBrandFonts(){
+  if(_promoFontsP) return _promoFontsP;
+  _promoFontsP = (async function(){
+    if(!window.FontFace || !document.fonts) return;
+    var list = [['ARSBaloo', 'fonts/baloo-thambi-2-tamil-800.woff2', '800', 'U+0B80-0BFF, U+200C-200D, U+25CC'], ['ARSBaloo', 'fonts/baloo-thambi-2-latin-800.woff2', '800', 'U+0000-00FF, U+2000-206F, U+20B9'],
+      ['ARSPop', 'fonts/poppins-600.woff2', '600'], ['ARSPop', 'fonts/poppins-700.woff2', '700']];
+    await Promise.all(list.map(function(f){
+      try{ var ff = new FontFace(f[0], 'url(' + f[1] + ')', { weight: f[2], unicodeRange: f[3] || 'U+0000-00FF, U+2000-206F, U+20B9' });
+        return fbTimeout(ff.load(), 6000, 'Font').then(function(x){ document.fonts.add(x); }).catch(function(){}); }catch(e){ return null; }
+    }));
+  })();
+  return _promoFontsP;
+}
+function promoBrandLogo(){
+  if(_promoLogoP) return _promoLogoP;
+  _promoLogoP = new Promise(function(res){ var im = new Image(), done = false, fin = function(v){ if(!done){ done = true; res(v); } };
+    im.onload = function(){ fin(im); }; im.onerror = function(){ fin(null); }; setTimeout(function(){ fin(null); }, 6000); im.src = 'icon-512.png'; });
+  return _promoLogoP;
+}
+function brandRR(ctx, x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function brandBurst(ctx, cx, cy, r, n, col, w, dot){
+  ctx.save(); ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round';
+  for(var i = 0; i < n; i++){ var a = i / n * Math.PI * 2, c = Math.cos(a), s2 = Math.sin(a);
+    ctx.beginPath(); ctx.moveTo(cx + c * r * 0.22, cy + s2 * r * 0.22); ctx.lineTo(cx + c * r, cy + s2 * r); ctx.stroke();
+    if(dot){ ctx.beginPath(); ctx.arc(cx + c * (r + dot * 1.6), cy + s2 * (r + dot * 1.6), dot, 0, Math.PI * 2); ctx.fill(); } }
+  ctx.restore();
+}
+function brandSpaced(ctx, text, cx, y, sp){
+  var ws = [], tot = 0; for(var i = 0; i < text.length; i++){ var w = ctx.measureText(text[i]).width; ws.push(w); tot += w + (i < text.length - 1 ? sp : 0); }
+  var x = cx - tot / 2, al = ctx.textAlign; ctx.textAlign = 'left';
+  for(var j = 0; j < text.length; j++){ ctx.fillText(text[j], x, y); x += ws[j] + sp; }
+  ctx.textAlign = al; return tot;
+}
+var BRAND_PIN = 'M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z',
+    BRAND_PH = 'M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z';
+function brandIcon(ctx, d, x, y, size, col){ try{ var p = new Path2D(d); ctx.save(); ctx.translate(x, y); ctx.scale(size / 24, size / 24); ctx.fillStyle = col; ctx.fill(p); ctx.restore(); }catch(e){} }
+function brandPlace(){
+  var b = BRANCHES.main || liveBranches()[0] || {}, ad = branchAddr(b).split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+  return ad.length >= 2 ? ad.slice(-2).join(', ') : (b.name || 'Thanneerpandhal');
+}
+async function styleBrand(ctx, W, H){
+  await promoBrandFonts(); var logo = await promoBrandLogo();
+  var TAF = "ARSBaloo, 'Noto Sans Tamil', 'Latha', sans-serif", ENF = "ARSPop, Roboto, 'Segoe UI', Arial, sans-serif";
+  var port = H / W > 1.05, u = port ? W / 1080 : Math.min(W / 1200, H / 630);
+  var MAROON = '#7a1414', DARK = '#4a0c0c', GOLD = '#ffd34d', CREAM = '#fff8ea', EMBER = '#c9651a';
+  // background
+  var g = ctx.createRadialGradient(W / 2, H * 0.4, 10, W / 2, H * 0.4, Math.max(W, H) * 0.75);
+  g.addColorStop(0, '#9a1d1d'); g.addColorStop(0.45, MAROON); g.addColorStop(1, DARK); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  var seed = 5, rnd = function(){ seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }, dots = [GOLD, CREAM, EMBER];
+  for(var i = 0; i < Math.round(90 * W * H / (1200 * 630)); i++){ ctx.globalAlpha = 0.45 + rnd() * 0.5; ctx.fillStyle = dots[i % 3]; ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, (1.2 + rnd() * 3.2) * u, 0, Math.PI * 2); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  var bm = 95 * u; [[bm, 105 * u], [W - bm, 105 * u]].forEach(function(p){ brandBurst(ctx, p[0], p[1], 58 * u, 20, GOLD, 4 * u, 4 * u); brandBurst(ctx, p[0], p[1], 26 * u, 12, EMBER, 4 * u, 0); });
+  ctx.fillStyle = GOLD; ctx.fillRect(0, 0, W, 14 * u); ctx.fillRect(0, H - 14 * u, W, 14 * u);
+  // content sizes (a tall Status picture gets bigger pieces and more room between them)
+  var tall = H / W > 1.5, k = tall ? 1.25 : 1, gk = tall ? 2.4 : 1;
+  var L = (port ? 190 : 132) * u * k, name = SHOP.name_ta || 'A.R.S பட்டாசுக் கடை', en = String(SHOP.name_en || 'A.R.S CRACKERS SHOP').toUpperCase();
+  var ns = (port ? 150 : 118) * u; ctx.font = '800 ' + ns + 'px ' + TAF; while(ctx.measureText(name).width > W * (port ? 0.86 : 0.76) && ns > 30){ ns -= 2; ctx.font = '800 ' + ns + 'px ' + TAF; }
+  var es = (port ? 40 : 32) * u, pct = offerDiscNow(), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((OFFER && OFFER.until) || ''), till = m ? Number(m[3]) + '-' + Number(m[2]) + '-' + m[1] : '';
+  var t1 = offerActive() ? (OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!') : (PROMO.headline || ''), t2 = pct > 0 ? pct + '% சிறப்பு தள்ளுபடி' + (till ? ' • ' + till + ' வரை' : '') : 'இன்றைய விலைப் பட்டியல் • Self Estimation';
+  var bw = Math.min(W * (port ? 0.86 : 0.7), (port ? 960 : 860) * u), b1 = (port ? 50 : 38) * u * k, b2 = (port ? 44 : 32) * u * k, bh = (t1 ? b1 * 1.25 : 0) + b2 * 1.35 + 34 * u * k;
+  var cs = (port ? 30 : 21) * u * k, chips = [['', 'Self Estimation • Price List', 1], [BRAND_PIN, brandPlace()], [BRAND_PH, branchPhoneText(BRANCHES.main || BRANCHES[plBranchId()]).split(' / ')[0]]];
+  ctx.font = '600 ' + cs + 'px ' + ENF;
+  var chipW = chips.map(function(c){ return ctx.measureText(c[1]).width + (c[0] ? cs * 1.35 : 0) + cs * 1.9; }), gap = 12 * u, rowW = chipW.reduce(function(a, b){ return a + b; }, 0) + gap * 2;
+  var stack = port || rowW > W * 0.94, ch = cs * 2.2, chipsH = stack ? ch * 3 + gap * 2 : ch;
+  var total = L + 20 * u * gk + ns * 1.15 + es * 1.5 + 26 * u * gk + bh + 28 * u * gk + chipsH, y = Math.max(24 * u, (H - total) / 2);
+  if(y + total < H - 170 * u) [[bm, H - 105 * u], [W - bm, H - 105 * u]].forEach(function(p){ brandBurst(ctx, p[0], p[1], 50 * u, 18, GOLD, 4 * u, 3 * u); });   // bottom fireworks only where the text leaves room
+  // logo
+  var lx = W / 2 - L / 2;
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 22 * u; ctx.shadowOffsetY = 8 * u; brandRR(ctx, lx, y, L, L, L * 0.21); ctx.fillStyle = MAROON; ctx.fill(); ctx.restore();
+  ctx.save(); brandRR(ctx, lx, y, L, L, L * 0.21); ctx.clip();
+  if(logo) ctx.drawImage(logo, lx, y, L, L);
+  else { ctx.fillStyle = MAROON; ctx.fillRect(lx, y, L, L); ctx.fillStyle = GOLD; ctx.font = '800 ' + (L * 0.3) + 'px ' + ENF; ctx.textBaseline = 'middle'; ctx.fillText('ARS', W / 2, y + L * 0.62); ctx.font = (L * 0.26) + 'px sans-serif'; ctx.fillText('✷', W / 2, y + L * 0.3); ctx.textBaseline = 'top'; }
+  ctx.restore();
+  ctx.save(); brandRR(ctx, lx - 7 * u, y - 7 * u, L + 14 * u, L + 14 * u, L * 0.25); ctx.strokeStyle = GOLD; ctx.lineWidth = 4 * u; ctx.stroke(); ctx.restore();
+  y += L + 20 * u * gk;
+  // shop name + English
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.font = '800 ' + ns + 'px ' + TAF; ctx.fillStyle = DARK; ctx.fillText(name, W / 2, y + 4 * u); ctx.fillStyle = GOLD; ctx.fillText(name, W / 2, y);
+  y += ns * 1.15;
+  ctx.font = '700 ' + es + 'px ' + ENF; ctx.fillStyle = CREAM; brandSpaced(ctx, en, W / 2, y, es * 0.31);
+  y += es * 1.5 + 26 * u * gk;
+  // offer box
+  var bx = W / 2 - bw / 2; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 14 * u; ctx.shadowOffsetY = 5 * u;
+  brandRR(ctx, bx, y, bw, bh, 18 * u); var gg = ctx.createLinearGradient(0, y, 0, y + bh); gg.addColorStop(0, '#ffe27a'); gg.addColorStop(1, '#f2b52c'); ctx.fillStyle = gg; ctx.fill(); ctx.restore();
+  var ty = y + 17 * u;
+  if(t1){ ctx.font = '800 ' + b1 + 'px ' + TAF; var f1 = b1; while(ctx.measureText(t1).width > bw - 40 * u && f1 > 14){ f1 -= 1; ctx.font = '800 ' + f1 + 'px ' + TAF; } ctx.fillStyle = MAROON; ctx.fillText(t1, W / 2, ty); ty += b1 * 1.25; }
+  ctx.font = '800 ' + b2 + 'px ' + TAF; var f2 = b2; while(ctx.measureText(t2).width > bw - 40 * u && f2 > 12){ f2 -= 1; ctx.font = '800 ' + f2 + 'px ' + TAF; } ctx.fillStyle = DARK; ctx.fillText(t2, W / 2, ty);
+  y += bh + 28 * u * gk;
+  // chips
+  ctx.font = '600 ' + cs + 'px ' + ENF; ctx.textBaseline = 'middle';
+  var drawChip = function(c, x, cy, w){
+    brandRR(ctx, x, cy, w, ch, ch / 2);
+    if(c[2]){ ctx.fillStyle = GOLD; ctx.fill(); } else { ctx.strokeStyle = CREAM; ctx.lineWidth = 2 * u; ctx.stroke(); }
+    var col = c[2] ? DARK : CREAM, tx = x + cs * 0.95; ctx.textAlign = 'left';
+    if(c[0]){ brandIcon(ctx, c[0], tx, cy + ch / 2 - cs * 0.55, cs * 1.1, col); tx += cs * 1.35; }
+    ctx.fillStyle = col; ctx.fillText(c[1], tx, cy + ch / 2 + 1 * u); ctx.textAlign = 'center';
+  };
+  if(stack){ chips.forEach(function(c, k){ var w = chipW[k]; drawChip(c, W / 2 - w / 2, y + k * (ch + gap), w); }); }
+  else { var x = W / 2 - rowW / 2; chips.forEach(function(c, k){ drawChip(c, x, y, chipW[k]); x += chipW[k] + gap; }); }
+  ctx.textBaseline = 'top'; ctx.textAlign = 'center';
+}
 function styleQr(ctx, W, H, qr, items){
   var land = W > H, u = land ? H / 760 : W / 1080, squat = !land && H / W < 1.4;
   kBgMaroon(ctx, W, H);
@@ -11197,8 +11303,9 @@ function promoDrawCardsLayout(ctx, W, H, qr, items, fmt, u, land, o){
 }
 async function promoDraw(fmt, items, qr, style){
   var W = fmt.w, H = fmt.h, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  var ctx = cv.getContext('2d'), st = style || PROMO.style || 'qr';
+  var ctx = cv.getContext('2d'), st = style || PROMO.style || 'brand';
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  if(st === 'brand'){ await styleBrand(ctx, W, H); return cv; }
   if(st === 'classic') return promoDrawClassic(fmt, items, qr);
   if(st === 'lights') styleLights(ctx, W, H, qr, items, fmt);
   else if(st === 'burst') styleBurst(ctx, W, H, qr, items);
@@ -11207,10 +11314,10 @@ async function promoDraw(fmt, items, qr, style){
   else styleQr(ctx, W, H, qr, items);
   return cv;
 }
-/* 6 small previews (WhatsApp size) so the admin can pick a style */
+/* Small previews of every style (WhatsApp size) so the admin can pick a style */
 async function promoPreviewAll(btn){
   var box = document.getElementById('promoStylePrev'); if(!box) return;
-  var old = btn.innerHTML; btn.disabled = true; btn.innerHTML = 'Making 6 previews…';
+  var old = btn.innerHTML; btn.disabled = true; btn.innerHTML = 'Making previews…';
   try{
     try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
     await promoPhotoLoad();
@@ -11219,7 +11326,7 @@ async function promoPreviewAll(btn){
     for(var i = 0; i < PROMO_STYLES.length; i++){
       var cv = await promoDraw(fmt, items, qr, PROMO_STYLES[i][0]);
       var sm = document.createElement('canvas'); sm.width = 270; sm.height = 480; sm.getContext('2d').drawImage(cv, 0, 0, 270, 480);
-      var on = (PROMO.style || 'qr') === PROMO_STYLES[i][0];
+      var on = (PROMO.style || 'brand') === PROMO_STYLES[i][0];
       html += '<div onclick="promoSetStyle(\'' + PROMO_STYLES[i][0] + '\')" style="cursor:pointer; text-align:center; border-radius:10px; padding:4px; border:3px solid ' + (on ? '#1e7a3c' : 'transparent') + ';"><img src="' + sm.toDataURL('image/jpeg', 0.8) + '" style="width:100%; border-radius:6px; display:block;"><div style="font-size:11px; font-weight:800; margin-top:3px;">' + (on ? '✅ ' : '') + (i + 1) + '. ' + PROMO_STYLES[i][1] + '</div></div>';
     }
     box.innerHTML = '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px;">' + html + '</div>';
@@ -11257,7 +11364,7 @@ function promoPaintOut(){
       '<div style="display:flex; gap:6px;"><button onclick="promoShareImg(\'' + f.key + '\')" style="flex:2; padding:10px; border:none; border-radius:9px; background:#1e7a3c; color:#fff; font-weight:800; font-size:13px; cursor:pointer;">Share to ' + f.label + '</button>' +
       '<button onclick="promoSaveImg(\'' + f.key + '\')" style="flex:1; padding:10px; border-radius:9px; border:1px solid #1e7a3c; background:#fff; color:#1e7a3c; font-weight:800; font-size:13px; cursor:pointer;">⬇ Save</button></div></div>';
   }).join('') +
-  '<div style="font-size:10.5px; color:#44557a; line-height:1.5;">The image shows "ARS Promotion" with a QR - scanning it opens the self-order page, without showing the web address. The message sent with it carries the link (WhatsApp, Facebook and Instagram always show links as an address).</div>';
+  '<div style="font-size:10.5px; color:#44557a; line-height:1.5;">The message sent with the image carries the link to the price list (WhatsApp, Facebook and Instagram show links as an address).</div>';
 }
 function promoCaption(wa){
   var head = (offerActive() && OFFER.title) || PROMO.headline || '';
