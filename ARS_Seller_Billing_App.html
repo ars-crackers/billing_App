@@ -53,16 +53,26 @@
     fetch('manifest.webmanifest', {cache:'no-cache'}).then(function(r){
       if(!r.ok) throw new Error('no manifest');
       if('serviceWorker' in navigator){
-        var hadController = !!navigator.serviceWorker.controller;
-        // A new published version takes over at once and the page reloads one time to show it.
-        navigator.serviceWorker.addEventListener('controllerchange', function(){
-          if(!hadController) return;
-          try{ if(sessionStorage.getItem('ars_sw_reloaded')) return; sessionStorage.setItem('ars_sw_reloaded', '1'); }catch(e){}
+        var hadController = !!navigator.serviceWorker.controller, swReg = null, swPending = false;
+        var busyNow = function(){
+          try{ if(typeof sellerBusy === 'function' && sellerBusy()) return true; }catch(e){}
           var bill = document.getElementById('billOverlay');
-          if(bill && bill.classList && bill.classList.contains('show')) return;   // never interrupt a bill being made
+          return !!(bill && bill.classList && bill.classList.contains('show'));   // never interrupt a bill being made
+        };
+        var swReload = function(){
+          if(busyNow()){ swPending = true; return; }             // reload when the bill is finished / the app is opened again
+          try{ var t = Number(sessionStorage.getItem('ars_sw_reloaded')) || 0; if(Date.now() - t < 30000) return; sessionStorage.setItem('ars_sw_reloaded', String(Date.now())); }catch(e){}
           location.reload();
+        };
+        // A new published version takes over at once and the page reloads to show it (every new version, not only the first).
+        navigator.serviceWorker.addEventListener('controllerchange', function(){ if(hadController) swReload(); hadController = true; });
+        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg){ swReg = reg; try{ reg.update(); }catch(e){} }).catch(function(){});
+        // The app kept open in the background: look for a new version each time it comes back to the screen.
+        document.addEventListener('visibilitychange', function(){
+          if(document.visibilityState !== 'visible') return;
+          if(swPending && !busyNow()){ swPending = false; swReload(); return; }
+          try{ if(swReg) swReg.update(); }catch(e){}
         });
-        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg){ try{ reg.update(); }catch(e){} }).catch(function(){});
       }
     }).catch(useFallback);
   }
@@ -822,6 +832,7 @@ function __appNotLoaded(){
     <input id="loginPin" type="password" placeholder="PIN / Password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter'){ if(window.attemptLogin) attemptLogin(); else __appNotLoaded(); }">
     <button class="login-btn" id="loginBtn" onclick="if(window.attemptLogin) attemptLogin(); else __appNotLoaded();">Login</button>
     <div class="login-error" id="loginError"></div>
+    <div class="appVer" style="margin-top:10px; font-size:10.5px; color:#a08a6a; text-align:center;"></div>
   </div>
 </div>
 
@@ -1004,7 +1015,7 @@ function __appNotLoaded(){
   <header>
     <div class="shop-row">
       <button class="icon-btn-circle" onclick="logout()" title="Logout"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><g transform="scale(-1,1) translate(-24,0)"><path d="M16,17V14H9V10H16V7L21,12Zm-2,4H5a2,2,0,0,1-2-2V5A2,2,0,0,1,5,3h9a2,2,0,0,1,2,2V8H14V5H5V19h9V16h2v3A2,2,0,0,1,14,21Z"/></g></svg></button>
-      <div class="shop-name-big" style="font-size:21px; flex:1; text-align:center;">Admin Dashboard</div>
+      <div class="shop-name-big" style="font-size:21px; flex:1; text-align:center; line-height:1.1;">Admin Dashboard<div class="appVer" style="font-size:10px; font-weight:600; opacity:.75; letter-spacing:.5px;"></div></div>
       <div class="hdr-actions">
         <button onclick="hideAdmin()">&#8592; Back</button>
       </div>
@@ -4548,6 +4559,10 @@ function pickPriceBranch(){
 }
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
+/* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
+var APP_BUILD = 'v60';
+function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
 function priceLinkFor(bid){ return appBaseUrl() + '#price' + (bid ? '=' + bid : ''); }
 
@@ -10421,7 +10436,10 @@ var PROMO = loadJSON('ars_promo', null) || { type: 'diwali', headline: 'Diwali S
 var _promoFmts = loadJSON('ars_promo_fmts', { wa: true, ig: true, fb: true }) || { wa: true, ig: true, fb: true };
 if(_promoFmts.wc === undefined) _promoFmts.wc = true;
 var _promoImgs = {}, _promoPickQ = '';
-function promoLink(){ return /^https?:/.test(location.protocol) ? priceLinkFor('') : SELF_ORDER_URL; }
+/* Link sent in offer messages. "?ars" makes it a new address for WhatsApp, so it shows the new link picture instead of the
+   old preview it saved for .../billing_App/#price (change the word to refresh the picture again after a new one). */
+const PROMO_LINK_TAG = 'ars';
+function promoLink(){ var l = /^https?:/.test(location.protocol) ? priceLinkFor('') : SELF_ORDER_URL; return l.replace(/\/?#price/, '/?' + PROMO_LINK_TAG + '#price').replace(/\/\/\?/, '/?'); }
 function promoIsAdmin(){ return !!(session && session.role === 'admin'); }
 /* Featured items: the admin's picks; if none picked yet, the 6 best sellers (by quantity sold), else the first items. */
 function promoSoldMap(){
