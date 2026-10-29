@@ -550,9 +550,7 @@
     #printArea .br-table .br-col-qty{ width:11% !important; white-space:nowrap !important; text-align:center !important; }
     #printArea .br-table .br-col-total{ width:25% !important; white-space:nowrap !important; }
     /* Tamil: extra bold, plain solid black (no outline) */
-    #printArea .br-tam{ font-weight:800 !important; }
-    #printArea .br-tam-big{ font-weight:900 !important; }
-    #printArea .br-tam-item{ font-weight:400 !important; }   /* Tamil item names: normal (not bold) */
+    /* text sizes and bold of the bill come from Admin -> Settings (set inline on each piece) */
     #printArea .br-table td{ border-bottom-color:#000 !important; }
     #printArea .br-table tr.br-ta-row td{ border-bottom:none !important; }
     /* thermal paper: grey prints faint - every bit of text solid black */
@@ -607,8 +605,7 @@
   /* printed bill: the Tamil name on its own full-width line, English + Price / Qty / Total on the line under it */
   .br-table tr.br-ta-row td{border-bottom:none; padding:6px 6px 0;}
   .br-tam{font-weight:800; color:#000;}
-  .br-tam-big{font-weight:900;}
-  .br-tam-item{font-weight:400; color:#000;}
+  .br-tam-item{color:#000;}
   .br-en{color:#000; font-size:9.5px;}
   .br-summary{padding:6px 10px 0; box-sizing:border-box;}
   .br-row{display:flex; justify-content:space-between; gap:6px; font-size:10px; color:#000; padding:2px 0;}
@@ -1040,7 +1037,8 @@ function __appNotLoaded(){
     <div class="shop-row">
       <button class="icon-btn-circle" onclick="logout()" title="Logout"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><g transform="scale(-1,1) translate(-24,0)"><path d="M16,17V14H9V10H16V7L21,12Zm-2,4H5a2,2,0,0,1-2-2V5A2,2,0,0,1,5,3h9a2,2,0,0,1,2,2V8H14V5H5V19h9V16h2v3A2,2,0,0,1,14,21Z"/></g></svg></button>
       <div class="shop-name-big" style="font-size:21px; flex:1; text-align:center; line-height:1.1;">Admin Dashboard<div class="appVer" style="font-size:10px; font-weight:600; opacity:.75; letter-spacing:.5px;"></div></div>
-      <div class="hdr-actions">
+      <div class="hdr-actions" style="flex-direction:row; align-items:center; gap:6px;">
+        <button onclick="uiSetOpen()" title="Settings" aria-label="Settings" style="min-width:0; padding:6px 9px; font-size:17px; line-height:1;">&#9881;&#65039;</button>
         <button onclick="hideAdmin()">&#8592; Back</button>
       </div>
     </div>
@@ -1927,6 +1925,12 @@ const FB_DOCS = {
       OFFER = r; _rawSaveJSON('ars_offer', OFFER);
       try{ offerApply(); offerCardRepaint(); var _ev = document.getElementById('estVoucherOverlay'); if(_ev && _ev.style.display === 'block') estScreenPaint(); }catch(e){}
     }
+  },
+  printcfg: {
+    path: 'settings/print',
+    get: function(){ return PRINT_CFG; },
+    isEmpty: function(){ return !PRINT_CFG || !PRINT_CFG.at; },          // only a setting the admin saved goes to the server
+    apply: function(r){ if(!r || typeof r !== 'object') return; PRINT_CFG = r; _rawSaveJSON('ars_print_cfg', PRINT_CFG); try{ uiSetPaint(); }catch(e){} }
   },
   branches: {
     path: 'branches',
@@ -3387,6 +3391,7 @@ saveJSON = function(key, val){
     else if(key === 'ars_upi') fbDocChanged('upi');
     else if(key === 'ars_promo') fbDocChanged('promo');
     else if(key === 'ars_offer') fbDocChanged('offer');
+    else if(key === 'ars_print_cfg') fbDocChanged('printcfg');
     else if(key === 'ars_branches') fbDocChanged('branches');
     else if(key === 'ars_login_history') fbPushMissing('loginHistory');
     else if(key === 'ars_sales') fbPushMissing('sales');
@@ -3814,7 +3819,6 @@ function branchLocText(){
     return '📍 ' + (b.name || b.short || '') + (branchSoon(b) ? ' — 🚧 விரைவில் திறப்பு (Opening soon)' : '') + (m ? '\n' + m : '');
   }).join('\n');
 }
-function branchesLabel(firstId){ var n = liveBranches().length; return (n > 1 ? 'Branches: ' : 'Branch: ') + branchNamesText(firstId); }
 function branchOfSale(sale){ return (sale && sale.branchId && BRANCHES[sale.branchId]) || (sale && !sale.branchId && BRANCHES.main) || BRANCHES[activeBranchId] || BRANCHES.main || null; }
 function adminScope(){
   try{ if(session && session.role === 'admin'){ var u = USERS[session.id]; return (u && u.branch) || ''; } }catch(e){}
@@ -4936,7 +4940,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v66';
+var APP_BUILD = 'v67';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6983,33 +6987,105 @@ async function renderBillPictures(s){
   }
   return out;
 }
+var _uiDraft = null;
+function uiSampleSale(){
+  var items = [], pick = [[0, 0, 2], [0, 2, 10], [1, 1, 3]];
+  pick.forEach(function(p){ var c = CATEGORIES[p[0]]; if(!c || !c.items[p[1]]) return; var n = getItemName(p[0], p[1]); items.push({ ta: n.ta, en: n.en, sn: itemSerialNo(p[0], p[1]), price: Number(getInvItem(p[0], p[1]).price) || 0, qty: p[2] }); });
+  if(!items.length) items = [{ ta: 'லட்சுமி வெடி', en: 'Lakshmi Bomb', sn: 1, price: 30, qty: 2 }];
+  var sub = items.reduce(function(a, x){ return a + x.price * x.qty; }, 0), disc = Math.round(sub * 0.2);
+  return { id: 'sample', billNo: 'SAMPLE', time: new Date().toISOString(), sellerName: (session && session.name) || 'Admin', sellerId: '', branchId: 'main', items: items, subtotal: sub, discount: disc, discountPercent: 20, paidAmount: sub - disc, paymentMethod: 'cash', status: 'confirmed' };
+}
+function uiSetOpen(){
+  _uiDraft = {}; PRINT_ROWS.forEach(function(r){ _uiDraft[r[0]] = printCfg(r[0]); });
+  var old = document.getElementById('uiSetOv'); if(old) old.remove();
+  var ov = document.createElement('div'); ov.id = 'uiSetOv';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:9200; background:rgba(0,0,0,0.45); display:flex; align-items:flex-end; justify-content:center;';
+  ov.innerHTML = '<div style="background:#fffaf0; width:100%; max-width:480px; max-height:94vh; overflow:auto; border-radius:18px 18px 0 0; padding:14px 14px calc(14px + env(safe-area-inset-bottom));"><div id="uiSetBody"></div></div>';
+  ov.addEventListener('click', function(e){ if(e.target === ov) uiSetClose(); });
+  document.body.appendChild(ov);
+  uiSetPaint();
+}
+function uiSetClose(){ var o = document.getElementById('uiSetOv'); if(o){ o.remove(); return true; } return false; }
+function uiSetStep(k, d){ var r = PRINT_ROWS.filter(function(x){ return x[0] === k; })[0], c = _uiDraft[k]; c.s = Math.max(r[2], Math.min(r[3], Math.round((c.s + d) * 2) / 2)); uiSetPaint(); }
+function uiSetBold(k){ _uiDraft[k].b = _uiDraft[k].b ? 0 : 1; uiSetPaint(); }
+function uiSetDefault(){ _uiDraft = {}; PRINT_ROWS.forEach(function(r){ _uiDraft[r[0]] = { s: PRINT_DEFAULTS[r[0]].s, b: PRINT_DEFAULTS[r[0]].b }; }); uiSetPaint(); }
+function uiSetChanged(){ return PRINT_ROWS.some(function(r){ var a = _uiDraft[r[0]], b = printCfg(r[0]); return a.s !== b.s || a.b !== b.b; }); }
+/* preview / test print use the draft, without saving it */
+function uiWithDraft(fn){ var keep = PRINT_CFG; PRINT_CFG = Object.assign({}, _uiDraft); try{ return fn(); } finally { PRINT_CFG = keep; } }
+function uiSetPaint(){
+  var body = document.getElementById('uiSetBody'); if(!body || !_uiDraft) return;
+  var btn = 'width:34px; height:34px; border-radius:50%; border:1.5px solid #7a1414; background:#fff; color:#7a1414; font-size:19px; font-weight:800; line-height:1; cursor:pointer;';
+  var rows = PRINT_ROWS.map(function(r){ var c = _uiDraft[r[0]];
+    return '<div style="display:flex; align-items:center; gap:8px; padding:8px 2px; border-bottom:1px solid #f0e3c6;">' +
+      '<div style="flex:1; min-width:0; font-size:13.5px; font-weight:800; color:#3a2a14;">' + r[1] + '</div>' +
+      '<button onclick="uiSetStep(\'' + r[0] + '\',-' + (r[0] === 'en' ? 0.5 : 1) + ')" aria-label="Smaller" style="' + btn + '">&minus;</button>' +
+      '<div style="width:46px; text-align:center; font-size:14px; font-weight:800; color:#7a1414;">' + c.s + 'px</div>' +
+      '<button onclick="uiSetStep(\'' + r[0] + '\',' + (r[0] === 'en' ? 0.5 : 1) + ')" aria-label="Bigger" style="' + btn + '">+</button>' +
+      '<button onclick="uiSetBold(\'' + r[0] + '\')" aria-label="Bold" title="Bold" style="width:40px; height:34px; border-radius:9px; border:1.5px solid #7a1414; background:' + (c.b ? '#7a1414' : '#fff') + '; color:' + (c.b ? '#fff8e6' : '#7a1414') + '; font-size:16px; font-weight:900; cursor:pointer;">B</button></div>'; }).join('');
+  var prev = '';
+  try{ prev = uiWithDraft(function(){ return buildBillReceiptHTML(uiSampleSale()); }); }catch(e){}
+  var who = PRINT_CFG && PRINT_CFG.at ? 'Last saved by ' + estEsc(PRINT_CFG.by || 'admin') + ' &middot; ' + estEsc(bkWhen(PRINT_CFG.at)) : 'Default settings';
+  body.innerHTML = '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;"><div style="font-weight:800; font-size:16px; color:#7a1414;">&#9881;&#65039; Settings</div><button onclick="uiSetClose()" aria-label="Close" style="border:none; background:none; font-size:22px; color:#8a6a44; cursor:pointer;">&times;</button></div>' +
+    '<div style="font-size:11.5px; color:#8a6a44; margin-bottom:10px;">Saved for every phone &mdash; all sellers&#39; bills follow it. ' + who + '</div>' +
+    '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin-bottom:2px;">&#128424;&#65039; PRINTED BILL (80 mm) &mdash; text size &amp; bold</div>' + rows +
+    '<div style="font-size:11.5px; font-weight:800; color:#5b4630; margin:12px 0 6px;">PREVIEW</div>' +
+    '<div style="background:#e9e4da; border-radius:10px; padding:10px; display:flex; justify-content:center;"><div id="uiSetPrev" style="background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.2); width:302px; zoom:' + Math.min(1, ((window.innerWidth || 360) - 60) / 302).toFixed(3) + ';">' + prev.replace('width:226.772px;', 'width:302px;') + '</div></div>' +
+    '<div style="display:flex; gap:8px; margin-top:12px;"><button onclick="uiSetTestPrint()" style="flex:1; padding:11px 6px; border-radius:10px; border:1.5px solid #0b5fd8; background:#fff; color:#0b5fd8; font-weight:800; font-size:13px; cursor:pointer;">&#128424;&#65039; Test print</button>' +
+      '<button onclick="uiSetDefault()" style="flex:1; padding:11px 6px; border-radius:10px; border:1.5px solid #8a6a44; background:#fff; color:#6b4a2e; font-weight:800; font-size:13px; cursor:pointer;">&#8635; Default</button></div>' +
+    '<button onclick="uiSetSave()" style="display:block; width:100%; margin-top:8px; padding:13px; border:none; border-radius:11px; background:' + (uiSetChanged() ? '#1e7a3c' : '#9bb8a2') + '; color:#fff; font-weight:800; font-size:15px; cursor:pointer;">&#10003; Save for all phones</button>';
+}
+function uiSetTestPrint(){ var html = uiWithDraft(function(){ return buildBillReceiptHTML(uiSampleSale()); }); printThermalHtml(html); }
+function uiSetSave(){
+  if(!uiSetChanged()){ uiSetClose(); return; }
+  var cfg = {}; PRINT_ROWS.forEach(function(r){ cfg[r[0]] = { s: _uiDraft[r[0]].s, b: _uiDraft[r[0]].b }; });
+  cfg.at = new Date().toISOString(); cfg.by = (session && session.name) || '';
+  PRINT_CFG = cfg; saveJSON('ars_print_cfg', PRINT_CFG);        // goes to the server; every phone follows
+  uiSetClose();
+  try{ showAdminNotification('✓ Settings saved for all phones'); }catch(e){}
+}
+/* ================= SETTINGS (Admin -> ⚙️): printed bill text size and bold, the same on every phone =================
+   Saved on the server (settings/print); every phone follows the admin's choice. */
+const PRINT_DEFAULTS = {
+  ta:    { s: 12,  b: 0 },     // Tamil item name
+  en:    { s: 9.5, b: 1 },     // English item name (largest size; long names get smaller to fit)
+  price: { s: 12,  b: 1 },
+  qty:   { s: 12,  b: 1 },
+  tot:   { s: 12,  b: 1 },     // line total
+  paid:  { s: 17,  b: 1 },     // Paid amount
+  shop:  { s: 17,  b: 1 }      // shop name at the top
+};
+const PRINT_ROWS = [['ta', 'Tamil item name', 9, 20, 700], ['en', 'English item name', 7, 13, 600], ['price', 'Price', 9, 16, 600], ['qty', 'Qty', 9, 18, 900],
+  ['tot', 'Line total', 9, 16, 900], ['paid', 'Paid amount', 12, 24, 900], ['shop', 'Shop name (top)', 12, 24, 900]];   // key, label, min, max, bold weight
+var PRINT_CFG = loadJSON('ars_print_cfg', null) || {};
+function printCfg(k){ var d = PRINT_DEFAULTS[k], c = (PRINT_CFG && PRINT_CFG[k]) || {}; return { s: Number(c.s) || d.s, b: c.b == null ? d.b : (c.b ? 1 : 0) }; }
+function printW(k){ var row = PRINT_ROWS.filter(function(r){ return r[0] === k; })[0]; return printCfg(k).b ? row[4] : 400; }
 function buildBillReceiptHTML(s){
   const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
   const pageWidthPx = 226.772;
   const availableTextWidth = Math.max(30, pageWidthPx * RECEIPT_ITEM_COL_FRACTION - RECEIPT_ITEM_TEXT_RESERVE_PX);
   const enName = billEnNamer();
-  const enFontPx = fitReceiptFontSize(s.items.map(it=>enName(it)), availableTextWidth, RECEIPT_FONT_FAMILY, 9.5, 7);   // English: unchanged
-  // 80mm thermal roll: each item's Tamil name gets its own line across the full paper width, normal weight (not bold), 14px;
-  // a long name wraps to a second line.
-  const idxW = Math.ceil(receiptTextWidth(s.items.length + '.', 13, RECEIPT_FONT_FAMILY, '800')) + 8;
-  const taFontPx = 14;
-  // Price and Qty the same size; Qty extra bold (the number the customer checks); Total bold.
-  const priceStyle = 'font-size:12px; font-weight:600; color:#000;';
-  const qtyStyle = 'font-size:12px; font-weight:900; color:#000; text-align:center;';
-  const totalStyle = 'font-size:12px; font-weight:900; color:#000; padding-right:6px;';
+  // sizes and bold come from Admin -> ⚙️ Settings (the same on every phone)
+  const cTa = printCfg('ta'), cEn = printCfg('en'), cPr = printCfg('price'), cQt = printCfg('qty'), cTo = printCfg('tot');
+  const enFontPx = fitReceiptFontSize(s.items.map(it=>enName(it)), availableTextWidth, RECEIPT_FONT_FAMILY, cEn.s, Math.min(7, cEn.s));
+  // 80mm thermal roll: each item's Tamil name gets its own line across the full paper width; a long name wraps to a second line.
+  const taFontPx = cTa.s, idxPx = Math.max(10, Math.min(16, cTa.s + 1));
+  const idxW = Math.ceil(receiptTextWidth(s.items.length + '.', idxPx, RECEIPT_FONT_FAMILY, '800')) + 8;
+  const priceStyle = 'font-weight:' + printW('price') + '; color:#000;';
+  const qtyStyle = 'font-weight:' + printW('qty') + '; color:#000; text-align:center;';
+  const totalStyle = 'font-weight:' + printW('tot') + '; color:#000; padding-right:6px;';
   // a rare very big number steps down a little so it never runs into the next column
-  const fitNum = (st, txt, max) => txt.length <= max ? st : st.replace('font-size:12px', 'font-size:' + (txt.length <= max + 2 ? 10.5 : 9.5) + 'px');
-  let rows = s.items.map((it, idx) => `<tr class="br-ta-row"><td colspan="4"><div style="display:flex; align-items:baseline;"><span style="flex:0 0 ${idxW}px; font-size:13px; font-weight:800;">${idx+1}.</span><span class="br-tam-item" style="flex:1 1 auto; min-width:0; font-size:${taFontPx}px; line-height:1.3;">${it.ta}</span></div></td></tr>
-      <tr><td class="br-col-item" style="padding-left:14px; padding-top:1px;"><div class="br-en" style="overflow-wrap:anywhere; line-height:1.2; font-size:${enFontPx}px; font-weight:600;">${enName(it)}</div></td>
-      <td class="num br-col-price" style="${fitNum(priceStyle, it.price.toLocaleString('en-IN'), 5)} padding-top:1px;">&#8377;${it.price.toLocaleString('en-IN')}</td><td class="num br-col-qty br-qty" style="${fitNum(qtyStyle, String(it.qty), 3)} padding-top:1px;">${it.qty}</td>
-      <td class="num br-col-total" style="${fitNum(totalStyle, (it.price*it.qty).toLocaleString('en-IN'), 6)} padding-top:1px;">&#8377;${(it.price*it.qty).toLocaleString('en-IN')}</td></tr>`).join('');
+  const fitNum = (st, size, txt, max) => st + ' font-size:' + (txt.length <= max ? size : Math.max(8, size - (txt.length <= max + 2 ? 1.5 : 2.5))) + 'px;';
+  let rows = s.items.map((it, idx) => `<tr class="br-ta-row"><td colspan="4"><div style="display:flex; align-items:baseline;"><span style="flex:0 0 ${idxW}px; font-size:${idxPx}px; font-weight:800;">${idx+1}.</span><span class="br-tam-item" style="flex:1 1 auto; min-width:0; font-size:${taFontPx}px; font-weight:${printW('ta')}; line-height:1.3;">${it.ta}</span></div></td></tr>
+      <tr><td class="br-col-item" style="padding-left:14px; padding-top:1px;"><div class="br-en" style="overflow-wrap:anywhere; line-height:1.2; font-size:${enFontPx}px; font-weight:${printW('en')};">${enName(it)}</div></td>
+      <td class="num br-col-price" style="${fitNum(priceStyle, cPr.s, it.price.toLocaleString('en-IN'), 5)} padding-top:1px;">&#8377;${it.price.toLocaleString('en-IN')}</td><td class="num br-col-qty br-qty" style="${fitNum(qtyStyle, cQt.s, String(it.qty), 3)} padding-top:1px;">${it.qty}</td>
+      <td class="num br-col-total" style="${fitNum(totalStyle, cTo.s, (it.price*it.qty).toLocaleString('en-IN'), 6)} padding-top:1px;">&#8377;${(it.price*it.qty).toLocaleString('en-IN')}</td></tr>`).join('');
   let summary = `<div class="br-row" style="font-size:12px; font-weight:800;"><span>Grand Total / <span class="br-tam">மொத்தம்</span></span><span style="font-weight:900;">&#8377;${s.subtotal.toLocaleString('en-IN')}</span></div>`;
   if(s.discount>0) summary += `<div class="br-row br-disc" style="font-size:11.5px; font-weight:800;"><span>Discount / <span class="br-tam">தள்ளுபடி</span> (${s.discountPercent}%)</span><span style="font-weight:900;">-&#8377;${s.discount.toLocaleString('en-IN')}</span></div>`;
   const cancelledNote = saleStatus(s)==='cancelled' ? '<div style="text-align:center;color:#000;font-weight:800;padding:6px 10px;border-top:1.5px dashed #000;">&#9888; ORDER CANCELLED</div>' : '';
   // Fixed 80mm width (226.772px) for thermal printer - height grows with items
   return `<div class="br-page" style="width:${pageWidthPx}px;">
       <div class="br-head">
-        <div class="br-ta br-tam br-tam-big" style="font-size:17px;">${branchTitle(branchOfSale(s)) || SHOP.name_ta}</div>
+        <div class="br-ta br-tam" style="font-size:${printCfg('shop').s}px; font-weight:${printW('shop')};">${branchTitle(branchOfSale(s)) || SHOP.name_ta}</div>
         <div style="font-size:10px; color:#000; margin-top:3px;">Branch: ${(branchOfSale(s) || {}).name || 'Thanneerpandhal'}</div>
         <div style="font-size:10.5px; color:#000; font-weight:700; margin-top:1px;">${billPhoneHtml(branchOfSale(s))}</div>
         <div style="font-size:12px; color:#000; font-weight:900; margin-top:4px;">Bill No: ${s.billNo || '-'}</div>
@@ -7020,7 +7096,7 @@ function buildBillReceiptHTML(s){
         <tbody>${rows}</tbody>
       </table>
       <div class="br-summary">${summary}</div>
-      <div class="br-total-row"><span style="font-size:12px; font-weight:800; white-space:nowrap;">Paid Amount<br><span class="br-tam" style="font-size:11.5px; white-space:nowrap;">செலுத்திய தொகை</span></span><span style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;"><span style="font-size:17px; font-weight:900;">&#8377;${(s.paidAmount||0).toLocaleString('en-IN')}</span>${s.paymentMethod ? '<span style="font-size:9px; font-weight:700; color:#000; white-space:nowrap;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>
+      <div class="br-total-row"><span style="font-size:12px; font-weight:800; white-space:nowrap;">Paid Amount<br><span class="br-tam" style="font-size:11.5px; white-space:nowrap;">செலுத்திய தொகை</span></span><span style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;"><span style="font-size:${printCfg('paid').s}px; font-weight:${printW('paid')};">&#8377;${(s.paidAmount||0).toLocaleString('en-IN')}</span>${s.paymentMethod ? '<span style="font-size:9px; font-weight:700; color:#000; white-space:nowrap;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>
       <div style="padding:6px 10px 4px; font-size:8.5px; color:#000; text-align:center;">Thank you from ${SHOP.name_ta}!</div>
       ${cancelledNote}
     </div>`;
@@ -12224,6 +12300,9 @@ function openAddBranchModal(){
         return true; // handled
       }
     }
+    // sheets made on the fly: Settings, Restore
+    try{ if(uiSetClose()) return true; }catch(e){}
+    var rso = document.getElementById('bkRestoreOv'); if(rso){ rso.remove(); return true; }
     // Also handle a2hs help popup
     var a2hs = document.getElementById('a2hsHelp');
     if(a2hs && a2hs.classList.contains('show')){ closeA2HSHelp(); return true; }
