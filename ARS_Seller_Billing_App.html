@@ -4936,7 +4936,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v63';
+var APP_BUILD = 'v64';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6088,6 +6088,7 @@ async function openPriceListPDFPreview(){
 
     // Show the price list itself (no image rendering step) - appears instantly, scaled to fit the screen.
     await plEnsureQr();
+    try{ await fbTimeout(promoBrandFonts(), 4000, 'Fonts'); }catch(_f){}   // the header's shop-name fonts
     const html = buildPriceListTableHTML();
     body.innerHTML = '<div id="plPrevScale" style="width:210mm; margin:0 auto; text-align:left; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.25);">' + html + '</div>';
     const sc = document.getElementById('plPrevScale');
@@ -7546,6 +7547,14 @@ async function _plFonts(pdf){
     if(!_plFontCache[url]) _plFontCache[url] = await _plFetchBytes(url);
     out[k] = await pdf.embedFont(_plFontCache[url], { subset: true });
   }));
+  // header in the shop's own look (same fonts as the link picture); the Noto fonts are used if these cannot load
+  var brand = { brTa: ['baloo-thambi-2', 'baloo-thambi-2-tamil-800-normal.woff'], brLa: ['baloo-thambi-2', 'baloo-thambi-2-latin-800-normal.woff'],
+    poB: ['poppins', 'poppins-latin-700-normal.woff'], poS: ['poppins', 'poppins-latin-600-normal.woff'] };
+  await Promise.all(Object.keys(brand).map(async function(k){
+    try{ var url = base + brand[k][0] + '@5.3.0/files/' + brand[k][1];
+      if(!_plFontCache[url]) _plFontCache[url] = await _plFetchBytes(url);
+      out[k] = await pdf.embedFont(_plFontCache[url], { subset: true }); }catch(e){}
+  }));
   return out;
 }
 function _plHex(h){ return window.PDFLib.rgb(parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255); }
@@ -7659,7 +7668,7 @@ async function generatePriceListPDFVector(){
   // ---- page areas ----
   var maroon = '#7a1414';
   var hdrH = 0, gap = 4, hk = 1, offH = 72, tableTop = 0, tableBottom = M, availH = 0;
-  var setHk = function(k){ hk = k; hdrH = 0; offH = 86 * k; tableTop = H - M - offH - gap; availH = tableTop - tableBottom; };
+  var setHk = function(k){ hk = k; hdrH = 0; offH = 100 * k; tableTop = H - M - offH - gap; availH = tableTop - tableBottom; };
   setHk(1);
   var gapC = 7, colW = (W - 2 * M - 2 * gapC) / 3;
 
@@ -7746,28 +7755,72 @@ async function generatePriceListPDFVector(){
     });
   }
 
-  // ---- one full maroon header: shop name, price-list line, offer text, and a full-height Self-Order QR ----
+  // ---- header in the shop's look (like the link picture): maroon with gold, the ARS logo, the shop name big in gold,
+  //      the running offer in a gold box, then Price list / place / phone in small pills; the Self-Order QR stays on the right ----
   var ow = W - 2 * M, oy = H - M, oBot = oy - offH;
+  var GOLD = '#ffd34d', CREAM = '#fff8ea', DARK = '#4a0c0c', EMBER = '#c9651a';
   page.drawSvgPath(rrPath(ow, offH, 7), { x: M, y: oy, color: _plHex(maroon) });
-  var qrSize = offH - 10, qrPad = 3, textW = ow - qrSize - 2 * qrPad - 34;
-  var hL = function(l){ return l.lines.length * l.lh; };
-  var hdName = layout([{ t: title, bold: true, size: 17 * hk, color: '#ffffff' }], textW);
-  var hdSub = layout([{ t: 'PRICE LIST - ' + new Date().getFullYear() + '  |  ' + (branchNamesText(bid) ? branchesLabel(bid) : 'Branch: ' + bName) + '  |  Ph: ' + phone, bold: true, size: 8.5 * hk, color: '#ffd9d9' }], textW);
-  var _ofOn = offerActive();      // the admin's offer banner (hidden after its last day)
-  var offTitle = layout([{ t: _ofOn ? String(OFFER.title || '') : '', bold: true, size: 12.5 * hk, color: '#ffe7a8' }], textW);
-  var offBody = layout([{ t: _ofOn ? String(OFFER.text || '') : '', bold: true, size: 9.4 * hk, color: '#ffffff' }], textW);
-  var gp = _ofOn ? 3 * hk : 0, total2 = hL(hdName) + hL(hdSub) + gp + hL(offTitle) + hL(offBody);
-  var ty = oy - (offH - total2) / 2, tx = M + 12;
-  drawLines(hdName, tx, ty, textW, 'center'); ty -= hL(hdName);
-  drawLines(hdSub, tx, ty, textW, 'center'); ty -= hL(hdSub);
-  if(_ofOn) page.drawLine({ start: { x: tx + textW * 0.2, y: ty - gp / 2 }, end: { x: tx + textW * 0.8, y: ty - gp / 2 }, thickness: 0.5, color: _plHex('#c97a7a') });
-  ty -= gp;
-  drawLines(offTitle, tx, ty, textW, 'center'); ty -= hL(offTitle);
-  drawLines(offBody, tx, ty, textW, 'center');
+  page.drawSvgPath(rrPath(ow - 6, offH - 6, 5), { x: M + 3, y: oy - 3, borderColor: _plHex(GOLD), borderWidth: 0.9 });
+  var qrSize = offH - 10, qrPad = 3, qx = M + ow - qrSize - 2 * qrPad - 5;
+  // logo
+  var lg = offH - 26 * hk, lgx = M + 12, lgy = oBot + (offH - lg) / 2;
+  var lgr = lg * 0.22, lgin = lgr * 0.32 + 1.2, logoDone = false;   // the square picture sits inside the rounded gold frame
+  try{ var lr0 = await fetch('icon-512.png'); if(lr0.ok){ var lpng = await pdf.embedPng(new Uint8Array(await lr0.arrayBuffer())); page.drawImage(lpng, { x: lgx + lgin, y: lgy + lgin, width: lg - 2 * lgin, height: lg - 2 * lgin }); logoDone = true; } }catch(e){}
+  if(!logoDone){
+    var ar = runsOf('ARS', true), as = lg * 0.3, aw = wOf(ar, as); drawRuns(ar, lgx + lg / 2 - aw / 2, lgy + lg * 0.32, as, _plHex(GOLD));
+  }
+  page.drawSvgPath(rrPath(lg, lg, lgr), { x: lgx, y: lgy + lg, borderColor: _plHex(GOLD), borderWidth: 1.4 });
+  // centre column
+  var cx0 = lgx + lg + 12, cW = qx - 10 - cx0, ccx = cx0 + cW / 2;
+  // sparkles (only beside the text, never on it) + two small fireworks
+  (function(){ var sd = 7, rnd = function(){ sd = (sd * 9301 + 49297) % 233280; return sd / 233280; }, cl = [GOLD, CREAM, EMBER];
+    for(var i = 0; i < 46; i++){ var px = M + 8 + rnd() * (qx - M - 16), py = oBot + 6 + rnd() * (offH - 12); if(px > cx0 + 4 && px < qx - 44) continue; page.drawCircle({ x: px, y: py, size: 0.45 + rnd() * 0.9, color: _plHex(cl[i % 3]), opacity: 0.55 + rnd() * 0.4 }); }
+    var burst = function(cx, cy, r, n){ for(var k = 0; k < n; k++){ var an = k / n * Math.PI * 2, c = Math.cos(an), sn = Math.sin(an);
+      page.drawLine({ start: { x: cx + c * r * 0.25, y: cy + sn * r * 0.25 }, end: { x: cx + c * r, y: cy + sn * r }, thickness: 0.8, color: _plHex(GOLD) });
+      page.drawCircle({ x: cx + c * (r + 1.4), y: cy + sn * (r + 1.4), size: 0.75, color: _plHex(GOLD) }); } };
+    burst(qx - 18, oy - 16, 9, 14); burst(qx - 30, oBot + 14, 6, 12);
+  })();
+  var runsWith = function(text, ta, la){ var out = []; Array.from(text).forEach(function(ch){ var cp = ch.codePointAt(0), f = isTa(cp) ? (ta || F.taB) : (la && has(la, cp) ? la : pick(ch, true)); var last = out[out.length - 1]; if(last && last.f === f) last.t += ch; else out.push({ f: f, t: ch }); }); return out; };
+  var nRuns = runsWith(title, F.brTa, F.brLa), nsz = 23 * hk; while(wOf(nRuns, nsz) > cW && nsz > 10) nsz -= 0.5;
+  var enT = String(SHOP.name_en || 'A.R.S CRACKERS SHOP').toUpperCase(), ef = F.poB || F.laB, esz = 7.4 * hk, esp = 2.1 * hk;
+  var enW = 0; Array.from(enT).forEach(function(ch, i){ enW += ef.widthOfTextAtSize(ch, esz) + (i ? esp : 0); });
+  var _ofOn = offerActive(), pct = offerDiscNow(), um = /^(\d{4})-(\d{2})-(\d{2})$/.exec((OFFER && OFFER.until) || ''), till = um ? Number(um[3]) + '-' + Number(um[2]) + '-' + um[1] : '';
+  var b1 = _ofOn ? String(OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!') : '', b2 = _ofOn ? (pct > 0 ? pct + '% சிறப்பு தள்ளுபடி' + (till ? ' • ' + till + ' வரை' : '') : '') : 'இன்றைய விலைப் பட்டியல்';
+  var b1s = 10.2 * hk, b2s = 8.4 * hk, r1 = runsWith(b1, F.brTa, F.brLa), r2 = runsWith(b2, F.brTa, F.brLa);
+  var bxW = Math.min(cW * 0.94, Math.max(wOf(r1, b1s), wOf(r2, b2s)) + 34), bxH = (b1 ? b1s * 1.3 : 0) + (b2 ? b2s * 1.3 : 0) + 6 * hk;
+  var psz = 6.9 * hk, ph = 11.5 * hk, pf = F.poS || F.laB, gapP = 5;
+  var place = bid === 'main' ? brandPlace() : bName, phone1 = String(phone).split(' / ')[0];
+  var pills = [{ t: 'PRICE LIST ' + new Date().getFullYear(), fill: 1 }, { t: place, ico: BRAND_PIN }, { t: phone1, ico: BRAND_PH, tel: 1 }];
+  pills.forEach(function(p){ p.r = runsWith(p.t, F.taB, pf); p.w = wOf(p.r, psz) + (p.ico ? psz * 1.5 : 0) + psz * 2; });
+  var rowW = pills.reduce(function(a, p){ return a + p.w; }, 0) + gapP * 2;
+  if(rowW > cW){ pills.shift(); rowW = pills.reduce(function(a, p){ return a + p.w; }, 0) + gapP * (pills.length - 1); }
+  var g1 = 1.5 * hk, g2 = 4 * hk, blockH = nsz * 1.08 + g1 + esz * 1.35 + g2 + bxH + g2 + ph, yT = oy - (offH - blockH) / 2;
+  // shop name (gold, with a dark drop) + English
+  var nw = wOf(nRuns, nsz), nb = yT - nsz * 0.86;
+  drawRuns(nRuns, ccx - nw / 2 + 0.6, nb - 1.3, nsz, _plHex(DARK)); drawRuns(nRuns, ccx - nw / 2, nb, nsz, _plHex(GOLD));
+  var ey = yT - nsz * 1.08 - g1 - esz * 1.0, ex = ccx - enW / 2;
+  Array.from(enT).forEach(function(ch){ page.drawText(ch, { x: ex, y: ey, size: esz, font: ef, color: _plHex(CREAM) }); ex += ef.widthOfTextAtSize(ch, esz) + esp; });
+  // offer box
+  var byT = yT - nsz * 1.08 - g1 - esz * 1.35 - g2, bx = ccx - bxW / 2;
+  page.drawSvgPath(rrPath(bxW, bxH, 5 * hk), { x: bx, y: byT, color: _plHex(GOLD) });
+  var ly = byT - 3 * hk;
+  if(b1){ var w1 = wOf(r1, b1s); drawRuns(r1, ccx - w1 / 2, ly - b1s * 1.02, b1s, _plHex(maroon)); ly -= b1s * 1.3; }
+  if(b2){ var w2 = wOf(r2, b2s); drawRuns(r2, ccx - w2 / 2, ly - b2s * 1.02, b2s, _plHex(DARK)); }
+  // pills
+  var pyT = byT - bxH - g2, px0 = ccx - rowW / 2;
+  pills.forEach(function(p){
+    if(p.fill) page.drawSvgPath(rrPath(p.w, ph, ph / 2), { x: px0, y: pyT, color: _plHex(GOLD) });
+    else page.drawSvgPath(rrPath(p.w, ph, ph / 2), { x: px0, y: pyT, borderColor: _plHex(CREAM), borderWidth: 0.7 });
+    var col = p.fill ? _plHex(DARK) : _plHex(CREAM), tx2 = px0 + psz;
+    if(p.ico){ page.drawSvgPath(p.ico, { x: tx2 - 0.5, y: pyT - ph / 2 + psz * 0.55, scale: psz * 1.1 / 24, color: col }); tx2 += psz * 1.5; }
+    drawRuns(p.r, tx2, pyT - ph / 2 - psz * 0.36, psz, col);
+    if(p.tel){ var dg = String(p.t).replace(/\D/g, '').slice(-10); if(dg.length === 10) addTelLink(px0, pyT - ph, px0 + p.w, pyT, 'tel:+91' + dg); }
+    px0 += p.w + gapP;
+  });
   if(_plQrUrl){
     try{
       var png = await pdf.embedPng(_plQrUrl);
-      var qx = M + ow - qrSize - 2 * qrPad - 5, qy = oBot + 5;
+      var qy = oBot + 5;
       page.drawRectangle({ x: qx, y: qy, width: qrSize + 2 * qrPad, height: qrSize, color: _plHex('#ffffff') });
       page.drawImage(png, { x: qx + qrPad, y: qy + qrPad + 4, width: qrSize - 2 * qrPad - 4, height: qrSize - 2 * qrPad - 4 });
       var lr = runsOf('SELF-ORDER QR', true), lw = wOf(lr, 5.4);
@@ -7797,6 +7850,7 @@ async function generatePriceListPDFRaster(){
   await Promise.all([ensureJsPDF(), ensureHtml2Canvas()]);
 
   await plEnsureQr();
+  try{ await fbTimeout(promoBrandFonts(), 4000, 'Fonts'); }catch(_f){}
   const html = buildPriceListTableHTML();
 
   const host = document.createElement('div');
@@ -7931,12 +7985,17 @@ function buildPriceListTableHTML(noQr){
   };
 
   const _hdrHtml = noQr ? '' : `
-      <div style="display:flex; align-items:stretch; gap:12px; background:#7a1414; border-radius:8px; padding:5px 8px 5px 14px; margin-bottom:5px; color:#fff;">
-        <div style="flex:1; min-width:0; text-align:center; display:flex; flex-direction:column; justify-content:center;">
-          <div style="font-size:19px; font-weight:800; line-height:1.2;">${_plbTitle || 'A.R.S பட்டாசுக் கடை'}</div>
-          <div style="font-size:10px; font-weight:700; color:#ffd9d9; margin-top:2px; padding-bottom:3px; border-bottom:1px solid #c97a7a;">PRICE LIST - ${new Date().getFullYear()} &nbsp;|&nbsp; ${estEsc(branchNamesText(_plb) ? branchesLabel(_plb) : 'Branch: ' + _plbName)} &nbsp;|&nbsp; &#128222; ${_plbPhone}</div>
-          ${offerActive() ? `<div style="font-size:14px; font-weight:800; color:#ffe7a8; margin-top:3px; line-height:1.25;">${estEsc(OFFER.title || '')}</div>
-          <div style="font-size:10.5px; font-weight:800; line-height:1.4;">${estEsc(OFFER.text || '')}</div>` : ''}
+      <div style="display:flex; align-items:stretch; gap:10px; background:radial-gradient(ellipse at 45% 40%, #9a1d1d 0%, #7a1414 55%, #5a0e0e 100%); border-radius:9px; padding:6px 6px 6px 11px; margin-bottom:5px; color:#fff; box-shadow:inset 0 0 0 3px #7a1414, inset 0 0 0 4px #ffd34d;">
+        <div style="flex:0 0 auto; align-self:center; width:72px; height:72px; border-radius:16px; border:2px solid #ffd34d; background:#7a1414 url('icon-512.png') center/86% no-repeat;"></div>
+        <div style="flex:1; min-width:0; text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:3px;">
+          <div style="font-family:ARSBaloo, 'Noto Sans Tamil', sans-serif; font-size:27px; font-weight:800; line-height:1.05; color:#ffd34d; text-shadow:0 2px 0 #4a0c0c; white-space:nowrap;">${_plbTitle || 'A.R.S பட்டாசுக் கடை'}</div>
+          <div style="font-family:ARSPop, 'Segoe UI', Arial, sans-serif; font-size:8.5px; font-weight:700; letter-spacing:2.6px; color:#fff8ea;">${estEsc(String(SHOP.name_en || 'A.R.S CRACKERS SHOP').toUpperCase())}</div>
+          ${(function(){ var on = offerActive(), pct = offerDiscNow(), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((OFFER && OFFER.until) || ''), till = m ? Number(m[3]) + '-' + Number(m[2]) + '-' + m[1] : '';
+            var t1 = on ? (OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!') : '', t2 = on ? (pct > 0 ? pct + '% சிறப்பு தள்ளுபடி' + (till ? ' &bull; ' + till + ' வரை' : '') : '') : 'இன்றைய விலைப் பட்டியல்';
+            return '<div style="padding:2px 22px 3px; border-radius:6px; background:linear-gradient(180deg,#ffe27a,#f2b52c); font-family:ARSBaloo, \'Noto Sans Tamil\', sans-serif; line-height:1.25;">' + (t1 ? '<div style="font-size:12.5px; font-weight:800; color:#7a1414;">' + estEsc(t1) + '</div>' : '') + (t2 ? '<div style="font-size:10px; font-weight:800; color:#4a0c0c;">' + t2 + '</div>' : '') + '</div>'; })()}
+          ${(function(){ var pl = function(t, fill, ico){ return '<span style="display:inline-flex; align-items:center; gap:3px; padding:1px 8px; border-radius:9px; font-family:ARSPop, \'Segoe UI\', Arial, sans-serif; font-size:8.5px; font-weight:600; white-space:nowrap; ' + (fill ? 'background:#ffd34d; color:#4a0c0c;' : 'border:1px solid #fff8ea; color:#fff8ea;') + '">' + (ico || '') + t + '</span>'; };
+            var place = _plb === 'main' ? brandPlace() : _plbName;
+            return '<div style="display:flex; gap:5px; justify-content:center; flex-wrap:wrap;">' + pl('PRICE LIST ' + new Date().getFullYear(), 1) + pl(estEsc(place), 0, '&#128205;') + pl(estEsc(String(_plbPhone).split(' / ')[0]), 0, '&#128222;') + '</div>'; })()}
         </div>
         ${_qrU ? `<div style="flex:0 0 auto; background:#fff; border-radius:4px; padding:3px 3px 1px; text-align:center; display:flex; flex-direction:column; justify-content:space-between;"><img src="${_qrU}" style="width:82px; height:82px; display:block;" alt="QR"><div style="font-size:7.5px; font-weight:800; color:#7a1414;">SELF-ORDER QR</div></div>` : ''}
       </div>
