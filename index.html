@@ -552,7 +552,7 @@
     /* Tamil: extra bold, plain solid black (no outline) */
     #printArea .br-tam{ font-weight:800 !important; }
     #printArea .br-tam-big{ font-weight:900 !important; }
-    #printArea .br-tam-item{ font-weight:700 !important; }
+    #printArea .br-tam-item{ font-weight:400 !important; }   /* Tamil item names: normal (not bold) */
     #printArea .br-table td{ border-bottom-color:#000 !important; }
     #printArea .br-table tr.br-ta-row td{ border-bottom:none !important; }
     /* thermal paper: grey prints faint - every bit of text solid black */
@@ -608,7 +608,7 @@
   .br-table tr.br-ta-row td{border-bottom:none; padding:6px 6px 0;}
   .br-tam{font-weight:800; color:#000;}
   .br-tam-big{font-weight:900;}
-  .br-tam-item{font-weight:700; color:#000;}
+  .br-tam-item{font-weight:400; color:#000;}
   .br-en{color:#000; font-size:9.5px;}
   .br-summary{padding:6px 10px 0; box-sizing:border-box;}
   .br-row{display:flex; justify-content:space-between; gap:6px; font-size:10px; color:#000; padding:2px 0;}
@@ -4936,7 +4936,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v64';
+var APP_BUILD = 'v65';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6989,10 +6989,10 @@ function buildBillReceiptHTML(s){
   const availableTextWidth = Math.max(30, pageWidthPx * RECEIPT_ITEM_COL_FRACTION - RECEIPT_ITEM_TEXT_RESERVE_PX);
   const enName = billEnNamer();
   const enFontPx = fitReceiptFontSize(s.items.map(it=>enName(it)), availableTextWidth, RECEIPT_FONT_FAMILY, 9.5, 7);   // English: unchanged
-  // 80mm thermal roll: each item's Tamil name gets its own line across the full paper width, bold, the same size as
-  // the Paid amount (17px); a long name wraps to a second line.
+  // 80mm thermal roll: each item's Tamil name gets its own line across the full paper width, normal weight (not bold), 15px;
+  // a long name wraps to a second line.
   const idxW = Math.ceil(receiptTextWidth(s.items.length + '.', 13, RECEIPT_FONT_FAMILY, '800')) + 8;
-  const taFontPx = 17;
+  const taFontPx = 15;
   // Price and Qty the same size; Qty extra bold (the number the customer checks); Total bold.
   const priceStyle = 'font-size:12px; font-weight:600; color:#000;';
   const qtyStyle = 'font-size:12px; font-weight:900; color:#000; text-align:center;';
