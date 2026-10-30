@@ -691,6 +691,7 @@
   .bk2-eye{flex:0 0 auto; width:38px; height:36px; border-radius:50%; border:1.5px solid #cfe3d2; background:#fff; font-size:17px; line-height:1; cursor:pointer; padding:0;}
   .bk2-eye.on{background:#1e7a3c; border-color:#1e7a3c;}
   .bk2-rs{flex:0 0 auto; padding:8px 13px; border-radius:20px; border:1.5px solid #1e7a3c; background:#eef8f1; color:#1e7a3c; font-weight:800; font-size:12.5px; cursor:pointer;}
+  .bk2-del{flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:1.5px solid #f1c4bf; background:#fff; color:#b3261e; font-size:14px; cursor:pointer; padding:0;}
   .bk2-card .bk2-btn{background:#f3f8f4; border:1.5px solid #cfe3d2; font-size:12.5px;}
   .bk2-link{display:block; width:100%; margin-top:4px; padding:8px; border:none; background:none; color:#1e7a3c; font-weight:800; font-size:12.5px; cursor:pointer;}
   .bk2-more{display:flex; justify-content:space-between; align-items:center; width:100%; padding:12px 14px; border-radius:14px; border:1px solid #e9c98a; background:#fffaf0; color:#6b4a2e; font-weight:800; font-size:13px; cursor:pointer; margin-bottom:12px;}
@@ -1932,6 +1933,24 @@ const FB_DOCS = {
     isEmpty: function(){ return !PRINT_CFG || !PRINT_CFG.at; },          // only a setting the admin saved goes to the server
     apply: function(r){ if(!r || typeof r !== 'object') return; PRINT_CFG = r; _rawSaveJSON('ars_print_cfg', PRINT_CFG); try{ uiSetPaint(); }catch(e){} }
   },
+  bkcfg: {
+    path: 'settings/backup',
+    get: function(){ return BK_CFG; },
+    isEmpty: function(){ return !BK_CFG || !BK_CFG.at; },
+    apply: function(r){ if(!r || typeof r !== 'object') return; BK_CFG = r; _rawSaveJSON('ars_bk_cfg', BK_CFG); try{ if(adminTab === 'backup') renderAdmin(); }catch(e){} }
+  },
+  pidseq: {
+    path: 'settings/pidseq',
+    get: function(){ return PID_SEQ; },
+    isEmpty: function(){ return !PID_SEQ || !(PID_SEQ.S || PID_SEQ.A); },
+    apply: function(r){ if(!r || typeof r !== 'object') return; Object.keys(r).forEach(function(k){ if((Number(r[k]) || 0) > (PID_SEQ[k] || 0)) PID_SEQ[k] = Number(r[k]); }); _rawSaveJSON('ars_pid_seq', PID_SEQ); }
+  },
+  diwali: {
+    path: 'settings/diwali',
+    get: function(){ return DIWALI; },
+    isEmpty: function(){ return !DIWALI || !Object.keys(DIWALI).length; },
+    apply: function(r){ if(!r || typeof r !== 'object') return; DIWALI = r; _rawSaveJSON('ars_diwali', DIWALI); try{ if(adminTab === 'reports' || adminTab === 'sales') renderAdmin(); }catch(e){} }
+  },
   branches: {
     path: 'branches',
     get: function(){ return BRANCHES; },
@@ -2381,6 +2400,7 @@ const BK_NODES = [['sales', 'bills', 1], ['saleEdits', 'bills', 1], ['pricelist'
 const BK_TYPES = [['bills', '&#129534; Bills'], ['prices', '&#128176; Price list &amp; stock'], ['accounts', '&#128100; Accounts (users &amp; PINs)'],
   ['shop', '&#127968; Branches, UPI, offer &amp; settings'], ['logins', '&#128272; Login history'], ['customers', '&#129489; Customers &amp; visitors']];
 const BK_KEEP = 10;
+var BK_CFG = loadJSON('ars_bk_cfg', null) || { auto: true };
 var _bkDbP = null, _bkRunning = false, _bkList = null;
 function bkDb(){
   if(_bkDbP) return _bkDbP;
@@ -2428,7 +2448,7 @@ async function bkMake(kind){
 }
 /* Once a day, by itself, on the main admin's phone (a minute after opening, when online). */
 function bkAutoMaybe(){
-  if(_bkRunning || !bkIsMainAdmin() || !_fbDb || _fbReadOnly || !window.indexedDB) return;
+  if(_bkRunning || !bkIsMainAdmin() || !bkAutoOn() || !_fbDb || _fbReadOnly || !window.indexedDB) return;
   var last = ''; try{ last = localStorage.getItem('ars_bk_last_day') || ''; }catch(e){}
   if(last === arsToday()) return;
   _bkRunning = true;
@@ -2535,7 +2555,7 @@ function bkCardHtml(){
       '<div style="flex:1; min-width:0;"><div class="bk2-when">' + bkDayWhen(x.at) + '</div><div class="bk2-meta">' +
       (x.wiped ? '<b style="color:#b3261e;">&#9888;&#65039; server looked empty</b>' : (c.bills || 0) + ' bills') + '</div></div>' +
       '<button class="bk2-eye' + (on ? ' on' : '') + '" onclick="bkEye(\'' + x.id + '\')" title="' + (on ? 'Hide details' : 'Show details') + '" aria-label="' + (on ? 'Hide details' : 'Show details') + '">' + (on ? '&#128584;' : '&#128065;&#65039;') + '</button>' +
-      '<button class="bk2-rs" onclick="bkRestoreOpen(\'' + x.id + '\')">&#9851;&#65039; Restore</button></div>' + (on ? bkDetHtml(x) : '');
+      '<button class="bk2-rs" onclick="bkRestoreOpen(\'' + x.id + '\')">&#9851;&#65039; Restore</button>' + '<button class="bk2-del" onclick="bkDelete(\'' + x.id + '\')" title="Delete this copy from this phone" aria-label="Delete this copy">&#128465;</button></div>' + (on ? bkDetHtml(x) : '');
   });
   if(_bkList.length > 3) h += '<button class="bk2-link" onclick="_bkShowAll=!_bkShowAll; bkPaint();">' + (_bkShowAll ? 'Show less &#9652;' : 'Show all (' + _bkList.length + ') &#9662;') + '</button>';
   return h;
@@ -2554,6 +2574,21 @@ async function bkNow(btn){
   catch(e){ alert('Could not back up: ' + ((e && e.message) || e) + '\nCheck the internet and try again.'); }
   _bkRunning = false; if(btn){ btn.disabled = false; btn.innerHTML = old; }
   _bkList = null; bkPaint();
+}
+/* Automatic daily copy: on / off (saved for all admin phones). */
+function bkAutoOn(){ return !BK_CFG || BK_CFG.auto !== false; }
+function bkSetAuto(on){
+  BK_CFG = { auto: !!on, at: Date.now(), by: (session && session.name) || '' };
+  saveJSON('ars_bk_cfg', BK_CFG);
+  if(adminTab === 'backup') renderAdmin();
+}
+/* Removes one backup copy from THIS phone only. The server is not touched. */
+async function bkDelete(id){
+  var inf = (_bkList || []).filter(function(x){ return x.id === id; })[0];
+  if(!(await showConfirm('Delete this backup copy from this phone?' + (inf ? '\n' + bkWhen(inf.at) + ' • ' + bkCountsText(inf.counts || {}) : '') + '\n\nThe server data is not changed.'))) return;
+  try{ await bkTx(['info', 'data'], 'readwrite', function(tx){ tx.objectStore('info').delete(id); tx.objectStore('data').delete(id); return null; }); }
+  catch(e){ alert('Could not delete this copy: ' + ((e && e.message) || e)); return; }
+  delete _bkOpen[id]; delete _bkDet[id]; _bkList = null; bkPaint();
 }
 /* Restore sheet: tick the types, choose missing-only or overwrite. */
 var _bkRestoreData = null;
@@ -3393,6 +3428,9 @@ saveJSON = function(key, val){
     else if(key === 'ars_offer') fbDocChanged('offer');
     else if(key === 'ars_print_cfg') fbDocChanged('printcfg');
     else if(key === 'ars_branches') fbDocChanged('branches');
+    else if(key === 'ars_bk_cfg') fbDocChanged('bkcfg');
+    else if(key === 'ars_pid_seq') fbDocChanged('pidseq');
+    else if(key === 'ars_diwali') fbDocChanged('diwali');
     else if(key === 'ars_login_history') fbPushMissing('loginHistory');
     else if(key === 'ars_sales') fbPushMissing('sales');
   }catch(e){}
@@ -3690,7 +3728,7 @@ cart = cart1; // Default to Bill 1
 let activeCat = 'ALL';
 let activeTab = 'billing1';
 let adminTab = 'sales';
-let salesFilters = { seller:'', billNo:'', phone:'', branch:'', from:'', to:'' };
+let salesFilters = { seller:'', billNo:'', phone:'', branch:'', from:'', to:'', yr: 'y:' + new Date().getFullYear() };
 let salesStatsOpen = false;   // Sales tab totals: hidden until the admin taps the eye
 let historyPhoneFilter = '';
 let historyBranchFilter = '';
@@ -3836,7 +3874,7 @@ function branchChipsHtml(current, handler){
   return '<div style="display:flex; gap:7px; flex-wrap:wrap; margin:8px 0;">' + chip('', 'All') +
     list.map(function(b){ return chip(b.id, b.short); }).join('') + '</div>';
 }
-function setAdminBranch(id){ listReset('sales'); salesFilters.branch = id; if(id && salesFilters.seller){ var ok = SALES.some(function(x){ return x.sellerId === salesFilters.seller && saleInBranch(x, id); }); if(!ok) salesFilters.seller = ''; } renderAdmin(); }
+function setAdminBranch(id){ listReset('sales'); salesFilters.branch = id; if(id && salesFilters.seller){ var ok = SALES.some(function(x){ return sellerKeyOf(x) === salesFilters.seller && saleInBranch(x, id); }); if(!ok) salesFilters.seller = ''; } renderAdmin(); }
 function setHistoryBranch(id){ historyBranchFilter = id; listReset('hist'); render(); }
 /* Long lists (History, Sales records, Login History) draw the newest 60 first with a "Show more" button, so a phone
    with thousands of bills never freezes while drawing them. Totals and PDFs always use every bill. */
@@ -4686,7 +4724,8 @@ function openBill(preserveEntries){
         const name = getItemName(ci, ii);
         const price = getPrice(ci,ii);
         const lt = qty*price;
-        rows += `<tr><td><div style="display:flex; align-items:baseline;"><span style="flex:0 0 auto; margin-right:5px;">${snDot(itemSerialNo(ci, ii), 18, 9.5)}</span><div>${name.ta}<br><span style="color:#8a6a44;font-size:10px;">${name.en}</span></div></div></td>
+        // same numbering as the printed bill: 1. 2. 3. ... in bill order
+        rows += `<tr><td><div style="display:flex; align-items:baseline;"><span style="flex:0 0 auto; min-width:20px; margin-right:4px; font-size:13px; font-weight:800; color:#000;">${sno}.</span><div>${name.ta}<br><span style="color:#8a6a44;font-size:10px;">${name.en}</span></div></div></td>
           <td class="num">&#8377;${price.toLocaleString('en-IN')}</td>
           <td class="num"><div class="stepper stepper-sm" style="justify-content:flex-end;">
             <button onclick="changeQtyInBill(${ci},${ii},-1)">&minus;</button>
@@ -5119,8 +5158,8 @@ function estVoucherHtml(forScreen){
       vCat = it.catEn;
       rows += '<tr><td colspan="5" style="padding:4px 4px; background:#e8f0ff; border-bottom:1px solid #c9d3e6; font-size:10.5px; font-weight:800; color:#1b3a78;"><span style="display:inline-block; min-width:15px; padding:0 4px; margin-right:4px; border-radius:8px; background:#1b3a78; color:#fff; text-align:center; font-size:9.5px;">' + it.cno + '</span>' + estEsc(it.catTa) + ' <span style="font-weight:600; font-size:9px; color:#556;">' + estEsc(it.catEn) + '</span></td></tr>';
     }
-    rows += '<tr><td style="padding:5px 2px; border-bottom:1px dashed #c9d3e6; vertical-align:top;">' + snDot(it.s, 17, 8.5) + '</td>' +
-      '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; vertical-align:top;"><b>' + estEsc(it.ta) + '</b><br><span style="font-size:9.5px; color:#667;">' + estEsc(it.en) + '</span></td>' +
+    rows += '<tr><td style="padding:5px 2px; border-bottom:1px dashed #c9d3e6; vertical-align:top; font-size:11px; font-weight:800; color:#10213f;">' + n + '.</td>' +
+      '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; vertical-align:top;"><b>' + estEsc(it.ta) + '</b><br><span style="font-size:9.5px; color:#667;">' + estEsc(it.en) + ' (' + it.s + ')</span></td>' +
       '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; text-align:center; vertical-align:top;">' + c + '</td>' +
       '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; text-align:right; vertical-align:top; white-space:nowrap;">' + it.price.toLocaleString('en-IN') + '</td>' +
       '<td style="padding:5px 4px; border-bottom:1px dashed #c9d3e6; font-size:11.5px; text-align:right; font-weight:800; vertical-align:top; white-space:nowrap;">' + (c * it.price).toLocaleString('en-IN') + '</td></tr>';
@@ -5141,7 +5180,7 @@ function estVoucherHtml(forScreen){
       '<div style="display:inline-block; border:2px solid #b3261e; color:#b3261e; font-weight:800; letter-spacing:1.5px; font-size:14px; padding:3px 12px; border-radius:4px; transform:rotate(-2deg);">ESTIMATE VOUCHER</div>' +
       '<div style="font-size:10.5px; font-weight:700; color:#b3261e; margin-top:5px;">மதிப்பீட்டு சீட்டு — முறையான பில் அல்ல &nbsp;|&nbsp; NOT A BILL</div>' +
     '</div>' +
-    '<div style="display:flex; justify-content:space-between; padding:2px 10px 6px; font-size:10px; color:#44557a;"><span>Ref: <b>' + ref + '</b></span><span>' + when + '</span></div>' +
+    '<div style="display:flex; justify-content:space-between; padding:2px 10px 6px; font-size:10px; color:#44557a;"><span>Estimate No: <b>' + ref + '</b></span><span>' + when + '</span></div>' +
     (function(){ var cu = estCustClean(); return (cu.name || cu.mobile || cu.place) ? '<div style="padding:0 10px 6px; font-size:11px; color:#10213f;">Customer: <b>' + estEsc(cu.name) + '</b>' + (cu.mobile ? ' &nbsp;&#128222; ' + estEsc(fmtPhones(cu.mobile)) : '') + (cu.place ? ' &nbsp;&#128205; ' + estEsc(cu.place) : '') + '</div>' : ''; })() +
     '<table style="width:100%; border-collapse:collapse; table-layout:fixed;"><colgroup><col style="width:28px;"><col><col style="width:34px;"><col style="width:52px;"><col style="width:62px;"></colgroup>' +
       '<thead><tr style="background:#dce7fb;"><th style="padding:5px 4px; font-size:9.5px; text-align:left;">#</th><th style="padding:5px 4px; font-size:9.5px; text-align:left;">Item</th><th style="padding:5px 4px; font-size:9.5px;">Qty</th><th style="padding:5px 4px; font-size:9.5px; text-align:right;">Rate &#8377;</th><th style="padding:5px 4px; font-size:9.5px; text-align:right;">Amount &#8377;</th></tr></thead>' +
@@ -6152,7 +6191,7 @@ async function completeSale(paymentMethod, splitDetails){
   const newSale = {
     id: 'S' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
     billNo: bn.n,
-    sellerId: session.id, sellerName: session.name,
+    sellerId: session.id, sellerName: session.name, sellerPid: pidOf(session.id) || '',
     time: new Date().toISOString(),
     items, subtotal, discount, discountPercent: percent, total: grand,
     paidAmount: paidAmount || null,
@@ -8215,6 +8254,7 @@ function closeQtySheets(){
   try{ _pubSheetSn = null; var b = document.getElementById('pubQtySheet'); if(b) b.style.display = 'none'; }catch(e){}
 }
 function showAdmin(){
+  try{ if(session && session.role === 'admin'){ ensureUserPids(); stampSellerPids(); } }catch(e){}
   closeQtySheets();
   adminItemsBranch = adminScope() || '';                 // a branch's own price view never sticks
   salesStatsOpen = false;                                // Sales totals start hidden (eye button shows them)
@@ -8429,16 +8469,363 @@ function confirmOrder(saleId){
   setSaleStatus(saleId, 'confirmed');
 }
 
+/* ================= PERMANENT ACCOUNT NUMBERS (S001 sellers, A001 admins) =================
+   Given once when the account is made. Never changed and never reused. Every bill keeps the number of the person
+   who made it, so a rename, a removed account, or a new account with the same user ID never moves anyone's bills. */
+var PID_SEQ = (function(){ var v = loadJSON('ars_pid_seq', null); return (v && typeof v === 'object') ? v : { S: 0, A: 0 }; })();
+function pidOf(id){ var u = USERS && USERS[id]; return (u && u.pid) || ''; }
+function sellerKeyOf(s){ return (s && s.sellerPid) || pidOf(s && s.sellerId) || ('id:' + ((s && s.sellerId) || '')); }
+function sellerNoLabel(key){ return key && key.indexOf('id:') !== 0 ? key : ''; }
+function sellerNameOf(key){ var x = (SALES || []).filter(function(s){ return sellerKeyOf(s) === key; }).pop(); return x ? (x.sellerName || key) : key; }
+function nextPidFor(role){
+  var pre = role === 'admin' ? 'A' : 'S';
+  Object.keys(USERS || {}).forEach(function(id){ var p = String((USERS[id] || {}).pid || ''); if(p.charAt(0) === pre){ var n = parseInt(p.slice(1), 10); if(n > (PID_SEQ[pre] || 0)) PID_SEQ[pre] = n; } });
+  PID_SEQ[pre] = (PID_SEQ[pre] || 0) + 1; saveJSON('ars_pid_seq', PID_SEQ);
+  return pre + String(PID_SEQ[pre]).padStart(3, '0');
+}
+/* Accounts made before this change get a number (admins first, then by user ID). */
+function ensureUserPids(){
+  var miss = Object.keys(USERS || {}).filter(function(id){ return !USERS[id].pid; });
+  if(!miss.length) return false;
+  miss.sort(function(a, b){ return ((USERS[a].role === 'admin' ? 0 : 1) - (USERS[b].role === 'admin' ? 0 : 1)) || String(a).localeCompare(String(b)); })
+    .forEach(function(id){ USERS[id].pid = nextPidFor(USERS[id].role); });
+  saveJSON('ars_users', USERS);
+  return true;
+}
+/* Old bills get the account number of their person before that person is renamed or removed. Only a bill's own
+   number field is written to the server (the rest of the bill is left exactly as the server has it). */
+function stampSellerPids(onlyId){
+  var stamped = [];
+  (SALES || []).forEach(function(s){
+    if(s.sellerPid || (onlyId && s.sellerId !== onlyId)) return;
+    var p = pidOf(s.sellerId); if(!p) return;
+    s.sellerPid = p; stamped.push(s);
+  });
+  if(!stamped.length) return;
+  _rawSaveJSON('ars_sales', SALES);
+  try{
+    var rem = FB_COLL.sales && FB_COLL.sales.remote;
+    if(_fbDb && !_fbReadOnly) stamped.forEach(function(s){
+      if(rem && rem.has && rem.has(s.id)) _fbDb.ref('sales/' + fbSafeKey(s.id) + '/sellerPid').set(s.sellerPid).catch(function(){});
+    });
+  }catch(e){}
+}
+
+/* Diwali season of each year (set in Reports). Until the admin sets one: 1 Oct to 10 Nov of that year. */
+var DIWALI = loadJSON('ars_diwali', null) || {};
+function diwaliRange(y){ var d = DIWALI && DIWALI[y]; return (d && d.from && d.to) ? { from: d.from, to: d.to } : { from: y + '-10-01', to: y + '-11-10' }; }
+function fullDateLabel(d){ try{ var p = d.split('-'); return Number(p[2]) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(p[1]) - 1] + ' ' + p[0]; }catch(e){ return d; } }
+
+/* Sales tab period: its From / To (📅) if set, else the chosen year, Diwali season, or all years. */
+function salesDefaultYr(){ return 'y:' + new Date().getFullYear(); }
+function salesRange(){
+  if(salesFilters.from || salesFilters.to) return { from: salesFilters.from || '', to: salesFilters.to || '' };
+  var p = String(salesFilters.yr || ''), k = p.slice(2);
+  if(p.indexOf('y:') === 0 && k) return { from: k + '-01-01', to: k + '-12-31' };
+  if(p.indexOf('d:') === 0 && k) return diwaliRange(k);
+  return { from: '', to: '' };
+}
+function salesPeriodLabel(){
+  if(salesFilters.from || salesFilters.to) return salesDateLabel(salesFilters.from || salesFilters.to) + (salesFilters.to && salesFilters.to !== salesFilters.from ? ' – ' + salesDateLabel(salesFilters.to) : '');
+  var p = String(salesFilters.yr || ''), k = p.slice(2);
+  if(p.indexOf('y:') === 0 && k) return k === String(new Date().getFullYear()) ? k + ' (this year)' : k;
+  if(p.indexOf('d:') === 0 && k){ var r = diwaliRange(k); return 'Diwali ' + k + ' (' + salesDateLabel(r.from) + ' – ' + salesDateLabel(r.to) + ')'; }
+  return 'All years';
+}
+function salesYears(){
+  var set = {}; set[String(new Date().getFullYear())] = 1;
+  (SALES || []).forEach(function(s){ var y = saleLocalDate(s.time).slice(0, 4); if(y) set[y] = 1; });
+  return Object.keys(set).sort().reverse();
+}
+function salesYearOptionsHtml(){
+  var cur = salesFilters.yr || '', custom = !!(salesFilters.from || salesFilters.to), ys = salesYears(), thisY = String(new Date().getFullYear());
+  var h = custom ? '<option value="" selected>Dates chosen (📅)</option>' : '';
+  h += '<option value="all"' + (!custom && cur === 'all' ? ' selected' : '') + '>All years</option>';
+  ys.forEach(function(y){ h += '<option value="y:' + y + '"' + (!custom && cur === 'y:' + y ? ' selected' : '') + '>' + y + (y === thisY ? ' (this year)' : '') + '</option>'; });
+  ys.forEach(function(y){ h += '<option value="d:' + y + '"' + (!custom && cur === 'd:' + y ? ' selected' : '') + '>Diwali ' + y + '</option>'; });
+  return h;
+}
+function onSalesYearChange(){
+  var v = (document.getElementById('filterYear') || {}).value || '';
+  if(!v) return;
+  listReset('sales'); salesFilters.yr = v; salesFilters.from = ''; salesFilters.to = ''; renderAdmin();
+}
+
+/* ---- Shared pieces for the A4 pages and the dashboard print (same numbers as the Sales dashboard) ---- */
+function a4Inr(v){ return '₹' + Math.round(Number(v) || 0).toLocaleString('en-IN'); }
+function dashSummary(list){
+  var cs = list.filter(function(s){ return isCountedSale(s); });
+  var net = cs.reduce(function(a, s){ return a + (s.total || 0); }, 0), disc = cs.reduce(function(a, s){ return a + (s.discount || 0); }, 0), gross = net + disc;
+  return {
+    all: list.length, bills: cs.length, cancelled: list.length - cs.length, net: net, disc: disc, gross: gross,
+    pct: gross > 0 ? Math.round(disc / gross * 1000) / 10 : 0,
+    items: cs.reduce(function(a, s){ return a + (s.items || []).reduce(function(b, it){ return b + (it.qty || 0); }, 0); }, 0),
+    cash: cs.reduce(function(a, s){ return a + saleCashAmount(s); }, 0),
+    upi: cs.reduce(function(a, s){ return a + saleUpiAmount(s); }, 0)
+  };
+}
+function dashSellerRows(list){
+  var m = new Map();
+  list.forEach(function(s){
+    if(!isCountedSale(s)) return;
+    var k = sellerKeyOf(s), e = m.get(k) || { key: k, name: s.sellerName || s.sellerId, bills: 0, items: 0, net: 0, disc: 0 };
+    e.name = s.sellerName || e.name; e.bills++; e.items += (s.items || []).reduce(function(a, it){ return a + (it.qty || 0); }, 0);
+    e.net += s.total || 0; e.disc += s.discount || 0; m.set(k, e);
+  });
+  return Array.from(m.values()).sort(function(a, b){ return b.net - a.net; });
+}
+function dashDayRows(list){
+  var m = new Map();
+  list.forEach(function(s){
+    if(!isCountedSale(s)) return;
+    var k = saleLocalDate(s.time), e = m.get(k) || { day: k, bills: 0, items: 0, net: 0, disc: 0 };
+    e.bills++; e.items += (s.items || []).reduce(function(a, it){ return a + (it.qty || 0); }, 0);
+    e.net += s.total || 0; e.disc += s.discount || 0; m.set(k, e);
+  });
+  return Array.from(m.values()).sort(function(a, b){ return a.day < b.day ? -1 : a.day > b.day ? 1 : 0; });
+}
+function a4Head(title, scopeHtml){
+  return '<div class="bkr-head"><div class="bkr-shop-ta">' + SHOP.name_ta + '</div><div class="bkr-shop-en">' + SHOP.name_en + '</div>' +
+    '<div class="bkr-addr">Phone: ' + fmtPhones(SHOP.phones.join(' / ')) + '</div></div>' +
+    '<div class="bkr-title">' + title + '</div><div class="bkr-period">' + scopeHtml + '</div>';
+}
+function a4SummaryTable(d){
+  return '<div class="bkr-sec">1. Summary</div><table><thead><tr><th>Particulars</th><th class="num">Amount</th></tr></thead><tbody>' +
+    '<tr><td>Bills made (all)</td><td class="num">' + d.all + '</td></tr>' +
+    '<tr><td>Confirmed bills</td><td class="num">' + d.bills + '</td></tr>' +
+    '<tr><td>Cancelled bills</td><td class="num">' + d.cancelled + '</td></tr>' +
+    '<tr><td>Items sold (quantity)</td><td class="num">' + d.items + '</td></tr>' +
+    '<tr><td>Gross sales value</td><td class="num">' + a4Inr(d.gross) + '</td></tr>' +
+    '<tr><td>Less: discounts given (' + d.pct + '%)</td><td class="num">(' + a4Inr(d.disc) + ')</td></tr>' +
+    '<tr class="bkr-total-row"><td>Net sales (confirmed)</td><td class="num">' + a4Inr(d.net) + '</td></tr>' +
+    '<tr><td>Received in cash</td><td class="num">' + a4Inr(d.cash) + '</td></tr>' +
+    '<tr><td>Received by UPI / digital</td><td class="num">' + a4Inr(d.upi) + '</td></tr></tbody></table>';
+}
+var A4_BILL_HEAD = '<th class="num" style="width:44px;">S.No</th><th>Bill No</th><th>Date &amp; time</th><th>Seller</th><th>Status</th><th class="num">Amount</th>';
+function a4SellerBlock(num, sellers){
+  return { sec: num + '. Seller-wise',
+    head: '<th class="num" style="width:44px;">S.No</th><th style="width:76px;">ID</th><th>Seller</th><th class="num">Bills</th><th class="num">Items</th><th class="num">Net</th><th class="num">Discount</th>',
+    units: sellers.map(function(r, i){ return '<tr><td class="num">' + (i + 1) + '</td><td>' + (sellerNoLabel(r.key) || '-') + '</td><td>' + estEsc(r.name) + '</td><td class="num">' + r.bills + '</td><td class="num">' + r.items + '</td><td class="num">' + a4Inr(r.net) + '</td><td class="num">' + a4Inr(r.disc) + '</td></tr>'; }) };
+}
+function a4BillRow(s, no){
+  var st = saleStatus(s), status = st === 'cancelled' ? 'Cancelled' : st === 'cancel_pending' ? 'Cancel requested' : 'Confirmed';
+  var when = new Date(s.time).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return '<tr><td class="num">' + no + '</td><td>#' + estEsc(s.billNo || '-') + '</td><td>' + when + '</td><td>' + estEsc(s.sellerName || '') + '</td><td>' + status + '</td><td class="num">' + (isCountedSale(s) ? a4Inr(s.total || 0) : '-') + '</td></tr>';
+}
+/* A4 sheets: each page is a fixed 794 x 1123 sheet. Blocks are placed one after another and every sheet is measured, so a page is filled down to its footer, a table only breaks between two rows, and its header repeats on the next sheet. */
+function a4Css(){
+  if(document.getElementById('a4sCss')) return;
+  var st = document.createElement('style'); st.id = 'a4sCss';
+  st.textContent =
+    '.bank-report.a4s{height:1123px; overflow:hidden; position:relative; padding:34px 52px 0;}' +
+    '.bank-report.a4s .a4s-body{height:1040px; overflow:hidden;}' +
+    '.bank-report.a4s .a4s-blk{padding-bottom:14px;}' +
+    '.bank-report.a4s .a4s-blk table{margin:0;}' +
+    '.bank-report.a4s .bkr-sec{margin:0 0 8px;}' +
+    '.bank-report.a4s .bkr-decl{margin-top:0;}' +
+    '.bank-report.a4s .bkr-sign{margin-top:36px;}' +
+    '.bank-report.a4s .a4s-mini{display:flex; justify-content:space-between; font-size:11px; border-bottom:1px solid #000; padding-bottom:5px; margin-bottom:14px;}' +
+    '.bank-report.a4s .a4s-foot{position:absolute; left:52px; right:52px; bottom:22px; display:flex; justify-content:space-between; font-size:11px; color:#333; border-top:1px solid #000; padding-top:6px;}';
+  document.head.appendChild(st);
+}
+function a4Paginate(host, blocks, docTitle){
+  var pages = [], cur = null, tb = null, w = null;
+  var today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  function newPage(){
+    var el = document.createElement('div'); el.className = 'bank-report a4s';
+    el.innerHTML = '<div class="a4s-body"></div><div class="a4s-foot"><span>Generated on: ' + today + '</span><span class="a4s-pg"></span></div>';
+    host.appendChild(el); pages.push(el); cur = el.querySelector('.a4s-body');
+    if(pages.length > 1) cur.innerHTML = '<div class="a4s-mini"><span>' + SHOP.name_en + '</span><span>' + docTitle + ' (continued)</span></div>';
+  }
+  function fits(){ return cur.scrollHeight <= cur.clientHeight + 1; }
+  function blocksOnPage(except){ return Array.prototype.filter.call(cur.children, function(c){ return c !== except && c.classList.contains('a4s-blk'); }).length; }
+  function addStatic(html){
+    var b = document.createElement('div'); b.className = 'a4s-blk'; b.innerHTML = html;
+    cur.appendChild(b);
+    if(!fits()){ b.remove(); if(blocksOnPage(null) > 0) newPage(); cur.appendChild(b); }
+  }
+  function addTable(t){
+    var i = 0, started = false, placed = 0;
+    function open(cont){
+      w = document.createElement('div'); w.className = 'a4s-blk';
+      w.innerHTML = '<div class="bkr-sec">' + t.sec + (cont ? ' (continued)' : '') + '</div><table><thead>' + t.head + '</thead><tbody></tbody></table>';
+      cur.appendChild(w); tb = w.querySelector('tbody'); placed = 0;
+    }
+    open(false);
+    while(i < t.units.length){
+      var tmp = document.createElement('tbody'); tmp.innerHTML = t.units[i];
+      var els = Array.prototype.slice.call(tmp.children);
+      els.forEach(function(e){ tb.appendChild(e); });
+      if(fits() || (placed === 0 && blocksOnPage(w) === 0)){ i++; placed++; started = true; continue; }   // fits, or one row taller than a whole sheet
+      els.forEach(function(e){ e.remove(); });
+      if(placed === 0) w.remove();
+      newPage(); open(started);
+    }
+  }
+  newPage();
+  blocks.forEach(function(b){ if(b.html != null) addStatic(b.html); else addTable(b); });
+  pages.forEach(function(el, i){ el.querySelector('.a4s-pg').textContent = SHOP.name_en + ' — Page ' + (i + 1) + ' of ' + pages.length; });
+  return pages;
+}
+async function a4MakePdf(blocks, docTitle){
+  await Promise.all([ensureJsPDF(), ensureHtml2Canvas()]);
+  a4Css();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const pdfW = doc.internal.pageSize.getWidth(), pdfH = doc.internal.pageSize.getHeight();
+  const host = document.createElement('div'); host.className = 'pl-host'; document.body.appendChild(host);
+  try{
+    const pages = a4Paginate(host, blocks, docTitle);
+    for(let i = 0; i < pages.length; i++){
+      const canvas = await window.html2canvas(pages[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true, width: 794, height: 1123, windowWidth: 794, windowHeight: 1123 });
+      if(i > 0) doc.addPage();
+      doc.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, pdfH);   // exactly one A4 sheet per page
+    }
+    return doc;
+  } finally { host.remove(); }
+}
+
+/* ---- Sales dashboard print (the filter on the Sales tab: seller / branch / period) ---- */
+function dashScopeLine(){
+  var br = salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch].name : 'All branches';
+  return 'Period: ' + salesPeriodLabel() + '  •  ' + (salesFilters.seller ? 'Seller: ' + sellerNameOf(salesFilters.seller) : 'All sellers') + '  •  ' + br;
+}
+function buildDashboardThermalHTML(list, title, scope){
+  var d = dashSummary(list), sellers = dashSellerRows(list);
+  var stat = function(l, v, cls){ return '<div class="br-row' + (cls ? ' ' + cls : '') + '"><span>' + l + '</span><span>' + v + '</span></div>'; };
+  var bills = list.slice(0, 300).map(function(s){
+    var st = saleStatus(s), tag = st === 'cancelled' ? ' <b>&middot; CANCELLED</b>' : st === 'cancel_pending' ? ' <b>&middot; CANCEL REQUESTED</b>' : '';
+    return '<div class="br-hist-entry"><div class="br-hist-top"><span>#' + estEsc(s.billNo || '-') + ' &middot; ' + new Date(s.time).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '</span><span class="num">' + (isCountedSale(s) ? a4Inr(s.total || 0) : '-') + '</span></div><div class="br-hist-sub">' + estEsc(s.sellerName || '') + tag + '</div></div>';
+  }).join('');
+  return '<div class="br-page" style="width:302px;">' +
+    '<div class="br-head"><div class="br-ta">' + SHOP.name_ta + '</div><div style="font-size:10.5px; color:#000; margin-top:3px; font-weight:800;">' + estEsc(title) + '</div><div style="font-size:9px; color:#000; margin-top:2px;">' + estEsc(scope) + '</div></div>' +
+    '<div class="br-summary">' + stat('Total sales (confirmed)', a4Inr(d.net)) + stat('Bills (all)', d.all) + stat('Confirmed bills', d.bills) + stat('Items sold (qty)', d.items) + stat('Discount given', '-' + a4Inr(d.disc), 'br-disc') + stat('Discount %', d.pct + '%') + stat('Cash', a4Inr(d.cash)) + stat('UPI / digital', a4Inr(d.upi)) + stat('Cancelled', d.cancelled) + '</div>' +
+    (sellers.length > 1 ? '<table class="br-table" style="margin-top:6px;"><thead><tr><th style="width:50%;">Seller</th><th class="num" style="width:16%;">Bills</th><th class="num" style="width:34%;">Net</th></tr></thead><tbody>' + sellers.map(function(r){ return '<tr><td>' + estEsc(r.name) + (sellerNoLabel(r.key) ? ' <span style="font-size:8.5px;">' + sellerNoLabel(r.key) + '</span>' : '') + '</td><td class="num">' + r.bills + '</td><td class="num">' + a4Inr(r.net) + '</td></tr>'; }).join('') + '</tbody></table>' : '') +
+    '<div class="br-hist-list" style="margin-top:6px;">' + (bills || '<div style="text-align:center;color:#777;padding:10px;">No bills.</div>') + '</div>' +
+    (list.length > 300 ? '<div style="text-align:center; font-size:9px; padding:4px;">First 300 bills shown. The A4 PDF has all of them.</div>' : '') +
+    '<div class="br-total-row"><span>TOTAL (confirmed)</span><span>' + a4Inr(d.net) + '</span></div>' +
+    '</div>';
+}
+function buildDashboardA4Blocks(list, title, scope){
+  var d = dashSummary(list), sellers = dashSellerRows(list), blocks = [], n = 2;
+  blocks.push({ html: a4Head(title, estEsc(scope)) + a4SummaryTable(d) });
+  if(!list.length) blocks.push({ html: '<div class="bkr-decl">No bills for this filter.</div>' });
+  if(sellers.length > 1) blocks.push(a4SellerBlock(n++, sellers));
+  if(list.length){
+    var units = list.map(function(s, j){ return a4BillRow(s, j + 1); });
+    units[units.length - 1] += '<tr class="bkr-total-row"><td colspan="5">TOTAL (confirmed bills)</td><td class="num">' + a4Inr(d.net) + '</td></tr>';
+    blocks.push({ sec: (n++) + '. Bill-wise (' + list.length + ' bills)', head: A4_BILL_HEAD, units: units });
+  }
+  return blocks;
+}
+function printDashboardThermal(){
+  var sc = salesRecordsScope();
+  if(!sc.list.length){ alert('No bills for this filter.'); return; }
+  printThermalHtml(buildDashboardThermalHTML([...sc.list].reverse(), 'Sales Dashboard', dashScopeLine()));
+}
+async function shareDashboardA4(){
+  var sc = salesRecordsScope();
+  if(!sc.list.length){ alert('No bills for this filter.'); return; }
+  try{
+    var doc = await a4MakePdf(buildDashboardA4Blocks([...sc.list].reverse(), 'SALES DASHBOARD', dashScopeLine()), 'SALES DASHBOARD');
+    await shareGeneratedPDF(doc, 'Sales_Dashboard_' + new Date().toISOString().slice(0, 10) + '.pdf', 'Sales Dashboard — ' + dashScopeLine());
+  } catch(e){
+    alert('Could not generate/share the PDF. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
+  }
+}
+
+/* ---- Reports tab: A4 sales statement for a Date, Month, Year (overall) or Diwali season (+ seller, branch) ---- */
+var a4Rep = { kind: 'month', date: '', month: '', year: '', seller: '', detail: 'simple' };
+function a4RepVals(){
+  var t = saleLocalDate(new Date());
+  return { kind: a4Rep.kind || 'month', date: a4Rep.date || t, month: a4Rep.month || t.slice(0, 7), year: a4Rep.year || t.slice(0, 4), seller: a4Rep.seller || '', detail: a4Rep.detail || 'simple' };
+}
+function a4RepSet(k, v){ a4Rep[k] = v; renderAdmin(); }
+function a4RepRange(f){
+  if(f.kind === 'date' && f.date) return { from: f.date, to: f.date, label: fullDateLabel(f.date) };
+  if(f.kind === 'month' && f.month){
+    var p = f.month.split('-').map(Number), last = new Date(p[0], p[1], 0).getDate(), mm = String(p[1]).padStart(2, '0');
+    return { from: p[0] + '-' + mm + '-01', to: p[0] + '-' + mm + '-' + String(last).padStart(2, '0'), label: new Date(p[0], p[1] - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) };
+  }
+  if(f.kind === 'year' && f.year) return { from: f.year + '-01-01', to: f.year + '-12-31', label: 'Year ' + f.year + ' (1 Jan – 31 Dec)' };
+  if(f.kind === 'diwali' && f.year){ var r = diwaliRange(f.year); return { from: r.from, to: r.to, label: 'Diwali season ' + f.year + ' (' + fullDateLabel(r.from) + ' – ' + fullDateLabel(r.to) + ')' }; }
+  return null;
+}
+function a4StatementList(f, r){
+  return SALES.filter(function(s){ var d = saleLocalDate(s.time); return d >= r.from && d <= r.to && saleInBranch(s, adminScope()) && saleInBranch(s, salesFilters.branch) && (!f.seller || sellerKeyOf(s) === f.seller); });
+}
+function buildSalesStatementBlocks(f, r, list){
+  var d = dashSummary(list), sellers = dashSellerRows(list), blocks = [], n = 2;
+  var scope = 'Period: <b>' + estEsc(r.label) + '</b> &nbsp;&bull;&nbsp; Seller: <b>' + estEsc(f.seller ? sellerNameOf(f.seller) : 'All sellers') + '</b> &nbsp;&bull;&nbsp; Branch: <b>' + estEsc(salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch].name : 'All branches') + '</b>';
+  blocks.push({ html: a4Head('SALES STATEMENT', scope) + a4SummaryTable(d) });
+  if(!list.length) blocks.push({ html: '<div class="bkr-decl">No sales in this period.</div>' });
+  if(!f.seller && sellers.length) blocks.push(a4SellerBlock(n++, sellers));
+  if(f.detail === 'daily' && list.length){
+    var days = dashDayRows(list);
+    var units = days.map(function(x){ return '<tr><td>' + fullDateLabel(x.day) + '</td><td class="num">' + x.bills + '</td><td class="num">' + x.items + '</td><td class="num">' + a4Inr(x.disc) + '</td><td class="num">' + a4Inr(x.net) + '</td></tr>'; });
+    units[units.length - 1] += '<tr class="bkr-total-row"><td>TOTAL</td><td class="num">' + d.bills + '</td><td class="num">' + d.items + '</td><td class="num">' + a4Inr(d.disc) + '</td><td class="num">' + a4Inr(d.net) + '</td></tr>';
+    blocks.push({ sec: (n++) + '. Day-wise', head: '<th>Date</th><th class="num">Bills</th><th class="num">Items</th><th class="num">Discount</th><th class="num">Net</th>', units: units });
+  }
+  blocks.push({ html: '<div class="bkr-decl"><b>Declaration:</b> I hereby declare that the information furnished above is true, complete and correct to the best of my knowledge and belief, and is drawn from the sales records maintained in the ordinary course of business. All amounts are in Indian Rupees (INR).</div>' +
+    '<div class="bkr-sign"><div class="sig-block"><div class="sig-line">Place &amp; Date</div></div><div class="sig-block"><div class="sig-line">Proprietor / Authorised Signatory<br>(Seal &amp; Signature)</div></div></div>' });
+  return blocks;
+}
+async function shareSalesA4(){
+  var f = a4RepVals(), r = a4RepRange(f);
+  if(!r){ alert('Choose a period first.'); return; }
+  var list = a4StatementList(f, r);
+  if(!list.length){ alert('No sales in ' + r.label + '.'); return; }
+  try{
+    var doc = await a4MakePdf(buildSalesStatementBlocks(f, r, list), 'SALES STATEMENT');
+    await shareGeneratedPDF(doc, 'Sales_Statement_' + r.from + '_to_' + r.to + '.pdf', 'Sales Statement — ' + r.label);
+  } catch(e){
+    alert('Could not generate/share the PDF. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
+  }
+}
+function a4SellerOptions(cur){
+  var m = new Map();
+  (SALES || []).forEach(function(s){ var k = sellerKeyOf(s); m.set(k, s.sellerName || m.get(k) || k); });
+  return Array.from(m.entries()).map(function(e){ return '<option value="' + e[0] + '"' + (cur === e[0] ? ' selected' : '') + '>' + estEsc(e[1]) + (sellerNoLabel(e[0]) ? ' · ' + sellerNoLabel(e[0]) : '') + '</option>'; }).join('');
+}
+function diwaliSave(){
+  var y = a4RepVals().year, f = (document.getElementById('dwFrom') || {}).value, t = (document.getElementById('dwTo') || {}).value;
+  if(!f || !t){ alert('Choose both dates.'); return; }
+  if(f > t){ var x = f; f = t; t = x; }
+  DIWALI = Object.assign({}, DIWALI || {}); DIWALI[y] = { from: f, to: t };
+  saveJSON('ars_diwali', DIWALI); renderAdmin();
+}
+function a4RepCardHtml(){
+  var f = a4RepVals(), r = a4RepRange(f), ys = salesYears(), list = r ? a4StatementList(f, r) : [];
+  var opt = function(v, l, cur){ return '<option value="' + v + '"' + (String(v) === String(cur) ? ' selected' : '') + '>' + l + '</option>'; };
+  var h = '<div class="section-title" style="margin-top:26px;">Sales Statement (A4) — Date, Month, Year or Diwali</div>' +
+    '<div class="filter-bar">' +
+      '<div class="filter-field"><label>Filter</label><select onchange="a4RepSet(\'kind\', this.value)">' + opt('date', 'Date', f.kind) + opt('month', 'Month', f.kind) + opt('year', 'Year (overall)', f.kind) + opt('diwali', 'Diwali season', f.kind) + '</select></div>';
+  if(f.kind === 'date') h += '<div class="filter-field"><label>Date</label><input type="date" value="' + f.date + '" onchange="a4RepSet(\'date\', this.value)"></div>';
+  else if(f.kind === 'month') h += '<div class="filter-field"><label>Month</label><input type="month" value="' + f.month + '" onchange="a4RepSet(\'month\', this.value)"></div>';
+  else h += '<div class="filter-field"><label>' + (f.kind === 'diwali' ? 'Diwali year' : 'Year') + '</label><select onchange="a4RepSet(\'year\', this.value)">' + ys.map(function(y){ return opt(y, y, f.year); }).join('') + '</select></div>';
+  h += '<div class="filter-field"><label>Seller</label><select onchange="a4RepSet(\'seller\', this.value)"><option value="">All sellers</option>' + a4SellerOptions(f.seller) + '</select></div>' +
+    '<div class="filter-field"><label>Details</label><select onchange="a4RepSet(\'detail\', this.value)">' + opt('simple', 'Simple (summary + sellers)', f.detail) + opt('daily', 'With day-wise', f.detail) + '</select></div>' +
+    '</div>';
+  if(f.kind === 'diwali' && r){
+    var dr = diwaliRange(f.year);
+    h += '<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:0 0 10px; font-size:12px; font-weight:800; color:#5b4630;"><span>Season</span><input type="date" id="dwFrom" value="' + dr.from + '" style="padding:7px; border-radius:9px; border:1.5px solid var(--line);"><span>to</span><input type="date" id="dwTo" value="' + dr.to + '" style="padding:7px; border-radius:9px; border:1.5px solid var(--line);"><button onclick="diwaliSave()" style="padding:8px 12px; border:none; border-radius:9px; background:var(--maroon); color:#fff8e6; font-weight:800; font-size:12px; cursor:pointer;">Save season</button></div>';
+  }
+  var sum = r ? dashSummary(list) : null;
+  h += '<div style="font-size:12px; font-weight:800; color:#5b4630; margin:0 0 8px;">' + (r ? (list.length ? sum.all + ' bills &middot; net ' + a4Inr(sum.net) + ' &middot; ' + estEsc(r.label) : 'No sales in ' + estEsc(r.label)) : 'Choose a period') + '</div>' +
+    '<button onclick="shareSalesA4()" style="width:100%; background:var(--maroon); color:#fff8e6; border:none; padding:11px; border-radius:8px; font-size:13px; font-weight:700;">' + SHARE_ICON_SVG_SM + 'PDF (A4) — Sales Statement</button>';
+  return h;
+}
+
 /* ---------------- ADMIN SALES FILTERS ---------------- */
 function salesInDates(s){
-  if(!salesFilters.from && !salesFilters.to) return true;
+  var r = salesRange(); if(!r.from && !r.to) return true;
   var d = saleLocalDate(s.time);
-  return !(salesFilters.from && d < salesFilters.from) && !(salesFilters.to && d > salesFilters.to);
+  return !(r.from && d < r.from) && !(r.to && d > r.to);
 }
 function applySalesFilters(salesList){
   return salesList.filter(s => {
     if(!salesInDates(s)) return false;
-    if(salesFilters.seller && s.sellerId !== salesFilters.seller) return false;
+    if(salesFilters.seller && sellerKeyOf(s) !== salesFilters.seller) return false;
     if(salesFilters.billNo && !String(s.billNo||'').includes(salesFilters.billNo.trim())) return false;
     if(salesFilters.phone && !String(s.buyerPhone||'').replace(/\D/g,'').includes(salesFilters.phone.replace(/\D/g,''))) return false;
     if(salesFilters.branch){
@@ -8461,7 +8848,7 @@ function customerSummaryHtml(list){
 }
 function clearSalesFilters(){
   listReset('sales');
-  salesFilters = { seller:'', billNo:'', phone:'', branch: salesFilters.branch || '', from:'', to:'' };   // the branch chip stays
+  salesFilters = { seller:'', billNo:'', phone:'', branch: salesFilters.branch || '', from:'', to:'', yr: salesDefaultYr() };   // the branch chip stays
   renderAdmin();
 }
 function toggleSalesStats(){ salesStatsOpen = !salesStatsOpen; renderAdmin(); }
@@ -8488,8 +8875,8 @@ function salesAttendance(){
   var by = new Map();
   (SALES || []).forEach(function(x){
     if(!saleInBranch(x, salesFilters.branch) || !salesInDates(x)) return;
-    var e = by.get(x.sellerId) || { name: x.sellerName || x.sellerId, days: new Set() };
-    e.name = x.sellerName || e.name; e.days.add(saleLocalDate(x.time)); by.set(x.sellerId, e);
+    var _k = sellerKeyOf(x), e = by.get(_k) || { name: x.sellerName || x.sellerId, days: new Set() };
+    e.name = x.sellerName || e.name; e.days.add(saleLocalDate(x.time)); by.set(_k, e);
   });
   return Array.from(by.entries()).map(function(r){ return { id: r[0], name: r[1].name, n: r[1].days.size }; })
     .sort(function(a, b){ return b.n - a.n || String(a.name).localeCompare(String(b.name)); });
@@ -8872,7 +9259,7 @@ function renderAdmin(){
   if(adminTab === 'items' && _scope){ renderScopedItems(main, _scope); return; }
 
   if(adminTab === 'sales'){
-    const scopedSales = SALES.filter(s => saleInBranch(s, salesFilters.branch) && salesInDates(s) && (!salesFilters.seller || s.sellerId === salesFilters.seller));
+    const scopedSales = SALES.filter(s => saleInBranch(s, salesFilters.branch) && salesInDates(s) && (!salesFilters.seller || sellerKeyOf(s) === salesFilters.seller));
     const confirmedSales = scopedSales.filter(s => isCountedSale(s));
     const totalRevenue = confirmedSales.reduce((a,s)=>a+s.total,0);
     const totalDiscountGiven = confirmedSales.reduce((a,s)=>a+(s.discount||0),0);
@@ -8886,8 +9273,8 @@ function renderAdmin(){
     // Build seller dropdown options with counts from all sales data
     const sellerCounts = new Map();
     const sellerNames = new Map();
-    SALES.filter(s => saleInBranch(s, salesFilters.branch) && salesInDates(s)).forEach(s => { sellerNames.set(s.sellerId, s.sellerName); sellerCounts.set(s.sellerId, (sellerCounts.get(s.sellerId)||0)+1); });
-    if(salesFilters.seller && !sellerNames.has(salesFilters.seller)){ const _x = SALES.find(s => s.sellerId === salesFilters.seller); sellerNames.set(salesFilters.seller, (_x && _x.sellerName) || salesFilters.seller); sellerCounts.set(salesFilters.seller, 0); }
+    SALES.filter(s => saleInBranch(s, salesFilters.branch) && salesInDates(s)).forEach(s => { const _k = sellerKeyOf(s); sellerNames.set(_k, s.sellerName); sellerCounts.set(_k, (sellerCounts.get(_k)||0)+1); });
+    if(salesFilters.seller && !sellerNames.has(salesFilters.seller)){ const _x = SALES.find(s => sellerKeyOf(s) === salesFilters.seller); sellerNames.set(salesFilters.seller, (_x && _x.sellerName) || salesFilters.seller); sellerCounts.set(salesFilters.seller, 0); }
     const _dates = !!(salesFilters.from || salesFilters.to);
     const sellerOptions = [...sellerNames.entries()];
 
@@ -8896,7 +9283,7 @@ function renderAdmin(){
     const scopeBr = salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch] : null;
     let html = branchChipsHtml(salesFilters.branch, 'setAdminBranch') +
       `<div style="display:flex; align-items:center; gap:8px; margin:0 2px ${salesStatsOpen ? '6px' : '12px'};">
-        <div style="flex:1; min-width:0; font-size:12px; font-weight:800; color:var(--maroon);">Showing: ${salesFilters.seller ? custEsc(sellerNames.get(salesFilters.seller) || salesFilters.seller) : 'All sellers'} &bull; ${scopeBr ? scopeBr.name + ' (' + scopeBr.short + ') only' : 'All branches'}${_dates ? ' &bull; ' + salesDateLabel(salesFilters.from || salesFilters.to) + (salesFilters.to && salesFilters.to !== salesFilters.from ? ' &ndash; ' + salesDateLabel(salesFilters.to) : '') : ''}</div>
+        <div style="flex:1; min-width:0; font-size:12px; font-weight:800; color:var(--maroon);">Showing: ${salesFilters.seller ? custEsc(sellerNames.get(salesFilters.seller) || salesFilters.seller) : 'All sellers'} &bull; ${scopeBr ? scopeBr.name + ' (' + scopeBr.short + ') only' : 'All branches'}${' &bull; ' + salesPeriodLabel()}</div>
         <button onclick="toggleSalesStats()" title="${salesStatsOpen ? 'Hide totals' : 'Show totals'}" aria-label="${salesStatsOpen ? 'Hide totals' : 'Show totals'}" style="flex:0 0 auto; display:flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px; border:1.5px solid var(--maroon); background:${salesStatsOpen ? 'var(--maroon)' : '#fff8e6'}; color:${salesStatsOpen ? '#fff8e6' : 'var(--maroon)'}; font-weight:800; font-size:12px; cursor:pointer;"><span style="font-size:16px; line-height:1;">${salesStatsOpen ? '&#128584;' : '&#128065;&#65039;'}</span>${salesStatsOpen ? 'Hide' : 'Show'}</button>
       </div>` +
       `<div class="stat-grid" style="${salesStatsOpen ? '' : 'display:none;'}">
@@ -8933,13 +9320,17 @@ function renderAdmin(){
           <div style="font-size:11px; font-weight:800; color:#8a6a44; margin-bottom:5px;">&#128100; Present days (at least 1 bill)</div>
           <div style="display:flex; flex-wrap:wrap; gap:6px;">${salesAttendance().map(a => `<button onclick="salesPickSeller('${String(a.id).replace(/'/g, '')}')" style="display:flex; align-items:center; gap:6px; padding:5px 6px 5px 10px; border-radius:999px; border:1.5px solid var(--maroon); background:${salesFilters.seller === a.id ? 'var(--maroon)' : '#fff'}; color:${salesFilters.seller === a.id ? '#fff8e6' : 'var(--maroon)'}; font-weight:800; font-size:12.5px; cursor:pointer;">${custEsc(a.name)} <span style="min-width:22px; padding:1px 6px; border-radius:999px; background:${salesFilters.seller === a.id ? '#fff8e6' : 'var(--maroon)'}; color:${salesFilters.seller === a.id ? 'var(--maroon)' : '#fff8e6'}; font-size:12px; text-align:center;">${a.n}</span></button>`).join('') || '<span style="font-size:12px; color:#8a6a44;">No bills in these dates.</span>'}</div>
         </div>` : ''}
+        <div style="display:flex; gap:8px; align-items:center; margin:0 0 8px;">
+          <span style="font-size:12px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128197; Period</span>
+          <select id="filterYear" onchange="onSalesYearChange()" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">${salesYearOptionsHtml()}</select>
+        </div>
         <div style="display:flex; gap:8px; align-items:center;">
           <span style="font-size:12px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>
           <select id="filterSeller" onchange="onSalesFilterChange()" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">
             <option value="">All sellers</option>
-            ${sellerOptions.map(([id,name]) => `<option value="${id}" ${salesFilters.seller===id?'selected':''}>${custEsc(name)} (${sellerCounts.get(id)})</option>`).join('')}
+            ${sellerOptions.map(([id,name]) => `<option value="${id}" ${salesFilters.seller===id?'selected':''}>${custEsc(name)}${sellerNoLabel(id) ? ' · ' + sellerNoLabel(id) : ''} (${sellerCounts.get(id)})</option>`).join('')}
           </select>
-          ${(salesFilters.seller || salesFilters.billNo || salesFilters.phone || _dates) ? `<button onclick="clearSalesFilters()" title="Clear filters" aria-label="Clear filters" style="flex:0 0 auto; width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>` : ''}
+          ${(salesFilters.seller || salesFilters.billNo || salesFilters.phone || _dates || salesFilters.yr !== salesDefaultYr()) ? `<button onclick="clearSalesFilters()" title="Clear filters" aria-label="Clear filters" style="flex:0 0 auto; width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>` : ''}
         </div>
       </div>`;
 
@@ -9007,8 +9398,8 @@ function renderAdmin(){
     html += highDiscNotice(filteredSales);
     html += `<div class="history-head-row">
         <div class="section-title" style="margin:0;">Sales Records (latest first)${filteredSales.length!==SALES.length ? ' — '+filteredSales.length+' of '+SALES.length+' shown' : ''}</div>
-        <button onclick="printFullHistory('sales')" title="Print 80mm" style="background:#0b5fd8; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700; margin-right:6px;">&#128424; Print</button>
-            <button onclick="shareFullHistoryPDF('sales')" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF</button>
+        <span style="display:flex; gap:6px; flex:0 0 auto;"><button onclick="printDashboardThermal()" title="Print 80mm for this filter" style="background:#0b5fd8; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700; margin-right:6px;">&#128424; Print</button>
+            <button onclick="shareDashboardA4()" title="A4 PDF for this filter" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF (A4)</button></span>
       </div>`;
     if(filteredSales.length===0){
       html += `<div class="empty-admin">${SALES.length===0 ? 'No sales recorded yet.' : 'No sales match the selected filters.'}</div>`;
@@ -9253,7 +9644,8 @@ function renderAdmin(){
           </select>
         </div>
       </div>
-      <button onclick="shareBankReportPDF()" style="width:100%; background:var(--maroon); color:#fff8e6; border:none; padding:11px; border-radius:8px; font-size:13px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF (A4)</button>`;
+      <button onclick="shareBankReportPDF()" style="width:100%; background:var(--maroon); color:#fff8e6; border:none; padding:11px; border-radius:8px; font-size:13px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF (A4)</button>
+      ${a4RepCardHtml()}`;
     main.innerHTML = html;
 
   } else if(adminTab === 'accounts'){
@@ -9276,7 +9668,7 @@ function renderAdmin(){
       const USER_SETTINGS = loadJSON('ars_user_settings_' + id, {autoSendBill: true});
       html += `<div class="user-edit-row">
           <div class="uer-top">
-            <span class="uer-role-badge ${u.role}">${u.role === 'admin' ? 'Admin ' : 'Seller '}${_tagNo}</span>
+            <span class="uer-role-badge ${u.role}">${u.role === 'admin' ? 'Admin ' : 'Seller '}${_tagNo}</span><span style="font-size:11px; font-weight:800; color:#8a6a44;">${u.pid || ''}</span>
             <select title="${u.role === 'admin' ? 'Branch access' : 'Branch (locked for seller)'}" onchange="setUserBranch('${id}', this.value)" style="padding:4px 6px; border-radius:8px; border:1px solid var(--line); font-size:12px; font-weight:700; max-width:110px;">
                 ${u.role === 'admin' ? `<option value="" ${!u.branch?'selected':''}>All</option>` : ''}
                 ${Object.values(BRANCHES).filter(b => b.enabled || b.id === (u.role === 'admin' ? u.branch : (sellerBranchOf(id) || {}).id)).map(b => `<option value="${b.id}" ${(u.role === 'admin' ? u.branch : (sellerBranchOf(id) || {}).id)===b.id?'selected':''}>${b.short}</option>`).join('')}
@@ -9435,7 +9827,7 @@ function renderAdmin(){
     main.innerHTML = `<div class="bk2-hero">
         <div class="bk2-row"><div class="bk2-ico">&#128737;&#65039;</div>
           <div style="flex:1; min-width:0;"><div class="bk2-title">Server backup</div><div class="bk2-sub" id="bkLast">${bkLastText()}</div></div>
-          ${bkIsMainAdmin() ? '<span class="bk2-chip">&#10003; Auto daily</span>' : ''}</div>
+          ${bkIsMainAdmin() ? '<span class="bk2-chip">' + (bkAutoOn() ? '&#10003; Auto daily' : 'Auto off') + '</span>' : ''}</div>
         <div class="bk2-btns">
           <button class="bk2-btn" onclick="bkNow(this)">&#128737;&#65039; Back up now</button>
           <button class="bk2-btn ghost" onclick="bkSaveFile(this)">&#11015;&#65039; Save file</button>
@@ -9487,6 +9879,13 @@ function renderAdmin(){
           <button class="icon-square-btn" onclick="resetLoginHistory()" style="background:var(--danger); color:#fff;" title="Reset Login History">🗑️<span>Logins</span></button>
         </div>
       </div>
+      </div>
+      <div class="bk2-card" style="margin-top:12px;">
+        <div class="bk2-row">
+          <div style="flex:1; min-width:0;"><div class="bk2-h" style="margin:0;">&#128336; Automatic daily backup</div>
+            <div class="bk2-meta" style="margin-top:3px;">${bkAutoOn() ? 'On &mdash; the whole server is copied once a day by the admin phone.' : 'Off &mdash; no automatic copy. Use <b>Back up now</b> when needed.'}</div></div>
+          <label class="disc-sw" title="Automatic daily backup on / off"><input type="checkbox" id="bkAutoSw" ${bkAutoOn() ? 'checked' : ''} onchange="bkSetAuto(this.checked)"><span></span></label>
+        </div>
       </div>
       <div class="empty-admin" style="text-align:left; padding:0 4px;" id="backupStatus"></div>`;
     _bkList = null; bkPaint();
@@ -10553,7 +10952,7 @@ function addSeller(){
       alert('Admin password incorrect. Please try again.'); return;
     }
   }
-  USERS[id] = { pinHash: pinHashFor(id, pin), pin: pin, role: _newAccountRole, name };
+  USERS[id] = { pinHash: pinHashFor(id, pin), pin: pin, role: _newAccountRole, name, pid: nextPidFor(_newAccountRole) };
   { var nb = document.getElementById('newSellerBranch'); var bv = nb ? nb.value : ''; if(_newAccountRole === 'seller' && !bv) bv = 'main'; USERS[id].branch = bv; }
   saveJSON('ars_users', USERS);
   closeNewSellerModal();
@@ -10570,6 +10969,7 @@ async function removeSeller(id){
   }
   const ok = await showConfirm('Remove account "' + id + '"? This cannot be undone.');
   if(!ok) return;
+  stampSellerPids(id);
   delete USERS[id];
   saveJSON('ars_users', USERS);
   renderAdmin();
@@ -10621,6 +11021,7 @@ async function renameUserId(oldId, newIdRaw){
   const newId = (newIdRaw || '').trim();
   if(!newId || newId === oldId){ renderAdmin(); return; }
   if(USERS[newId]){ alert('That User ID is already in use by another account.'); renderAdmin(); return; }
+  stampSellerPids(oldId);
   USERS[newId] = USERS[oldId];
   delete USERS[oldId];
   saveJSON('ars_users', USERS);
@@ -10835,8 +11236,8 @@ async function downloadSalesReportBankFormat(){
   // Seller-wise rows
   const sellerMap = {};
   valid.forEach(s => {
-    const k = s.sellerId;
-    if(!sellerMap[k]) sellerMap[k] = { name: s.sellerName || s.sellerId, orders:0, gross:0, disc:0, net:0 };
+    const k = sellerKeyOf(s);
+    if(!sellerMap[k]) sellerMap[k] = { name: (sellerNoLabel(k) ? sellerNoLabel(k) + ' ' : '') + (s.sellerName || s.sellerId), orders:0, gross:0, disc:0, net:0 };
     sellerMap[k].orders++; sellerMap[k].gross += (s.subtotal||s.total);
     sellerMap[k].disc += (s.discount||0); sellerMap[k].net += s.total;
   });
