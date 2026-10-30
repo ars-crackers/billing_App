@@ -1693,9 +1693,11 @@ function offerDiscNow(){ return offerActive() ? offerDiscPct() : 0; }
 /* Offer per location (Price Edit tab, "Offer for this location"). A location that has its own switch and % uses them on its
    bills, estimates and Price Edit prices. A location without one keeps the shop-wide offer above, as before. */
 function branchOffer(bid){ var b = bid && BRANCHES[bid]; return (b && b.offer && typeof b.offer === 'object') ? b.offer : null; }
-function offerPctFor(bid){ var o = branchOffer(bid); if(!o) return offerDiscNow(); var v = Number(o.pct); return (o.on && !isNaN(v) && v > 0) ? Math.min(80, v) : 0; }
+function offerPctFor(bid){ var o = branchOffer(bid); if(!o) return offerDiscNow(); if(o.until && offerToday() > o.until) return 0; var v = Number(o.pct); return (o.on && !isNaN(v) && v > 0) ? Math.min(80, v) : 0; }
+/* Last day of the offer for one location: its own date, or the Customers-tab offer's date when the location has no offer of its own. Blank = no end date. */
+function offerUntilFor(bid){ var o = branchOffer(bid); if(o) return /^\d{4}-\d{2}-\d{2}$/.test(o.until || '') ? o.until : ''; return (OFFER && OFFER.until) || ''; }
 function offerPctValueFor(bid){ var o = branchOffer(bid); if(!o) return offerDiscPct(); var v = Number(o.pct); return isNaN(v) ? 0 : Math.max(0, Math.min(80, v)); }
-function offerSetFor(bid, on, pct){ var v = Math.max(0, Math.min(80, Number(pct) || 0)); BRANCHES[bid].offer = { on: !!on, pct: v }; saveJSON('ars_branches', BRANCHES); }
+function offerSetFor(bid, on, pct, until){ var v = Math.max(0, Math.min(80, Number(pct) || 0)); var u = (until === undefined) ? offerUntilFor(bid) : String(until || ''); var o = { on: !!on, pct: v }; if(/^\d{4}-\d{2}-\d{2}$/.test(u)) o.until = u; BRANCHES[bid].offer = o; saveJSON('ars_branches', BRANCHES); }
 function offerDateLabel(ymd){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || ''); if(!m) return ''; return m[3] + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m[2]) - 1] + ' ' + m[1]; }
 /* The offer banner is shown on the customer's voucher only - the Add Items page stays clear for the items
    (the offer price is still shown in the bottom total there). */
@@ -3867,10 +3869,18 @@ function offerPanelToggle(){ var p = document.getElementById('ofPanel'); if(p) p
 function adminOfferSave(){
   var sel = (document.getElementById('ofbLoc') || {}).value || adminOfferLoc(), inp = document.getElementById('ofbPct'), v = Number(inp && inp.value);
   if(isNaN(v) || v < 0 || v > 80){ alert('Offer % must be between 0 and 80.'); return; }
+  var ud = ((document.getElementById('ofbUntil') || {}).value || '').trim();
+  if(ud && !/^\d{4}-\d{2}-\d{2}$/.test(ud)){ alert('Pick a valid last day, or leave it blank for no end date.'); return; }
   var ids = sel === 'all' ? liveBranches().map(function(b){ return b.id; }) : [sel];
-  ids.forEach(function(id){ var o = branchOffer(id), on = o ? !!o.on : (offerDiscNow() > 0); offerSetFor(id, on, v); });
+  ids.forEach(function(id){ var o = branchOffer(id), on = o ? !!o.on : (offerDiscNow() > 0); offerSetFor(id, on, v, ud); });
   if(sel !== 'all') adminOfferBranch = sel;
   renderAdmin();
+}
+function adminOfferPanelLoc(v){
+  var loc = v === 'all' ? adminOfferLoc() : v;
+  var p = document.getElementById('ofbPct'), u = document.getElementById('ofbUntil');
+  if(p) p.value = offerPctValueFor(loc);
+  if(u) u.value = offerUntilFor(loc) || '';
 }
 function offerBarHtml(loc){
   var on = offerPctFor(loc) > 0, val = offerPctValueFor(loc), short = BRANCHES[loc] ? (BRANCHES[loc].short || '') : '';
@@ -3878,8 +3888,9 @@ function offerBarHtml(loc){
   return '<div class="ofbar">' +
     '<button type="button" class="ofpill' + (on ? '' : ' off') + '" onclick="offerPanelToggle()" title="Offer % - tap to change">&#127873;' + (on ? ' ' + estEsc(short) + ' ' + val + '%' : ' Off') + '</button>' +
     '<label class="ofbar-switch" title="Offer on / off for this location"><input type="checkbox"' + (on ? ' checked' : '') + ' onchange="adminOfferToggle(this.checked)"><span class="ofbar-slider"></span></label>' +
-    '<div class="ofpanel" id="ofPanel"><select id="ofbLoc" aria-label="Location">' + opts + '</select>' +
+    '<div class="ofpanel" id="ofPanel"><select id="ofbLoc" aria-label="Location" onchange="adminOfferPanelLoc(this.value)">' + opts + '</select>' +
       '<input id="ofbPct" type="number" min="0" max="80" step="0.5" inputmode="decimal" value="' + val + '" aria-label="Offer %">' +
+      '<label class="ofp-lbl" title="Last day of this offer (blank = no end date)">Last day <input id="ofbUntil" type="date" value="' + estEsc(offerUntilFor(loc)) + '" aria-label="Offer last day"></label>' +
       '<button type="button" onclick="adminOfferSave()">Save</button></div>' +
     '</div>';
 }
@@ -5075,7 +5086,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v69';
+var APP_BUILD = 'v70';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -5285,7 +5296,7 @@ function estVoucherHtml(forScreen){
     (function(){
       // offer running: price-list total, the offer discount (valid till its last day) and the offer price
       var pct = offerPctFor(plBranchId()); if(!(pct > 0) || !(total > 0)) return '<div style="text-align:right; padding:0 10px 4px; font-size:24px; font-weight:800; color:#1b3a78;">&#8377;' + total.toLocaleString('en-IN') + '</div>';
-      var disc = Math.round(total * pct / 100), till = (!branchOffer(plBranchId()) && OFFER.until) ? offerDateLabel(OFFER.until) : '';
+      var disc = Math.round(total * pct / 100), till = offerDateLabel(offerUntilFor(plBranchId()));
       return '<div style="display:flex; justify-content:space-between; padding:3px 10px 1px; font-size:12px; color:#44557a;"><span>Price list total</span><span style="font-weight:700;">&#8377;' + total.toLocaleString('en-IN') + '</span></div>' +
         '<div style="display:flex; justify-content:space-between; padding:1px 10px 3px; font-size:12px; font-weight:800; color:#1e7a3c;"><span>Offer discount ' + pct + '%' + (till ? ' (till ' + till + ')' : '') + '</span><span>&minus;&#8377;' + disc.toLocaleString('en-IN') + '</span></div>' +
         '<div style="text-align:right; padding:0 10px 2px; font-size:24px; font-weight:800; color:#1b3a78;">&#8377;' + (total - disc).toLocaleString('en-IN') + '</div>' +
@@ -8004,7 +8015,7 @@ async function generatePriceListPDFVector(){
   var nRuns = runsWith(title, F.brTa, F.brLa), nsz = 23 * hk; while(wOf(nRuns, nsz) > cW && nsz > 10) nsz -= 0.5;
   var enT = String(SHOP.name_en || 'A.R.S CRACKERS SHOP').toUpperCase(), ef = F.poB || F.laB, esz = 7.4 * hk, esp = 2.1 * hk;
   var enW = 0; Array.from(enT).forEach(function(ch, i){ enW += ef.widthOfTextAtSize(ch, esz) + (i ? esp : 0); });
-  var _plX = !!_plExportOffer, _ofOn = _plX ? offP > 0 : offerActive(), pct = _plX ? offP : offerDiscNow(), um = /^(\d{4})-(\d{2})-(\d{2})$/.exec((OFFER && OFFER.until) || ''), till = (um && !_plX) ? Number(um[3]) + '-' + Number(um[2]) + '-' + um[1] : '';
+  var _plX = !!_plExportOffer, _ofOn = offerPctFor(bid) > 0, pct = offerPctFor(bid), um = /^(\d{4})-(\d{2})-(\d{2})$/.exec(offerUntilFor(bid) || ''), till = um ? Number(um[3]) + '-' + Number(um[2]) + '-' + um[1] : '';
   var b1 = _ofOn ? (_plX ? 'சிறப்பு விலை / OFFER PRICE' : String(OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!')) : '', b2 = _ofOn ? (pct > 0 ? pct + '% சிறப்பு தள்ளுபடி' + (till ? ' • ' + till + ' வரை' : '') : '') : 'இன்றைய விலைப் பட்டியல்';
   var b1s = 10.2 * hk, b2s = 8.4 * hk, r1 = runsWith(b1, F.brTa, F.brLa), r2 = runsWith(b2, F.brTa, F.brLa);
   var bxW = Math.min(cW * 0.94, Math.max(wOf(r1, b1s), wOf(r2, b2s)) + 34), bxH = (b1 ? b1s * 1.3 : 0) + (b2 ? b2s * 1.3 : 0) + 6 * hk;
@@ -8210,7 +8221,7 @@ function buildPriceListTableHTML(noQr){
         <div style="flex:1; min-width:0; text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:3px;">
           <div style="font-family:ARSBaloo, 'Noto Sans Tamil', sans-serif; font-size:27px; font-weight:800; line-height:1.05; color:#ffd34d; text-shadow:0 2px 0 #4a0c0c; white-space:nowrap;">${_plbTitle || 'A.R.S பட்டாசுக் கடை'}</div>
           <div style="font-family:ARSPop, 'Segoe UI', Arial, sans-serif; font-size:8.5px; font-weight:700; letter-spacing:2.6px; color:#fff8ea;">${estEsc(String(SHOP.name_en || 'A.R.S CRACKERS SHOP').toUpperCase())}</div>
-          ${(function(){ var on = offerActive(), pct = offerDiscNow(), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((OFFER && OFFER.until) || ''), till = m ? Number(m[3]) + '-' + Number(m[2]) + '-' + m[1] : '';
+          ${(function(){ var on = offerPctFor(plBranchId()) > 0, pct = offerPctFor(plBranchId()), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(offerUntilFor(plBranchId()) || ''), till = m ? Number(m[3]) + '-' + Number(m[2]) + '-' + m[1] : '';
             var t1 = on ? (OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!') : '', t2 = on ? (pct > 0 ? pct + '% சிறப்பு தள்ளுபடி' + (till ? ' &bull; ' + till + ' வரை' : '') : '') : 'இன்றைய விலைப் பட்டியல்';
             return '<div style="padding:2px 22px 3px; border-radius:6px; background:linear-gradient(180deg,#ffe27a,#f2b52c); font-family:ARSBaloo, \'Noto Sans Tamil\', sans-serif; line-height:1.25;">' + (t1 ? '<div style="font-size:12.5px; font-weight:800; color:#7a1414;">' + estEsc(t1) + '</div>' : '') + (t2 ? '<div style="font-size:10px; font-weight:800; color:#4a0c0c;">' + t2 + '</div>' : '') + '</div>'; })()}
           ${(function(){ var pl = function(t, fill, ico){ return '<span style="display:inline-flex; align-items:center; gap:3px; padding:1px 8px; border-radius:9px; font-family:ARSPop, \'Segoe UI\', Arial, sans-serif; font-size:8.5px; font-weight:600; white-space:nowrap; ' + (fill ? 'background:#ffd34d; color:#4a0c0c;' : 'border:1px solid #fff8ea; color:#fff8ea;') + '">' + (ico || '') + t + '</span>'; };
@@ -8263,7 +8274,7 @@ async function sharePriceListPDF(triggerEl){
   }
 
   try{
-    await shareGeneratedPDF(doc, fileName, SHOP.name_en + ' — Price List');
+    await shareGeneratedFile(doc.output('blob'), fileName, 'application/pdf', SHOP.name_en + ' — Price List');
   } catch(e){
     alert('Could not share the PDF. ' + (e && e.message ? e.message : 'Please try again, or check your internet connection.'));
   } finally {
@@ -10530,12 +10541,12 @@ var _promo = { list: [], i: 0, who: 'optin', msg: '' };
 /* Every offer message: the link, then "click the link above ... 20% special discount ... till 4-11-2026" (from the
    running offer), then the shops and the phone. No QR words - the customer taps the link. */
 function promoClickLine(){
-  var pct = offerDiscNow(), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((OFFER && OFFER.until) || ''), till = m ? Number(m[3]) + '-' + Number(m[2]) + '-' + m[1] : '';
+  var pct = offerPctFor(plBranchId()), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(offerUntilFor(plBranchId()) || ''), till = m ? Number(m[3]) + '-' + Number(m[2]) + '-' + m[1] : '';
   return 'மேலே உள்ள லிங்கை கிளிக் செய்து ' + (pct > 0 ? pct + '% சிறப்பு தள்ளுபடியுடன் ' + (till ? till + ' வரை ' : '') : '') + 'உங்களது பட்டாசுகளை தேர்வு செய்யுங்கள்.';
 }
 function promoShopsText(){ return branchLocText() + '\n📞 ' + branchPhoneText(BRANCHES.main || BRANCHES[plBranchId()]); }
 function promoDefaultMsg(){
-  return '🎆 ' + SHOP.name_ta + ' — ' + SHOP.name_en + '\n\nவணக்கம் {name}! ' + (offerActive() ? (OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!') : 'எங்கள் புதிய விலைப் பட்டியலைப் பாருங்கள்.') +
+  return '🎆 ' + SHOP.name_ta + ' — ' + SHOP.name_en + '\n\nவணக்கம் {name}! ' + (offerPctFor(plBranchId()) > 0 ? (OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!') : 'எங்கள் புதிய விலைப் பட்டியலைப் பாருங்கள்.') +
     '\n\n👉 ' + promoLink() + '\n' + promoClickLine() + '\n\n' + promoShopsText();
 }
 function promoRecipients(who){
@@ -12264,8 +12275,8 @@ async function styleBrand(ctx, W, H){
   var tall = H / W > 1.5, k = tall ? 1.25 : 1, gk = tall ? 2.4 : 1;
   var L = (port ? 190 : 132) * u * k, name = SHOP.name_ta || 'A.R.S பட்டாசுக் கடை', en = String(SHOP.name_en || 'A.R.S CRACKERS SHOP').toUpperCase();
   var ns = (port ? 150 : 118) * u; ctx.font = '800 ' + ns + 'px ' + TAF; while(ctx.measureText(name).width > W * (port ? 0.86 : 0.76) && ns > 30){ ns -= 2; ctx.font = '800 ' + ns + 'px ' + TAF; }
-  var es = (port ? 40 : 32) * u, pct = offerDiscNow(), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((OFFER && OFFER.until) || ''), till = m ? Number(m[3]) + '-' + Number(m[2]) + '-' + m[1] : '';
-  var t1 = offerActive() ? (OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!') : (PROMO.headline || ''), t2 = pct > 0 ? pct + '% சிறப்பு தள்ளுபடி' + (till ? ' • ' + till + ' வரை' : '') : 'இன்றைய விலைப் பட்டியல் • Self Estimation';
+  var es = (port ? 40 : 32) * u, pct = offerPctFor(plBranchId()), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(offerUntilFor(plBranchId()) || ''), till = m ? Number(m[3]) + '-' + Number(m[2]) + '-' + m[1] : '';
+  var t1 = pct > 0 ? (OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!') : (PROMO.headline || ''), t2 = pct > 0 ? pct + '% சிறப்பு தள்ளுபடி' + (till ? ' • ' + till + ' வரை' : '') : 'இன்றைய விலைப் பட்டியல் • Self Estimation';
   var bw = Math.min(W * (port ? 0.86 : 0.7), (port ? 960 : 860) * u), b1 = (port ? 50 : 38) * u * k, b2 = (port ? 44 : 32) * u * k, bh = (t1 ? b1 * 1.25 : 0) + b2 * 1.35 + 34 * u * k;
   var cs = (port ? 30 : 21) * u * k, chips = [['', 'Self Estimation • Price List', 1], [BRAND_PIN, brandPlace()], [BRAND_PH, branchPhoneText(BRANCHES.main || BRANCHES[plBranchId()]).split(' / ')[0]]];
   ctx.font = '600 ' + cs + 'px ' + ENF;
@@ -12592,7 +12603,7 @@ function promoPaintOut(){
   '<div style="font-size:10.5px; color:#44557a; line-height:1.5;">The message sent with the image carries the link to the price list (WhatsApp, Facebook and Instagram show links as an address).</div>';
 }
 function promoCaption(wa){
-  var head = (offerActive() && OFFER.title) || PROMO.headline || '';
+  var head = (offerPctFor(plBranchId()) > 0 && OFFER.title) || PROMO.headline || '';
   return '🎆 ' + SHOP.name_ta + ' — ' + SHOP.name_en + (head ? '\n' + (wa ? '*' + head + '*' : head) : '') +   // *bold* only works in WhatsApp
     '\n\n👉 ' + promoLink() + '\n' + promoClickLine() + '\n\n' + promoShopsText();
 }
