@@ -1696,17 +1696,25 @@ function branchOffer(bid){ var b = bid && BRANCHES[bid]; return (b && b.offer &&
 function offerPctFor(bid){ var o = branchOffer(bid); if(!o) return offerDiscNow(); if(o.until && offerToday() > o.until) return 0; var v = Number(o.pct); return (o.on && !isNaN(v) && v > 0) ? Math.min(80, v) : 0; }
 /* Last day of the offer for one location: its own date, or the Customers-tab offer's date when the location has no offer of its own. Blank = no end date. */
 function offerUntilFor(bid){ var o = branchOffer(bid); if(o) return /^\d{4}-\d{2}-\d{2}$/.test(o.until || '') ? o.until : ''; return (OFFER && OFFER.until) || ''; }
+/* Self Estimation voucher: the offer banner shows only while this location's offer is on. A location with its own offer gets copy that follows its % and last day. */
+function offerVoucherOn(){ return offerPctFor(plBranchId()) > 0; }
+function offerVoucherCopy(){
+  var bid = plBranchId(), u = offerUntilFor(bid), pct = offerPctFor(bid);
+  if(!branchOffer(bid)) return { title: OFFER.title || '', text: OFFER.text || '' };
+  return { title: OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!', text: 'கடையின் Self-Order QR-ஐ ஸ்கேன் செய்து, ' + (u ? offerDateLabel(u) + ' வரை ' : '') + 'கூடுதல் ' + pct + '% தள்ளுபடி பெறுங்கள்!' };
+}
 function offerPctValueFor(bid){ var o = branchOffer(bid); if(!o) return offerDiscPct(); var v = Number(o.pct); return isNaN(v) ? 0 : Math.max(0, Math.min(80, v)); }
-function offerSetFor(bid, on, pct, until){ var v = Math.max(0, Math.min(80, Number(pct) || 0)); var u = (until === undefined) ? offerUntilFor(bid) : String(until || ''); var o = { on: !!on, pct: v }; if(/^\d{4}-\d{2}-\d{2}$/.test(u)) o.until = u; BRANCHES[bid].offer = o; saveJSON('ars_branches', BRANCHES); }
+function offerSetFor(bid, on, pct, until){ var v = Math.max(0, Math.min(80, Number(pct) || 0)); var u = (until === undefined) ? offerUntilFor(bid) : String(until || ''); var o = { on: !!on, pct: v }; if(/^\d{4}-\d{2}-\d{2}$/.test(u)) o.until = u; BRANCHES[bid].offer = o; saveJSON('ars_branches', BRANCHES); try{ offerApply(); var _ev = document.getElementById('estVoucherOverlay'); if(_ev && _ev.style.display === 'block') estScreenPaint(); }catch(e){} }
 function offerDateLabel(ymd){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || ''); if(!m) return ''; return m[3] + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m[2]) - 1] + ' ' + m[1]; }
 /* The offer banner is shown on the customer's voucher only - the Add Items page stays clear for the items
    (the offer price is still shown in the bottom total there). */
 function offerApply(){
   var s = document.getElementById('estOfferStrip'); if(!s) return;
   s.style.display = 'none';
-  if(!offerActive()) return;
-  document.getElementById('estOfferTitle').textContent = OFFER.title || '';
-  document.getElementById('estOfferText').textContent = OFFER.text || '';
+  if(!offerVoucherOn()) return;
+  var c = offerVoucherCopy();
+  document.getElementById('estOfferTitle').textContent = c.title;
+  document.getElementById('estOfferText').textContent = c.text;
 }
 function normalizeUpi(){
   if(!UPI || typeof UPI !== 'object') UPI = {};
@@ -2117,6 +2125,7 @@ function applyRemoteBranches(r){
   }
   try{ populateBranchSelector(); }catch(e){}
   fbRefreshUI('branch');
+  try{ offerApply(); var _ev = document.getElementById('estVoucherOverlay'); if(_ev && _ev.style.display === 'block') estScreenPaint(); }catch(e){}
 }
 
 /* ================= SHARED RECORD LISTS =================
@@ -5086,7 +5095,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v70';
+var APP_BUILD = 'v71';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -5302,7 +5311,7 @@ function estVoucherHtml(forScreen){
         '<div style="text-align:right; padding:0 10px 2px; font-size:24px; font-weight:800; color:#1b3a78;">&#8377;' + (total - disc).toLocaleString('en-IN') + '</div>' +
         '<div style="text-align:right; padding:0 10px 5px; font-size:10px; font-weight:700; color:#b3261e;">' + pct + '% offer price valid' + (till ? ' up to ' + till : '') + '</div>';
     })() +
-    (offerActive() ? '<div style="margin:0 10px 8px; padding:6px 10px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:9px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border:1px solid #f0c969; color:#7a1414; font-size:12.5px; font-weight:800; text-align:center;"><span style="font-size:20px; vertical-align:middle;">&#127873;</span> <div style="display:inline-block; vertical-align:middle; text-align:left;"><div style="font-size:13.5px; font-weight:800;">' + estEsc(OFFER.title || '') + '</div><div style="font-size:11.5px; font-weight:700; line-height:1.35; margin-top:1px;">' + estEsc(OFFER.text || '') + '</div></div></div>' : '') + qrBlock +
+    (offerVoucherOn() ? '<div style="margin:0 10px 8px; padding:6px 10px; display:flex; align-items:center; justify-content:center; gap:8px; border-radius:9px; background:linear-gradient(90deg,#fff3cf,#ffe3a1); border:1px solid #f0c969; color:#7a1414; font-size:12.5px; font-weight:800; text-align:center;"><span style="font-size:20px; vertical-align:middle;">&#127873;</span> <div style="display:inline-block; vertical-align:middle; text-align:left;"><div style="font-size:13.5px; font-weight:800;">' + estEsc(offerVoucherCopy().title) + '</div><div style="font-size:11.5px; font-weight:700; line-height:1.35; margin-top:1px;">' + estEsc(offerVoucherCopy().text) + '</div></div></div>' : '') + qrBlock +
     '<div style="padding:7px 10px 9px; font-size:9px; line-height:1.5; color:#44557a; background:#e9f0fd; border-top:1px dashed #9db4e0; text-align:center;">This is only a price estimate prepared by the customer from the shop\'s price list. It is not a bill or receipt, and no sale is recorded. Prices and stock may change — the final amount is confirmed at the counter.<br>' + (forScreen ? telLinks(estEsc(branchPhoneText(br))) + ' <span style="display:inline-block; vertical-align:middle; margin:4px 0 0 4px; text-align:left; font-size:10px; font-weight:800; line-height:1.25; color:#1b3a78;">&#128072; Tap to call<br><span style="font-size:9px; font-weight:700;">அழைக்க தொடவும்</span></span><br>' + custWaBtn(branchPhoneText(br).split(' / ')[0], true) : estEsc(branchPhoneText(br))) +
       (function(){
         var links = liveBranches().filter(function(b){ return branchMap(b) || branchAddr(b); });
