@@ -1693,7 +1693,10 @@ function offerDiscNow(){ return offerActive() ? offerDiscPct() : 0; }
 /* Offer per location (Price Edit tab, "Offer for this location"). A location that has its own switch and % uses them on its
    bills, estimates and Price Edit prices. A location without one keeps the shop-wide offer above, as before. */
 function branchOffer(bid){ var b = bid && BRANCHES[bid]; return (b && b.offer && typeof b.offer === 'object') ? b.offer : null; }
-function offerPctFor(bid){ var o = branchOffer(bid); if(!o) return offerDiscNow(); if(o.until && offerToday() > o.until) return 0; var v = Number(o.pct); return (o.on && !isNaN(v) && v > 0) ? Math.min(80, v) : 0; }
+/* Branch hold (Branch tab): a held branch shows no details and no offer to customers, anywhere. Resume to show again. */
+function branchHeld(bid){ var b = BRANCHES && BRANCHES[bid]; return !!(b && b.enabled === false); }
+function holdNoticeHtml(){ return '<div style="padding:28px 16px; text-align:center; background:#fff8ea; color:#7a1414; font-weight:800; font-size:14px;">இந்தக் கிளை தற்காலிகமாக நிறுத்தப்பட்டுள்ளது<br><span style="font-size:12px; font-weight:600; color:#8a6a44;">This branch is on hold. Please visit another branch.</span></div>'; }
+function offerPctFor(bid){ if(branchHeld(bid)) return 0; var o = branchOffer(bid); if(!o) return offerDiscNow(); if(o.until && offerToday() > o.until) return 0; var v = Number(o.pct); return (o.on && !isNaN(v) && v > 0) ? Math.min(80, v) : 0; }
 /* Last day of the offer for one location: its own date, or the Customers-tab offer's date when the location has no offer of its own. Blank = no end date. */
 function offerUntilFor(bid){ var o = branchOffer(bid); if(o) return /^\d{4}-\d{2}-\d{2}$/.test(o.until || '') ? o.until : ''; return (OFFER && OFFER.until) || ''; }
 /* Self Estimation voucher: the offer banner shows only while this location's offer is on. A location with its own offer gets copy that follows its % and last day. */
@@ -5095,7 +5098,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v71';
+var APP_BUILD = 'v72';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -5264,6 +5267,7 @@ async function estEnsureQr(){
   }catch(e){ _estQrFor = ''; _estQrUrl = ''; return false; }
 }
 function estVoucherHtml(forScreen){
+  if(branchHeld(plBranchId())) return holdNoticeHtml();
   var items = estItems(), b = plBranchId(), br = BRANCHES[b] || {};
   var rows = '', n = 0, tq = 0, total = 0;
   var vCat = null;
@@ -8163,6 +8167,7 @@ async function plEnsureQr(){
   }catch(e){ _plQrFor = ''; _plQrUrl = ''; }
 }
 function buildPriceListTableHTML(noQr){
+  if(branchHeld(plBranchId())) return holdNoticeHtml();
   const _qrU = noQr ? '' : _plQrUrl;
   // 50% OFF is just a general text display, NOT applied to individual prices
   
@@ -8268,6 +8273,7 @@ function buildPriceListTableHTML(noQr){
 var _plExportOffer = false;   // true only while the Price Edit tab makes its PDF: the offer price shows beside the normal price
 async function sharePriceListPDF(triggerEl){
   const pbid = await pickPriceBranch(); if(!pbid) return;
+  if(branchHeld(pbid)){ alert('This branch is on hold. Resume it in the Branch tab to share its price list.'); return; }
   _plBranch = pbid;
   if(triggerEl){ triggerEl.style.opacity = '0.5'; triggerEl.style.pointerEvents = 'none'; }
 
@@ -9412,6 +9418,54 @@ function buildBankReportHTML(type, periodKey){
     </div>`;
 }
 
+/* Bank income statement on the measured A4 sheets (same paginator as the Sales statement): rows never split
+   across a page, the header row repeats, and the declaration and signature stay together at the end. */
+function bankReportA4Blocks(type, periodKey){
+  const inPeriod = SALES.filter(s => isCountedSale(s) && bankPeriodKey(type, new Date(s.time)) === periodKey);
+  const gross = inPeriod.reduce((a,s)=>a+(s.subtotal||s.total),0);
+  const disc = inPeriod.reduce((a,s)=>a+(s.discount||0),0);
+  const net = inPeriod.reduce((a,s)=>a+s.total,0);
+  const bills = inPeriod.length;
+  const cash = inPeriod.reduce((a,s)=>a+saleCashAmount(s),0);
+  const upi = inPeriod.reduce((a,s)=>a+saleUpiAmount(s),0);
+  const inr = v => '&#8377;' + v.toLocaleString('en-IN');
+  const bucket = new Map();
+  inPeriod.forEach(s => {
+    const d = new Date(new Date(s.time).getTime() + 5.5 * 60 * 60 * 1000);
+    const k = type === 'monthly' ? d.toISOString().slice(0,10) : d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const cur = bucket.get(k) || {bills:0, gross:0, disc:0, net:0};
+    cur.bills++; cur.gross += (s.subtotal||s.total); cur.disc += (s.discount||0); cur.net += s.total;
+    bucket.set(k, cur);
+  });
+  const units = [...bucket.entries()].sort().map(([k, v]) => {
+    const label = type === 'monthly'
+      ? new Date(k).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'})
+      : new Date(Number(k.slice(0,4)), Number(k.slice(5,7))-1, 1).toLocaleDateString('en-IN', {month:'long', year:'numeric'});
+    return `<tr><td>${label}</td><td class="num">${v.bills}</td><td class="num">${inr(v.gross)}</td><td class="num">${inr(v.disc)}</td><td class="num">${inr(v.net)}</td></tr>`;
+  });
+  if(!units.length) units.push('<tr><td colspan="5" style="text-align:center;">No transactions in this period.</td></tr>');
+  units.push(`<tr class="bkr-total-row"><td>TOTAL</td><td class="num">${bills}</td><td class="num">${inr(gross)}</td><td class="num">${inr(disc)}</td><td class="num">${inr(net)}</td></tr>`);
+  const periodLabel = bankPeriodLabel(type, periodKey);
+  return [
+    { html: a4Head('BUSINESS INCOME STATEMENT', 'For the period: <b>' + estEsc(periodLabel) + '</b>') +
+        '<div class="bkr-cert">This is to certify that the particulars given below are a true and correct summary of the sales income of <b>' + estEsc(SHOP.name_en) + '</b> (' + estEsc(SHOP.name_ta) + '), Thanneerpandhal branch, for the period stated above, as recorded in the shop\'s billing system. This statement is issued at the request of the proprietor for the purpose of submission to the bank / financial institution.</div>' },
+    { html: '<div class="bkr-sec">1. Income Summary</div><table><thead><tr><th>Particulars</th><th class="num">Amount</th></tr></thead><tbody>' +
+        '<tr><td>Total Number of Bills Issued</td><td class="num">' + bills + '</td></tr>' +
+        '<tr><td>Gross Sales Value</td><td class="num">' + inr(gross) + '</td></tr>' +
+        '<tr><td>Less: Discounts Allowed</td><td class="num">(' + inr(disc) + ')</td></tr>' +
+        '<tr class="bkr-total-row"><td>Net Sales Income (Turnover)</td><td class="num">' + inr(net) + '</td></tr></tbody></table>' },
+    { html: '<div class="bkr-sec">2. Receipts by Mode of Payment</div><table><thead><tr><th>Mode</th><th class="num">Amount</th></tr></thead><tbody>' +
+        '<tr><td>Cash</td><td class="num">' + inr(cash) + '</td></tr>' +
+        '<tr><td>UPI / Digital</td><td class="num">' + inr(upi) + '</td></tr>' +
+        '<tr class="bkr-total-row"><td>Total Receipts</td><td class="num">' + inr(net) + '</td></tr></tbody></table>' },
+    { sec: '3. ' + (type === 'monthly' ? 'Day-wise' : 'Month-wise') + ' Breakdown',
+      head: '<th>' + (type === 'monthly' ? 'Date' : 'Month') + '</th><th class="num">Bills</th><th class="num">Gross</th><th class="num">Discount</th><th class="num">Net Income</th>',
+      units: units },
+    { fixedEnd: true, html: '<div class="bkr-decl"><b>Declaration:</b> I hereby declare that the information furnished above is true, complete and correct to the best of my knowledge and belief, and is drawn from the sales records maintained in the ordinary course of business.</div>' +
+        '<div class="bkr-sign"><div class="sig-block"><div class="sig-line">Place &amp; Date</div></div><div class="sig-block"><div class="sig-line">Proprietor / Authorised Signatory<br>(Seal &amp; Signature)</div></div></div>' }
+  ];
+}
+
 /* Renders arbitrary 794px-wide HTML onto A4 pages, slicing onto additional pages if taller
    than one page — the report stays fully readable at true A4 scale no matter how long. */
 async function renderOffscreenToA4PDF(html){
@@ -9454,7 +9508,7 @@ async function shareBankReportPDF(){
   const period = document.getElementById('bankReportPeriod') ? document.getElementById('bankReportPeriod').value : bankReport.period;
   if(!period){ alert('Select a period first.'); return; }
   try{
-    const doc = await renderOffscreenToA4PDF(buildBankReportHTML(type, period));
+    const doc = await a4MakePdf(bankReportA4Blocks(type, period), 'BUSINESS INCOME STATEMENT');
     await shareGeneratedPDF(doc, 'Income_Statement_' + period + '.pdf', SHOP.name_en + ' — Income Statement ' + period);
   } catch(e){
     alert('Could not generate/share the PDF. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
@@ -10553,7 +10607,7 @@ function promoClickLine(){
   var pct = offerPctFor(plBranchId()), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(offerUntilFor(plBranchId()) || ''), till = m ? Number(m[3]) + '-' + Number(m[2]) + '-' + m[1] : '';
   return 'மேலே உள்ள லிங்கை கிளிக் செய்து ' + (pct > 0 ? pct + '% சிறப்பு தள்ளுபடியுடன் ' + (till ? till + ' வரை ' : '') : '') + 'உங்களது பட்டாசுகளை தேர்வு செய்யுங்கள்.';
 }
-function promoShopsText(){ return branchLocText() + '\n📞 ' + branchPhoneText(BRANCHES.main || BRANCHES[plBranchId()]); }
+function promoShopsText(){ return branchLocText() + (branchHeld(plBranchId()) ? '' : '\n📞 ' + branchPhoneText(BRANCHES.main || BRANCHES[plBranchId()])); }
 function promoDefaultMsg(){
   return '🎆 ' + SHOP.name_ta + ' — ' + SHOP.name_en + '\n\nவணக்கம் {name}! ' + (offerPctFor(plBranchId()) > 0 ? (OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!') : 'எங்கள் புதிய விலைப் பட்டியலைப் பாருங்கள்.') +
     '\n\n👉 ' + promoLink() + '\n' + promoClickLine() + '\n\n' + promoShopsText();
