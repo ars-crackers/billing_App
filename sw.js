@@ -2,7 +2,7 @@
    and lets it open with no signal. Pages: the newest copy from the server when it answers
    within 2.5 s; on a slow signal the saved copy opens at once and the new one is saved
    in the background for the next open. */
-var CACHE = 'ars-billing-v77';
+var CACHE = 'ars-billing-v78';
 var WAIT_MS = 2500;
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){

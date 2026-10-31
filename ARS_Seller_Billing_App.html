@@ -801,6 +801,38 @@
   .pe-menu button:last-child{border-bottom:none;}
   .pe-menu button:active{background:#fff8ea;}
   .pe-shade{position:fixed; inset:0; z-index:30;}
+  /* ---- Login History / UPI / Accounts (minimal) ---- */
+  .mi-kpis{display:flex; gap:8px; margin:0 0 12px;}
+  .mi-kpi{flex:1; min-width:0; background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 10px;}
+  .mi-kpi b{display:block; font-size:18px; font-weight:900; color:var(--maroon); line-height:1.15;}
+  .mi-kpi span{font-size:11px; font-weight:700; color:#8a6a44;}
+  .mi-box{background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden; margin:0 0 12px;}
+  .mi-row{display:flex; align-items:center; gap:10px; padding:10px 12px; border-top:1px solid #f1e6d2; cursor:pointer;}
+  .mi-row:first-child{border-top:none;}
+  .mi-row.on{background:#fff3d6;}
+  .mi-av{flex:0 0 auto; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:900; color:#fff; position:relative; text-transform:uppercase;}
+  .mi-av.admin{background:var(--maroon);} .mi-av.seller{background:#1e7a3c;} .mi-av.off{background:#c9b99a;}
+  .mi-av i{position:absolute; right:-1px; bottom:-1px; width:11px; height:11px; border-radius:50%; background:#22c55e; border:2px solid #fff;}
+  .mi-mid{flex:1; min-width:0;}
+  .mi-name{font-size:14px; font-weight:800; color:var(--ink); line-height:1.25;}
+  .mi-name small{font-size:10px; font-weight:800; letter-spacing:.4px; color:#8a6a44; margin-left:4px; text-transform:uppercase;}
+  .mi-sub{font-size:11.5px; color:var(--ink-soft); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mi-pill{flex:0 0 auto; min-width:30px; height:26px; padding:0 8px; box-sizing:border-box; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:900; background:#f1e6d2; color:#a08560;}
+  .mi-pill.on{background:#e2f6e8; color:#1e7a3c;}
+  .mi-day{font-size:11px; font-weight:900; letter-spacing:.6px; color:#8a6a44; text-transform:uppercase; margin:12px 4px 6px;}
+  .mi-time{flex:0 0 auto; width:64px; font-size:13px; font-weight:900; color:var(--maroon);}
+  .mi-sec{display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:900; letter-spacing:.5px; color:#8a6a44; text-transform:uppercase; margin:14px 4px 6px;}
+  .ac-edit{padding:4px 12px 12px; background:#fffaf0; border-top:1px dashed var(--line);}
+  .ac-edit .uer-top{margin:8px 0;}
+  .up-card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin:0 0 12px;}
+  .up-card.off{background:#fbf7ef;}
+  .up-head{display:flex; align-items:center; gap:10px;}
+  .up-head b{flex:1; font-size:15px; font-weight:900; color:var(--maroon);}
+  .up-stat{font-size:12px; font-weight:700; color:#8a6a44; margin:4px 0 10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .up-stat.on{color:#1e7a3c;}
+  .up-card label.f{display:block; font-size:11px; font-weight:800; color:#8a6a44; margin:8px 0 3px;}
+  .up-card input[type=text], .up-card select{width:100%; box-sizing:border-box; height:42px; padding:0 10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-family:inherit; color:var(--ink);}
+  .up-qr{margin-top:10px; height:38px; padding:0 14px; border-radius:10px; border:1.5px solid var(--line); background:#fff8ea; color:var(--maroon); font-weight:800; font-size:13px; cursor:pointer;}
   /* ---- Sales tab (minimal): totals card, quick buttons, bill rows ---- */
   .sl-sum{background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin:0 0 10px;}
   .sl-sum-top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
@@ -5155,7 +5187,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v77';
+var APP_BUILD = 'v78';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6783,10 +6815,10 @@ function historyScope(){
     list = all.filter(function(x){ return saleInBranch(x, adminScope()) && saleInBranch(x, historyBranchFilter) && (!f || x.sellerId === f); });
     title = f ? ((list[0] && list[0].sellerName) || (USERS[f] && USERS[f].name) || f) + ' \u2014 Sales History' : 'All Sales History';
   } else {
-    var myBr = (sellerBranchOf(session.id) || {}).id || activeBranchId || 'main';
-    if(!f) list = all.filter(function(x){ return x.sellerId === session.id; });
-    else list = all.filter(function(x){ return saleInBranch(x, myBr) && !isAdminBill(x) && (f === 'all' || x.sellerId === f); });
-    title = !f ? session.name + ' \u2014 Sales History' : f === 'all' ? 'All Sellers \u2014 ' + ((BRANCHES[myBr] || {}).name || '') : ((list[0] && list[0].sellerName) || (USERS[f] && USERS[f].name) || f) + ' \u2014 Sales History';
+    // a seller sees only their own bills - the full history (all sellers / other sellers) is for admin only
+    historySellerFilter = '';
+    list = all.filter(function(x){ return x.sellerId === session.id; });
+    title = session.name + ' \u2014 Sales History';
   }
   if(!isAdmin && (histDates.from || histDates.to)){
     list = list.filter(histInDates);
@@ -6836,6 +6868,12 @@ function histAttendanceHtml(){
 /* Seller-name filter (replaces the search boxes on the History tab). */
 function historySellerSelectHtml(){
   var isAdmin = session.role === 'admin', names = {}, opts;
+  if(!isAdmin){
+    var dOn0 = !!(histDates.from || histDates.to);
+    return '<div style="display:flex; align-items:center; gap:8px; margin:8px 0;"><div style="flex:1; min-width:0; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:800; color:var(--maroon);">&#128100; My bills <span style="font-size:11.5px; font-weight:700; color:#8a6a44;">(' + custEsc(session.name || '') + ')</span></div>' +
+      '<button type="button" onclick="toggleHistDates()" title="' + (dOn0 ? 'Show all dates' : 'My present days (dates)') + '" aria-label="Date filter" style="flex:0 0 auto; width:48px; height:42px; border-radius:10px; border:1.5px solid var(--maroon); background:' + (dOn0 ? 'var(--maroon)' : '#fff8e6') + '; color:' + (dOn0 ? '#fff8e6' : 'var(--maroon)') + '; font-size:20px; cursor:pointer;">&#128197;</button></div>' +
+      (dOn0 ? histAttendanceHtml() : '');
+  }
   var myBr = isAdmin ? '' : ((sellerBranchOf(session.id) || {}).id || activeBranchId || 'main');
   (SALES || []).forEach(function(x){
     if(isAdmin){ if(!saleInBranch(x, adminScope()) || !saleInBranch(x, historyBranchFilter)) return; }
@@ -6866,8 +6904,8 @@ function openShareMenu(){
   closeShareMenu();
   var rows = [
     ['openPromoShare', '&#128227;', 'Promotion poster', 'Choose items & style, share to WhatsApp / Instagram / Facebook', '#1a5276'],
-    ['openMySummary', '&#128202;', 'My summary', 'My bills today & total, cash / UPI received, present days \u2022 save as image', '#1e7a3c']
-  ];
+    ['openMySummary', '&#128202;', 'Seller summary', 'All sellers or one seller: today & total, cash / UPI, present days \u2022 save as image', '#1e7a3c']
+  ].filter(function(r){ return r[0] !== 'openMySummary' || (session && session.role === 'admin'); });   // the summary is for admin only
   var ov = document.createElement('div'); ov.id = 'shareMenuOv';
   ov.style.cssText = 'position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.45); display:flex; align-items:flex-end; justify-content:center;';
   ov.innerHTML = '<div style="background:#fffaf0; width:100%; max-width:480px; border-radius:18px 18px 0 0; padding:14px 14px calc(14px + env(safe-area-inset-bottom));">' +
@@ -6892,9 +6930,20 @@ function openShareMenu(){
    the money received (cash / UPI; a split bill counts in both), discount, cancelled bills and present days (a day with at
    least one bill, same as "My present days"). Shown as a card that can be saved or shared as a picture. ---- */
 function closeMySummary(){ var o = document.getElementById('mySumOv'); if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
+/* Admin: whose summary - '' = all sellers (shop total + one line per seller), or one person's id. A seller always sees their own. */
+var mySumWho = '';
+function mySumIsAdmin(){ return !!(session && session.role === 'admin'); }
+function mySumSet(v){ mySumWho = v || ''; mySumPaint(); }
+function mySumPeople(){
+  var m = {};
+  (loadJSON('ars_sales', []) || SALES || []).forEach(function(s){ if(s && s.sellerId && saleInBranch(s, adminScope())) m[s.sellerId] = s.sellerName || m[s.sellerId] || s.sellerId; });
+  Object.keys(USERS || {}).forEach(function(id){ var u = USERS[id]; if(u && (!adminScope() || (u.role === 'admin' ? u.branch === adminScope() : (sellerBranchOf(id) || {}).id === adminScope()))) m[id] = u.name || id; });
+  return Object.keys(m).map(function(id){ return { id: id, name: m[id], admin: !!(USERS[id] && USERS[id].role === 'admin') }; })
+    .sort(function(a, b){ return (a.admin - b.admin) || String(a.name).localeCompare(String(b.name)); });
+}
 function mySummaryData(){
-  var me = session && session.id, today = saleLocalDate(new Date());
-  var mine = (loadJSON('ars_sales', []) || SALES || []).filter(function(s){ return s && s.sellerId === me; });
+  var all = mySumIsAdmin() && !mySumWho, me = mySumIsAdmin() ? (mySumWho || '') : (session && session.id), today = saleLocalDate(new Date());
+  var mine = (loadJSON('ars_sales', []) || SALES || []).filter(function(s){ return s && (all ? saleInBranch(s, adminScope()) : s.sellerId === me); });
   var agg = function(list){
     var c = list.filter(function(s){ return isCountedSale(s); });
     var sum = function(fn){ return c.reduce(function(a, s){ return a + (Number(fn(s)) || 0); }, 0); };
@@ -6903,9 +6952,25 @@ function mySummaryData(){
   };
   var days = {}; mine.forEach(function(s){ days[saleLocalDate(s.time)] = 1; });
   var dl = Object.keys(days).sort();
-  var br = session.role === 'admin' ? (BRANCHES[(USERS[me] || {}).branch] || BRANCHES[activeBranchId]) : (sellerBranchOf(me) || BRANCHES[activeBranchId]);
-  return { today: agg(mine.filter(function(s){ return saleLocalDate(s.time) === today; })), total: agg(mine), days: dl.length, first: dl[0] || '', last: dl[dl.length - 1] || '',
-    presentToday: !!days[today], name: session.name || me, pid: pidOf(me), role: session.role === 'admin' ? 'Admin' : 'Seller', br: br || null };
+  var u = USERS[me] || {}, isAdm = u.role === 'admin';
+  var br = all ? (adminScope() ? BRANCHES[adminScope()] : (liveBranches().length === 1 ? liveBranches()[0] : null))
+    : (isAdm ? (BRANCHES[u.branch] || (me === (session && session.id) ? BRANCHES[activeBranchId] : null)) : (sellerBranchOf(me) || BRANCHES[activeBranchId]));
+  var nameOf = all ? 'All sellers' : (u.name || ((mine[0] || {}).sellerName) || me);
+  var d = { today: agg(mine.filter(function(s){ return saleLocalDate(s.time) === today; })), total: agg(mine), days: dl.length, first: dl[0] || '', last: dl[dl.length - 1] || '',
+    presentToday: !!days[today], name: nameOf, pid: all ? '' : pidOf(me), role: all ? '' : (isAdm ? 'Admin' : 'Seller'), br: br || null, all: all, who: me, people: [] };
+  if(all){   // one line per seller: today, total, present days
+    var by = {};
+    mine.forEach(function(s){
+      var k = s.sellerId || '?', e = by[k] || (by[k] = { name: (USERS[k] && USERS[k].name) || s.sellerName || k, pid: pidOf(k), tb: 0, tn: 0, ab: 0, an: 0, days: {} });
+      e.days[saleLocalDate(s.time)] = 1;
+      if(!isCountedSale(s)) return;
+      e.ab++; e.an += Number(s.total) || 0;
+      if(saleLocalDate(s.time) === today){ e.tb++; e.tn += Number(s.total) || 0; }
+    });
+    d.people = Object.keys(by).map(function(k){ var e = by[k]; e.nDays = Object.keys(e.days).length; e.inToday = !!e.days[today]; return e; })
+      .sort(function(a, b){ return b.an - a.an; });
+  }
+  return d;
 }
 function mySummaryCardHtml(d){
   var inr = function(v){ return '&#8377;' + Math.round(Number(v) || 0).toLocaleString('en-IN'); };
@@ -6927,34 +6992,48 @@ function mySummaryCardHtml(d){
       (logo ? '<img src="' + logo + '" alt="" style="flex:0 0 auto; width:46px; height:46px; border-radius:12px; background:#fff;">' : '') +
       '<div style="min-width:0;"><div style="font-size:17px; font-weight:800; line-height:1.25;">' + estEsc(title) + '</div>' +
       '<div style="font-size:10.5px; letter-spacing:1.5px; font-weight:700; opacity:.9;">' + estEsc(String(SHOP.name_en || '').toUpperCase()) + (br ? ' &bull; ' + estEsc(br.name || '') + (br.short ? ' (' + estEsc(br.short) + ')' : '') : '') + '</div></div></div>' +
-    '<div style="padding:12px 16px 2px;"><div style="font-size:16px; font-weight:900; color:#7a1414;">My Summary</div>' +
-      '<div style="font-size:12px; color:#8a6a44; margin-top:1px;"><b style="color:#3a2a14;">' + estEsc(d.name) + '</b>' + (d.pid ? ' &middot; ' + estEsc(d.pid) : '') + ' &middot; ' + d.role + ' &middot; ' + now + '</div></div>' +
+    '<div style="padding:12px 16px 2px;"><div style="font-size:16px; font-weight:900; color:#7a1414;">' + (d.all ? 'Sales Summary' : (mySumIsAdmin() && d.who !== (session && session.id) ? 'Seller Summary' : 'My Summary')) + '</div>' +
+      '<div style="font-size:12px; color:#8a6a44; margin-top:1px;"><b style="color:#3a2a14;">' + estEsc(d.name) + '</b>' + (d.all ? ' &middot; ' + d.people.length + ' seller' + (d.people.length === 1 ? '' : 's') : '') + (d.pid ? ' &middot; ' + estEsc(d.pid) : '') + (d.role ? ' &middot; ' + d.role : '') + ' &middot; ' + now + '</div></div>' +
     '<div style="display:flex; gap:10px; padding:10px 16px;">' + col('TODAY', dt(saleLocalDate(new Date())), d.today) + col('TOTAL', d.first ? 'since ' + dt(d.first) : 'no bills yet', d.total) + '</div>' +
     '<div style="margin:2px 16px 12px; padding:10px 12px; border-radius:12px; background:#fff3d6; border:1px solid #e9c77a; display:flex; gap:10px; align-items:center;">' +
       '<div style="flex:0 0 auto; min-width:46px; height:46px; padding:0 6px; box-sizing:border-box; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:22px; font-weight:900; display:flex; align-items:center; justify-content:center;">' + d.days + '</div>' +
-      '<div style="min-width:0;"><div style="font-size:13px; font-weight:800; color:#7a1414;">&#128197; Present days / வருகை நாட்கள்</div>' +
-      '<div style="font-size:11px; color:#8a6a44; margin-top:2px;">' + (d.first ? dt(d.first) + (d.last && d.last !== d.first ? ' &ndash; ' + dt(d.last) : '') + ' &middot; ' : '') + 'Today: ' + (d.presentToday ? '<b style="color:#1e7a3c;">Present &#10003;</b>' : 'no bill yet') + '</div></div></div>' +
-    '<div style="text-align:center; font-size:9.5px; color:#a08560; padding:0 0 10px;">A.R.S Billing App &middot; days with at least 1 bill count as present</div>' +
+      '<div style="min-width:0;"><div style="font-size:13px; font-weight:800; color:#7a1414;">&#128197; ' + (d.all ? 'Days with sales' : 'Present days / வருகை நாட்கள்') + '</div>' +
+      '<div style="font-size:11px; color:#8a6a44; margin-top:2px;">' + (d.first ? dt(d.first) + (d.last && d.last !== d.first ? ' &ndash; ' + dt(d.last) : '') + ' &middot; ' : '') + 'Today: ' + (d.presentToday ? '<b style="color:#1e7a3c;">' + (d.all ? 'Open &#10003;' : 'Present &#10003;') + '</b>' : 'no bill yet') + '</div></div></div>' +
+    (d.all && d.people.length ? '<div style="margin:0 16px 12px; background:#fff; border:1.5px solid #ead9b8; border-radius:12px; overflow:hidden;">' +
+      '<div style="display:flex; gap:6px; padding:7px 10px; background:#fbeed2; font-size:10px; font-weight:900; letter-spacing:.6px; color:#8a6a44;"><span style="flex:1;">SELLER</span><span style="width:70px; text-align:right;">TODAY</span><span style="width:78px; text-align:right;">TOTAL</span><span style="width:34px; text-align:right;">DAYS</span></div>' +
+      d.people.map(function(e){ return '<div style="display:flex; gap:6px; align-items:center; padding:7px 10px; border-top:1px dashed #ead9b8; font-size:12px;">' +
+        '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><b style="color:#3a2a14;">' + (e.inToday ? '<span style="color:#1e7a3c;">&#9679;</span> ' : '') + estEsc(e.name) + '</b>' + (e.pid ? ' <span style="font-size:10px; color:#a08560;">' + estEsc(e.pid) + '</span>' : '') + '</span>' +
+        '<span style="width:70px; text-align:right; color:#3a2a14; font-weight:800;">' + inr(e.tn) + '<br><span style="font-size:9.5px; color:#a08560; font-weight:700;">' + e.tb + ' bill' + (e.tb === 1 ? '' : 's') + '</span></span>' +
+        '<span style="width:78px; text-align:right; color:#7a1414; font-weight:900;">' + inr(e.an) + '<br><span style="font-size:9.5px; color:#a08560; font-weight:700;">' + e.ab + ' bill' + (e.ab === 1 ? '' : 's') + '</span></span>' +
+        '<span style="width:34px; text-align:right; font-weight:900; color:#3a2a14;">' + e.nDays + '</span></div>'; }).join('') + '</div>' : '') +
+    '<div style="text-align:center; font-size:9.5px; color:#a08560; padding:0 0 10px;">A.R.S Billing App &middot; days with at least 1 bill count as ' + (d.all ? 'sales days' : 'present') + '</div>' +
     '</div>';
 }
 function openMySummary(){
   closeShareMenu(); closeMySummary();
-  if(!session){ return; }
-  var d = mySummaryData();
+  if(!session || session.role !== 'admin'){ return; }   // admin only
   var ov = document.createElement('div'); ov.id = 'mySumOv';
+  var pick = !mySumIsAdmin() ? '' : '<div style="display:flex; align-items:center; gap:8px; margin:0 0 10px;"><span style="font-size:12.5px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>' +
+    '<select id="mySumSel" onchange="mySumSet(this.value)" style="flex:1; min-width:0; height:42px; padding:0 10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:800; color:var(--maroon); font-family:inherit;">' +
+    '<option value="">All sellers</option>' + mySumPeople().map(function(p){ return '<option value="' + estEsc(p.id) + '"' + (mySumWho === p.id ? ' selected' : '') + '>' + estEsc(p.name) + (p.admin ? ' (admin)' : '') + (pidOf(p.id) ? ' · ' + estEsc(pidOf(p.id)) : '') + '</option>'; }).join('') + '</select></div>';
   ov.style.cssText = 'position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.5); display:flex; align-items:flex-end; justify-content:center;';
   var btn = 'flex:1; padding:12px 8px; border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;';
   ov.innerHTML = '<div style="background:#f3e9d6; width:100%; max-width:480px; max-height:94vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:12px 12px calc(12px + env(safe-area-inset-bottom)); box-sizing:border-box;">' +
     '<div style="width:42px; height:4px; border-radius:2px; background:#d9c7a6; margin:0 auto 10px;"></div>' +
-    '<div style="display:flex; justify-content:center;"><div style="max-width:100%; overflow:hidden;">' + mySummaryCardHtml(d) + '</div></div>' +
+    pick + '<div id="mySumWrap" style="display:flex; justify-content:center;"></div>' +
     '<div style="display:flex; gap:8px; margin-top:12px;">' +
       '<button id="mySumSave" type="button" onclick="mySummaryExport(\'save\')" style="' + btn + ' border:none; background:var(--maroon); color:#fff8e6;">&#128190; Save image</button>' +
       '<button id="mySumShare" type="button" onclick="mySummaryExport(\'share\')" style="' + btn + ' border:1.5px solid var(--maroon); background:#fff; color:var(--maroon);">&#128228; Share</button></div>' +
     '<button type="button" onclick="closeMySummary()" style="display:block; width:100%; padding:10px; margin-top:4px; border:none; background:none; color:#8a6a44; font-weight:800; font-size:13px; cursor:pointer;">Close</button></div>';
   ov.addEventListener('click', function(e){ if(e.target === ov) closeMySummary(); });
   document.body.appendChild(ov);
-  var card = document.getElementById('mySumCard');     // narrow phones: shrink the card to fit, the saved picture stays full size
-  if(card){ var w = ov.firstChild.clientWidth - 24; if(w < 360){ card.style.transform = 'scale(' + (w / 360) + ')'; card.style.transformOrigin = 'top left'; card.parentNode.style.width = w + 'px'; card.parentNode.style.height = Math.ceil(card.offsetHeight * w / 360) + 'px'; } }
+  mySumPaint();
+}
+function mySumPaint(){
+  var wrap = document.getElementById('mySumWrap'); if(!wrap) return;
+  wrap.innerHTML = '<div style="max-width:100%; overflow:hidden;">' + mySummaryCardHtml(mySummaryData()) + '</div>';
+  var card = document.getElementById('mySumCard'), ov = document.getElementById('mySumOv');     // narrow phones: shrink the card to fit, the saved picture stays full size
+  if(card && ov){ var w = ov.firstChild.clientWidth - 24; if(w < 360){ card.style.transform = 'scale(' + (w / 360) + ')'; card.style.transformOrigin = 'top left'; card.parentNode.style.width = w + 'px'; card.parentNode.style.height = Math.ceil(card.offsetHeight * w / 360) + 'px'; } }
 }
 async function mySummaryExport(mode){
   var b1 = document.getElementById('mySumSave'), b2 = document.getElementById('mySumShare'), busy = mode === 'save' ? b1 : b2, txt = busy ? busy.innerHTML : '';
@@ -6968,8 +7047,9 @@ async function mySummaryExport(mode){
     var canvas = await window.html2canvas(el, { scale: 3, backgroundColor: '#f3e9d6', useCORS: true, width: 360, windowWidth: 360 });
     var blob = await new Promise(function(res){ canvas.toBlob(res, 'image/png'); });
     if(!blob) throw new Error('Could not make the picture.');
-    var name = 'My_Summary_' + String(session.name || session.id || '').replace(/[^A-Za-z0-9]+/g, '_') + '_' + saleLocalDate(new Date()) + '.png';
-    if(mode === 'share') await shareGeneratedFile(blob, name, 'image/png', 'My summary — ' + (session.name || ''));
+    var _d = mySummaryData();
+    var name = (_d.all ? 'Sales_Summary_All_Sellers' : 'Summary_' + String(_d.name || '').replace(/[^A-Za-z0-9]+/g, '_')) + '_' + saleLocalDate(new Date()) + '.png';
+    if(mode === 'share') await shareGeneratedFile(blob, name, 'image/png', (_d.all ? 'Sales summary' : 'Summary') + ' — ' + (_d.name || ''));
     else {
       var url = URL.createObjectURL(blob), a = document.createElement('a');
       a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
@@ -8886,13 +8966,13 @@ function salesYears(){
   (SALES || []).forEach(function(s){ var y = saleLocalDate(s.time).slice(0, 4); if(y) set[y] = 1; });
   return Object.keys(set).sort().reverse();
 }
+/* The Sales tab's "More periods" list: only the periods that have no chip of their own (Today / Yesterday / This year /
+   All are chips) - other years and the Diwali seasons. */
 function salesYearOptionsHtml(){
   var cur = salesFilters.yr || '', custom = !!(salesFilters.from || salesFilters.to), ys = salesYears(), thisY = String(new Date().getFullYear());
-  var h = custom ? '<option value="" selected>Dates chosen (📅)</option>' : '';
-  h += '<option value="today"' + (!custom && cur === 'today' ? ' selected' : '') + '>Today (' + salesDateLabel(saleLocalDate(new Date())) + ')</option>';
-  h += '<option value="yday"' + (!custom && cur === 'yday' ? ' selected' : '') + '>Yesterday (' + salesDateLabel(saleLocalDate(Date.now() - 86400000)) + ')</option>';
-  h += '<option value="all"' + (!custom && cur === 'all' ? ' selected' : '') + '>All years</option>';
-  ys.forEach(function(y){ h += '<option value="y:' + y + '"' + (!custom && cur === 'y:' + y ? ' selected' : '') + '>' + y + (y === thisY ? ' (this year)' : '') + '</option>'; });
+  var onChip = custom || cur === 'today' || cur === 'yday' || cur === 'all' || cur === 'y:' + thisY;
+  var h = '<option value=""' + (onChip ? ' selected' : '') + '>More periods&hellip;</option>';
+  ys.forEach(function(y){ if(String(y) === thisY) return; h += '<option value="y:' + y + '"' + (!custom && cur === 'y:' + y ? ' selected' : '') + '>Year ' + y + '</option>'; });
   ys.forEach(function(y){ h += '<option value="d:' + y + '"' + (!custom && cur === 'd:' + y ? ' selected' : '') + '>Diwali ' + y + '</option>'; });
   return h;
 }
@@ -9514,6 +9594,9 @@ function clearSalesFilters(){
   renderAdmin();
 }
 function toggleSalesStats(){ salesStatsOpen = !salesStatsOpen; renderAdmin(); }
+/* Accounts: one line per person; tap to open (or close) their edit fields */
+var accOpenId = '';
+function accToggle(id){ accOpenId = accOpenId === id ? '' : id; renderAdmin(); }
 /* Sales tab: More menu (PDF A4 / Print 80 mm / Bank format), search behind the 🔍 chip, period chips */
 var slMoreOpen = false, slSearchOpen = false;
 function slMore(on){ slMoreOpen = (on == null) ? !slMoreOpen : !!on; renderAdmin(); }
@@ -9591,24 +9674,20 @@ function loginSummaryHtml(){
     var d = new Date(t), tm = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
     return saleLocalDate(t) === today ? 'Today ' + tm : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ', ' + tm;
   };
-  var card = function(v, l){ return '<div class="stat-card"><div class="sv">' + v + '</div><div class="sl">' + l + '</div></div>'; };
-  var h = '<div class="section-title" style="margin-top:0;">Summary</div><div class="stat-grid">' +
-    card(todayN, 'Logins today') + card(inToday + ' / ' + accounts, 'People logged in today') +
-    card(Object.keys(devsToday).length, 'Phones used today') + card(list.length, 'All login records') + '</div>';
-  h += '<div style="border:1px solid var(--line); border-radius:12px; background:var(--paper); overflow:hidden; margin-bottom:16px;">' +
-    '<div style="display:flex; gap:6px; padding:7px 10px; background:#fbeed2; font-size:10.5px; font-weight:800; color:var(--maroon-dark);"><span style="flex:1;">Person</span><span style="width:96px;">Last login / open</span><span style="width:38px; text-align:center;">Today</span><span style="width:34px; text-align:center;">All</span><span style="width:40px; text-align:center;">Phones</span></div>' +
+  var kpi = function(v, l){ return '<div class="mi-kpi"><b>' + v + '</b><span>' + l + '</span></div>'; };
+  var h = '<div class="pe-top"><div class="pe-title"><b>Login History</b><span>' + inToday + ' of ' + accounts + ' people logged in today</span></div>' +
+    '<div class="pe-more"><button type="button" class="pe-ibtn" onclick="shareLoginHistoryPDF()" title="Login history PDF">' + SHARE_ICON_SVG_SM + 'PDF</button></div></div>' +
+    '<div class="mi-kpis">' + kpi(todayN, 'Logins today') + kpi(Object.keys(devsToday).length, 'Phones today') + kpi(list.length, 'All logins') + '</div>';
+  h += '<div class="mi-sec"><span>People</span><span style="text-transform:none; letter-spacing:0; font-weight:700;">tap a person for their logins</span></div><div class="mi-box">' +
     people.map(function(p){
-      var sel = loginFilterId === p.id;
-      return '<div onclick="loginPick(\'' + String(p.id).replace(/'/g, '') + '\')" style="display:flex; gap:6px; align-items:center; padding:8px 10px; border-top:1px solid var(--line); cursor:pointer; background:' + (sel ? '#fff3d6' : 'transparent') + ';">' +
-        '<span style="flex:1; min-width:0;"><b style="font-size:12.5px; color:' + (p.nToday ? 'var(--ink)' : '#8a6a44') + ';">' + (p.nToday ? '&#128994; ' : '&#9898; ') + custEsc(p.name) + '</b>' +
-          ' <span class="uer-role-badge ' + (p.role === 'admin' ? 'admin' : 'seller') + '" style="font-size:8.5px; padding:1px 6px;">' + (p.role === 'admin' ? 'Admin' : 'Seller') + '</span>' + (p.gone ? ' <span style="font-size:9px; color:#b3261e;">(deleted)</span>' : '') + '</span>' +
-        '<span style="width:96px; font-size:11px; line-height:1.35; color:' + (p.last ? 'var(--ink-soft)' : '#b3261e') + ';">' + when(p.last) +
-          (p.open ? '<br><span style="font-size:10.5px; font-weight:800; color:#0b5fd8;">&#128241; Open ' + when(p.open).replace(/^Today /, '') + '</span>' : '') + '</span>' +
-        '<span style="width:38px; text-align:center; font-size:13px; font-weight:800; color:' + (p.nToday ? 'var(--green)' : '#b9a68a') + ';">' + p.nToday + '</span>' +
-        '<span style="width:34px; text-align:center; font-size:12.5px; font-weight:700;">' + p.n + '</span>' +
-        '<span style="width:40px; text-align:center; font-size:12.5px; font-weight:700;">' + Object.keys(p.dev).length + '</span></div>';
-    }).join('') +
-    '<div style="padding:6px 10px; border-top:1px solid var(--line); font-size:10px; color:#8a6a44;">&#128994; logged in today &bull; &#128241; Open = last time the app was opened after 1 hour or more &bull; sellers sign in again every day from 12 am &bull; tap a person to see only their logins</div></div>';
+      var sel = loginFilterId === p.id, nDev = Object.keys(p.dev).length;
+      return '<div class="mi-row' + (sel ? ' on' : '') + '" onclick="loginPick(\'' + String(p.id).replace(/'/g, '') + '\')">' +
+        '<div class="mi-av ' + (p.gone ? 'off' : (p.role === 'admin' ? 'admin' : 'seller')) + '">' + custEsc(String(p.name || '?').trim().charAt(0) || '?') + (p.nToday ? '<i></i>' : '') + '</div>' +
+        '<div class="mi-mid"><div class="mi-name">' + custEsc(p.name) + '<small>' + (p.role === 'admin' ? 'Admin' : 'Seller') + '</small>' + (p.gone ? ' <small style="color:#b3261e;">deleted</small>' : '') + '</div>' +
+          '<div class="mi-sub">' + (p.last ? 'Last ' + when(p.last) : '<span style="color:#b3261e;">Never logged in</span>') + (p.open ? ' &middot; <b style="color:#0b5fd8;">opened ' + when(p.open).replace(/^Today /, '') + '</b>' : '') + (p.n ? ' &middot; ' + p.n + ' login' + (p.n === 1 ? '' : 's') + ' &middot; ' + nDev + ' phone' + (nDev === 1 ? '' : 's') : '') + '</div></div>' +
+        '<div class="mi-pill' + (p.nToday ? ' on' : '') + '" title="Logins today">' + p.nToday + '</div></div>';
+    }).join('') + '</div>' +
+    '<div style="font-size:10.5px; color:#8a6a44; margin:-6px 4px 4px;">Green dot = logged in today &middot; number = logins today &middot; sellers sign in again every day from 12 am</div>';
   return h;
 }
 
@@ -10281,27 +10360,24 @@ function renderAdmin(){
     LOGIN_HISTORY = loadJSON('ars_login_history', []);
     if(loginFilterId && !LOGIN_HISTORY.some(l => l.id === loginFilterId) && !USERS[loginFilterId]) loginFilterId = '';
     const loginsList = [...LOGIN_HISTORY].reverse().filter(l => !loginFilterId || l.id === loginFilterId);
-    let html = loginSummaryHtml() + `<div class="history-head-row">
-        <div class="section-title" style="margin:0;">Login History (latest first)${loginFilterId ? ' &mdash; ' + custEsc((USERS[loginFilterId] && USERS[loginFilterId].name) || loginFilterId) : ''}</div>
-        <button onclick="shareLoginHistoryPDF()" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF</button>
-      </div>
-      <div class="empty-admin" style="text-align:left; padding:0 4px 10px; font-size:11.5px;">
-        Logins from every phone, stored on the Firebase server. ${loginsList.length} record(s).${loginFilterId ? ' <a href="javascript:void(0)" onclick="loginPick(\'\')" style="color:var(--maroon); font-weight:800;">Show all</a>' : ''}
-      </div>`;
+    const _today = saleLocalDate(new Date()), _yday = saleLocalDate(Date.now() - 86400000);
+    const _dayName = d => d === _today ? 'Today' : d === _yday ? 'Yesterday' : fullDateLabel(d);
+    let html = loginSummaryHtml();
+    html += `<div class="mi-sec"><span>${loginFilterId ? custEsc((USERS[loginFilterId] && USERS[loginFilterId].name) || loginFilterId) + ' &mdash; logins' : 'All logins'} (${loginsList.length})</span>${loginFilterId ? '<button type="button" onclick="loginPick(\'\')" style="border:none; background:none; color:var(--maroon); font-weight:800; font-size:12px; text-decoration:underline; cursor:pointer; text-transform:none; letter-spacing:0;">Show all</button>' : ''}</div>`;
     if(loginsList.length===0){
       html += `<div class="empty-admin">No login history yet.</div>`;
     } else {
+      let lastDay = '';
       loginsList.slice(0, _listLimit.logins).forEach(l => {
-        const dt = fmtBillTime(l.time);
-        html += `<div class="sale-card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div><b>${estEsc(l.name)}</b> <span style="font-size:10px;color:#8a6a44;">(${estEsc(l.id)})</span>
-                <span class="uer-role-badge ${l.role}" style="margin-left:6px;">${l.role==='admin'?'Admin':'Seller'}</span></div>
-            </div>
-            <div class="sc-time" style="margin-top:4px;">${dt}</div>
-            ${l.device ? `<div style="font-size:11px; color:#6b4b2a; margin-top:4px; line-height:1.5;">&#128241; ${deviceLabel(l.device) || 'Device'}<br><span style="font-size:10px; color:#8a6a44;">Screen ${l.device.screen || '-'} &middot; ${l.device.language || ''} &middot; ${l.device.timezone || ''}${l.device.installed ? ' &middot; Installed app' : ' &middot; Browser'} &middot; ID ${l.device.deviceId || '-'}</span></div>` : ''}
+        const d = saleLocalDate(l.time);
+        if(d !== lastDay){ if(lastDay) html += '</div>'; html += `<div class="mi-day">${_dayName(d)}</div><div class="mi-box">`; lastDay = d; }
+        const dv = l.device ? (deviceLabel(l.device) || 'Phone') + (l.device.installed ? ' &middot; app' : ' &middot; browser') : '';
+        html += `<div class="mi-row" style="cursor:default;" title="${l.device ? estEsc('Screen ' + (l.device.screen || '-') + ' · ' + (l.device.language || '') + ' · ' + (l.device.timezone || '')) : ''}">
+            <div class="mi-time">${new Date(l.time).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</div>
+            <div class="mi-mid"><div class="mi-name">${estEsc(l.name)}<small>${l.role === 'admin' ? 'Admin' : 'Seller'}</small></div>${dv ? `<div class="mi-sub">&#128241; ${dv}</div>` : ''}</div>
           </div>`;
       });
+      if(lastDay) html += '</div>';
       html += listMoreBtn('logins', loginsList.length);
     }
     main.innerHTML = html;
@@ -10350,23 +10426,32 @@ function renderAdmin(){
 
   } else if(adminTab === 'accounts'){
     const adminCount = Object.values(USERS).filter(u => u.role === 'admin').length;
-    let html = `<div class="history-head-row">
-        <div class="section-title" style="margin:0;">Manage Accounts — tap outside a field to save</div>
-        <span style="display:flex; gap:6px; flex-wrap:wrap;">
-          <button onclick="shareSellerCredentialsPDF()" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF</button>
-          <button onclick="openNewSellerModal()" class="btn-new-item">&plus; New</button>
-        </span>
-      </div>`;
+    const sellerCount = Object.values(USERS).filter(u => u.role !== 'admin').length;
+    let html = `<div class="pe-top"><div class="pe-title"><b>Accounts</b><span>${adminCount} admin${adminCount === 1 ? '' : 's'} &middot; ${sellerCount} seller${sellerCount === 1 ? '' : 's'} &middot; tap a person to edit</span></div>
+        <div class="pe-more"><button type="button" class="pe-ibtn" onclick="shareSellerCredentialsPDF()" title="Seller login list (PDF)">${SHARE_ICON_SVG_SM}PDF</button></div>
+        <button type="button" class="pe-new" onclick="openNewSellerModal()">&plus; New</button></div>`;
     const _ids = Object.keys(USERS);
     const _ordered = _ids.filter(i => USERS[i].role === 'admin').concat(_ids.filter(i => USERS[i].role !== 'admin'));
     const _roleNo = { admin:0, seller:0 };
+    let _grp = '';
     _ordered.forEach(id => {
       const u = USERS[id];
       const _roleKey = u.role === 'admin' ? 'admin' : 'seller';
       const _tagNo = ++_roleNo[_roleKey];
       const isLastAdmin = u.role === 'admin' && adminCount <= 2;
       const USER_SETTINGS = loadJSON('ars_user_settings_' + id, {autoSendBill: true});
-      html += `<div class="user-edit-row">
+      if(_grp !== _roleKey){ if(_grp) html += '</div>'; html += `<div class="mi-sec"><span>${_roleKey === 'admin' ? 'Admins' : 'Sellers'} (${_roleKey === 'admin' ? adminCount : sellerCount})</span></div><div class="mi-box">`; _grp = _roleKey; }
+      const _open = accOpenId === id;
+      const _brId = u.role === 'admin' ? u.branch : (sellerBranchOf(id) || {}).id;
+      const _brTxt = _brId && BRANCHES[_brId] ? (BRANCHES[_brId].short || BRANCHES[_brId].name) : (u.role === 'admin' ? 'All branches' : '');
+      const _hasPin = u.pin != null && u.pin !== '';
+      html += `<div class="mi-row${_open ? ' on' : ''}" onclick="accToggle('${String(id).replace(/'/g, '')}')">
+          <div class="mi-av ${_roleKey}">${custEsc(String(u.name || id).trim().charAt(0) || '?')}</div>
+          <div class="mi-mid"><div class="mi-name">${estEsc(u.name)}<small>${u.role === 'admin' ? 'Admin' : 'Seller'} ${_tagNo}</small></div>
+            <div class="mi-sub">ID <b>${estEsc(id)}</b>${u.pid ? ' &middot; ' + estEsc(u.pid) : ''}${_brTxt ? ' &middot; ' + estEsc(_brTxt) : ''} &middot; ${_hasPin ? 'PIN set' : '<span style="color:#b45309;">PIN after next login</span>'}</div></div>
+          <div style="flex:0 0 auto; font-size:16px; color:var(--maroon);">${_open ? '&#9650;' : '&#9998;'}</div>
+        </div>
+        ${_open ? `<div class="ac-edit">
           <div class="uer-top">
             <span class="uer-role-badge ${u.role}">${u.role === 'admin' ? 'Admin ' : 'Seller '}${_tagNo}</span><span style="font-size:11px; font-weight:800; color:#8a6a44;">${u.pid || ''}</span>
             <select title="${u.role === 'admin' ? 'Branch access' : 'Branch (locked for seller)'}" onchange="setUserBranch('${id}', this.value)" style="padding:4px 6px; border-radius:8px; border:1px solid var(--line); font-size:12px; font-weight:700; max-width:110px;">
@@ -10394,8 +10479,10 @@ function renderAdmin(){
           ${isLastAdmin
             ? `<div class="uer-protected">Protected — minimum 2 admin accounts required</div>`
             : ``}
-        </div>`;
+          <div style="font-size:10.5px; color:#8a6a44; text-align:center;">Changes save when you tap outside a field</div>
+        </div>` : ''}`;
     });
+    if(_grp) html += '</div>';
     main.innerHTML = html;
 
   } else if(adminTab === 'branch'){
@@ -10487,30 +10574,22 @@ function renderAdmin(){
   } else if(adminTab === 'upi'){
     normalizeUpi();
     const brOpts = sel => `<option value="" ${!sel?'selected':''}>All branches</option>` + liveBranches().map(b => `<option value="${b.id}" ${sel===b.id?'selected':''}>${estEsc(b.name)} (${estEsc(b.short)})</option>`).join('');
-    const upiCard = (n, sl) => `<div class="discount-card" style="position:relative;">
-        <button type="button" onclick="openUpiShowQr(${n})" title="Show &amp; print this UPI QR" aria-label="Print UPI QR ${n}" style="position:absolute; top:8px; right:10px; width:auto; padding:2px 4px; background:none; border:none; box-shadow:none; font-size:22px; line-height:1; color:var(--maroon); cursor:pointer;">&#128424;</button>
-        <div class="section-title" style="margin-top:0;">UPI Account ${n}</div>
-        <div class="check-row">
-          <label class="toggle-switch">
-            <input type="checkbox" id="upiEnabled${n}" ${sl.enabled?'checked':''}>
-            <span class="toggle-slider"></span>
-          </label>
-          <span>Enable this UPI ID</span>
-        </div>
-        <label class="field-label">Used for branch</label>
-        <select id="upiBranch${n}" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); margin-bottom:8px; font-size:13px;">${brOpts(sl.branch)}</select>
-        <label class="field-label">UPI ID</label>
-        <input type="text" id="upiId${n}" placeholder="example@upi" value="${estEsc(sl.id)}">
-        <label class="field-label">Display Name (optional)</label>
+    const upiCard = (n, sl) => `<div class="up-card${sl.enabled ? '' : ' off'}">
+        <div class="up-head"><b>UPI ${n}</b>
+          <label class="toggle-switch" title="On / off"><input type="checkbox" id="upiEnabled${n}" ${sl.enabled?'checked':''}><span class="toggle-slider"></span></label></div>
+        <div class="up-stat${sl.enabled && sl.id ? ' on' : ''}">${sl.enabled && sl.id ? '&#9679; On &middot; ' + estEsc(sl.id) + ' &middot; ' + (sl.branch && BRANCHES[sl.branch] ? estEsc(BRANCHES[sl.branch].name) : 'All branches') : '&#9675; Off'}</div>
+        <label class="f" for="upiId${n}">UPI ID</label>
+        <input type="text" id="upiId${n}" placeholder="example@upi" value="${estEsc(sl.id)}" autocomplete="off">
+        <label class="f" for="upiName${n}">Name shown to customer (optional)</label>
         <input type="text" id="upiName${n}" placeholder="e.g. A.R.S Crackers" value="${estEsc(sl.name)}">
+        <label class="f" for="upiBranch${n}">Used for</label>
+        <select id="upiBranch${n}">${brOpts(sl.branch)}</select>
+        <button type="button" class="up-qr" onclick="openUpiShowQr(${n})">&#128424; Show / print QR</button>
       </div>`;
-    const note = sl => sl.enabled && sl.id ? `<b>${estEsc(sl.id)}</b> &rarr; ${sl.branch && BRANCHES[sl.branch] ? estEsc(BRANCHES[sl.branch].name) : 'All branches'}` : 'Off';
-    main.innerHTML = upiCard(1, UPI.slot1) + upiCard(2, UPI.slot2) + `
-      <button onclick="saveUpiSettings()" style="width:100%;">Save UPI Details</button>
-      <div class="empty-admin" style="text-align:left; padding:8px 4px;">
-        Account 1: ${note(UPI.slot1)}<br>Account 2: ${note(UPI.slot2)}<br>
-        A bill uses the account set for its branch; if none is set for that branch, the "All branches" account is used.
-      </div>`;
+    main.innerHTML = `<div class="pe-top"><div class="pe-title"><b>UPI Details</b><span>${[UPI.slot1, UPI.slot2].filter(s => s.enabled && s.id).length} of 2 UPI IDs on</span></div></div>` +
+      upiCard(1, UPI.slot1) + upiCard(2, UPI.slot2) + `
+      <button onclick="saveUpiSettings()" style="width:100%; height:46px; border-radius:12px; font-size:14px;">Save UPI details</button>
+      <div style="font-size:11px; color:#8a6a44; margin:8px 4px; line-height:1.5;">A bill uses the UPI set for its branch; if none is set for that branch, the "All branches" UPI is used.</div>`;
 
   } else if(adminTab === 'backup'){
     var _bfAt = ''; try{ _bfAt = localStorage.getItem('ars_backup_file_at') || ''; }catch(e){}
@@ -11816,6 +11895,7 @@ function updateUserField(id, field, val){
     updateUserTag();
   }
   flashSaved('user-' + id);
+  if(field === 'name'){ clearTimeout(window._accRe); window._accRe = setTimeout(function(){ try{ if(adminTab === 'accounts') renderAdmin(); }catch(e){} }, 900); }   // the person's line shows the new name
 }
 
 async function renameUserId(oldId, newIdRaw){
