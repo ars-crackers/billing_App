@@ -132,10 +132,8 @@
     box-shadow:0 2px 8px rgba(0,0,0,0.25); position:relative; z-index:1;
   }
   .shop-row{display:flex; align-items:flex-start; justify-content:space-between; gap:8px;}
-  .shop-name-big{font-size:22px; font-weight:800; color:#fff8e6; line-height:1.2; text-shadow:0 1px 3px rgba(0,0,0,0.3);}
-  .shop-name-big small{display:block; font-size:10px; font-weight:700; letter-spacing:2px; color:var(--gold); margin-top:3px;}
-  .shop-name-big{font-size:25px; font-weight:800; line-height:1.1;}
-  .shop-name-big small{display:block; font-size:10.5px; letter-spacing:2px; color:var(--gold); font-weight:700; margin-top:2px;}
+  .shop-name-big{font-size:25px; font-weight:800; color:#fff8e6; line-height:1.1; text-shadow:0 1px 3px rgba(0,0,0,0.3);}
+  .shop-name-big small{display:block; font-size:10.5px; font-weight:700; letter-spacing:2px; color:var(--gold); margin-top:2px;}
   .hdr-actions{display:flex; flex-direction:column; align-items:flex-end; gap:5px;}
   .hdr-actions button{
     background:rgba(255,255,255,0.12); border:1.3px solid var(--gold); color:var(--gold);
@@ -371,7 +369,6 @@
     box-shadow:0 -3px 10px rgba(0,0,0,0.25); z-index:6;
   }
   .cart-bar .cb-left{font-size:11.5px; color:#ffe1a8;}
-  .cart-bar .cb-disc{font-size:10px; color:#9be8b0; font-weight:700;}
   .cart-bar .cb-total{font-size:19px; font-weight:800; color:var(--gold);}
   .cart-bar button{
     background:var(--gold); color:var(--maroon-dark); border:none; font-weight:800;
@@ -890,11 +887,10 @@ function __appNotLoaded(){
 <!-- ================= MAIN APP ================= -->
 <div id="app" class="hidden">
   <!-- Sync-wait banner: shown briefly after login until Firebase confirms latest prices -->
-  <div id="syncWaitBanner" style="display:none; position:fixed; inset:0; z-index:25000; background:rgba(74,12,12,0.92); color:#fff8e6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;">
+  <div id="syncWaitBanner" style="display:none; position:fixed; inset:0; z-index:25000; background:rgba(74,12,12,0.92); color:#fff8e6; flex-direction:column; align-items:center; justify-content:center; gap:14px;">
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ffd27a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1.1s linear infinite;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
     <div style="font-size:16px; font-weight:700; text-align:center; padding:0 24px;">வாழ்த்துக்கள்! விலைப்பட்டியல் புதுப்பிக்கிறது…<br><span style="font-size:13px; font-weight:400; color:#ffd27a;">Loading latest prices from server…</span></div>
   </div>
-  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
   <div id="appScroll" class="app-scroll">
     <header class="shop-info-block">
       <div class="shop-row">
@@ -943,7 +939,6 @@ function __appNotLoaded(){
   <div class="cart-bar" id="cartBar">
     <div>
       <div class="cb-left"><span id="cbCount">0</span> items · Grand Total &#8377;<span id="cbSub">0</span></div>
-      <div class="cb-disc hidden" id="cbDiscRow">10% off applied: -&#8377;<span id="cbDisc">0</span></div>
       <div class="cb-total">&#8377;<span id="cbTotal">0</span></div>
     </div>
     <div style="display:flex; gap:6px;">
@@ -1088,7 +1083,6 @@ function __appNotLoaded(){
   <div class="admin-main" id="adminMain"></div>
 </div>
 
-<input type="file" id="restoreFileInput" accept=".html,.htm,.json" class="hidden" onchange="handleRestoreFile(event)">
 
 <!-- ================= CONFIRM DIALOG ================= -->
 <div class="confirm-overlay" id="confirmOverlay">
@@ -1465,34 +1459,6 @@ const _rawSaveJSON = saveJSON;
    as text (date first) - a larger value means a newer list. */
 const PRICE_LIST_VERSION = '2026-10-07-v104c';
 
-/* If this file IS a downloaded backup (it carries an embedded #backup-seed-data block),
-   pre-fill localStorage from it the very first time it's opened — before anything else
-   seeds default data. This makes a downloaded backup .html a fully working, self-contained
-   restore point: just open the file and the shop's data from that snapshot loads automatically.
-   Only fills keys that are still empty, so reopening this same file later never overwrites
-   newer data that was entered after that first open. */
-(function hydrateFromBackupSeed(){
-  const seedEl = document.getElementById('backup-seed-data');
-  if(!seedEl) return;
-  try{
-    const seed = JSON.parse(seedEl.textContent);
-    if(seed.categories && !localStorage.getItem('ars_catalog')){
-      localStorage.setItem('ars_catalog', JSON.stringify({categories: seed.categories}));
-      // A backup taken on this same price-list version keeps its own item list (it may hold
-      // the admin's later edits). A backup from an older list carries no/older stamp, so the
-      // version check below replaces its item list with the current one.
-      if(seed.priceListVersion && !localStorage.getItem('ars_price_list_version')) localStorage.setItem('ars_price_list_version', JSON.stringify(seed.priceListVersion));
-    }
-    if(seed.users && !localStorage.getItem('ars_users')) localStorage.setItem('ars_users', JSON.stringify(seed.users));
-    if(seed.inventory && !localStorage.getItem('ars_inventory')) localStorage.setItem('ars_inventory', JSON.stringify(seed.inventory));
-    if(seed.discount && !localStorage.getItem('ars_discount')) localStorage.setItem('ars_discount', JSON.stringify(seed.discount));
-    if(seed.upi && !localStorage.getItem('ars_upi')) localStorage.setItem('ars_upi', JSON.stringify(seed.upi));
-    if(seed.categoryNames && !localStorage.getItem('ars_catnames')) localStorage.setItem('ars_catnames', JSON.stringify(seed.categoryNames));
-    if(seed.sales && !localStorage.getItem('ars_sales') && !localStorage.getItem('ars_sales_days')) localStorage.setItem('ars_sales', JSON.stringify(seed.sales));
-    if(seed.loginHistory && !localStorage.getItem('ars_login_history')) localStorage.setItem('ars_login_history', JSON.stringify(seed.loginHistory));
-  } catch(e){ /* malformed or partial seed block — ignore, fall back to normal defaults */ }
-})();
-
 /* The price-list catalog (categories + items) can be edited at runtime (add/delete/move
    items, add categories). Those structural changes are persisted here under 'ars_catalog'
    so they survive a reload — previously they only lived in memory for that one tab session
@@ -1660,14 +1626,6 @@ function seedInventory(){
   }
   return inv;
 }
-function seedDiscount(){
-  let d = loadJSON('ars_discount', null);
-  if(!d){
-    d = {enabled:true, threshold:2000, percent:10};
-    saveJSON('ars_discount', d);
-  }
-  return d;
-}
 function seedUpiSettings(){
   let u = loadJSON('ars_upi', null);
   if(!u){
@@ -1680,7 +1638,7 @@ function seedUpiSettings(){
 let USERS = seedUsers();
 let INV = seedInventory();
 
-let DISCOUNT = seedDiscount();
+try{ localStorage.removeItem('ars_discount'); }catch(e){}   // old unused 10% cart-discount setting
 let UPI = seedUpiSettings();
 /* ---- Offer banner: ONE admin setting (Customers tab) used on the customer page, the estimate voucher and both
    price-list PDFs. Saved on the server (settings/offer). Hidden automatically after its last day. ---- */
@@ -4379,6 +4337,7 @@ function enterApp(){
   if(!window._syncBadgeTimer) window._syncBadgeTimer = setInterval(updateSyncBadge, 30000); // also catches the phone going offline / coming back (one timer, even after signing in again)
   ensureJsPDF().catch(()=>{ /* will retry on demand when the share button is tapped */ });
   ensureHtml2Canvas().catch(()=>{ /* will retry on demand when the share button is tapped */ });
+  try{ if(navigator.onLine) ensureQRCodeLib().catch(function(){}); }catch(e){}   // UPI QR ready before the first bill
 }
 
 /* ================= FIREBASE SYNC BADGE (header) =================
@@ -4493,7 +4452,7 @@ function buildCatNav(){
   let html = `<div class="cat-chip${activeCat === 'ALL' ? ' active' : ''}" onclick="setCat('ALL')">All</div>`;
   CATEGORIES.forEach((cat, ci) => {
     const n = getCategoryName(ci);
-    html += `<div class="cat-chip${activeCat === String(ci) ? ' active' : ''}" onclick="setCat('${ci}')" title="${n.en}">${ci + 1}. ${n.ta || n.en}</div>`;
+    html += `<div class="cat-chip${activeCat === String(ci) ? ' active' : ''}" onclick="setCat('${ci}')" title="${estEsc(n.en)}">${ci + 1}. ${estEsc(n.ta || n.en)}</div>`;
   });
   nav.innerHTML = html;
 }
@@ -4633,7 +4592,7 @@ function renderBillFilterBar(shown){
     var row = function(val, label, cnt){ var sel = activeCat === val; return '<button type="button" onclick="pickBillCat(\'' + val + '\')" style="display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; padding:9px 11px; border:none; border-bottom:1px solid var(--line); background:' + (sel ? 'var(--maroon)' : '#fff') + '; color:' + (sel ? '#fff8e6' : 'var(--maroon)') + '; font-weight:700; font-size:12.5px; cursor:pointer;"><span>' + label + '</span><span>' + cnt + '</span></button>'; };
     var _allN = 0; CATEGORIES.forEach(function(c, ci){ c.items.forEach(function(x, ii){ if(isItemInBranch(ci, ii, activeBranchId)) _allN++; }); });
     h += '<div style="margin-top:' + (billFilterOpen ? '8px' : '0') + '; max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('ALL', 'All categories', _allN) +
-      CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci), cnt = c.items.filter(function(x, ii){ return isItemInBranch(ci, ii, activeBranchId); }).length; return cnt ? row(String(ci), (ci + 1) + '. ' + (n.ta || n.en) + ' (' + n.en + ')', cnt) : ''; }).join('') + '</div>';
+      CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci), cnt = c.items.filter(function(x, ii){ return isItemInBranch(ci, ii, activeBranchId); }).length; return cnt ? row(String(ci), (ci + 1) + '. ' + estEsc(n.ta || n.en) + ' (' + estEsc(n.en) + ')', cnt) : ''; }).join('') + '</div>';
   }
   bar.innerHTML = h; bar.classList.remove('hidden');
 }
@@ -4647,12 +4606,10 @@ function _billSerialMap(){
   return m;
 }
 function _renderCartTotals(){
-  const {count, subtotal, discount, grand} = computeTotals(cart);
+  const {count, subtotal, grand} = computeTotals(cart);
   document.getElementById('cbCount').textContent = count;
   document.getElementById('cbSub').textContent = subtotal.toLocaleString('en-IN');
   document.getElementById('cbTotal').textContent = grand.toLocaleString('en-IN');
-  document.getElementById('cbDiscRow').classList.toggle('hidden', discount<=0);
-  document.getElementById('cbDisc').textContent = discount.toLocaleString('en-IN');
   document.getElementById('billBtn').disabled = count === 0;
 }
 function paintBillTable(list){
@@ -4696,7 +4653,7 @@ function billSheetPaint(){
   var _sig = 'b' + e.ci + '_' + e.ii + '_' + activeBillingTab;
   if(_qtySheetSync(sh, _sig, _pHtml, c)) return;
   sh.setAttribute('data-sig', _sig);
-  sh.innerHTML = '<div style="display:flex; align-items:center; gap:10px;"><div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:14px;">' + snDot(_billSheetSn, 20, 10) + ' ' + nm.ta + '</div><div style="font-size:11px; color:#777;">' + nm.en + '</div>' +
+  sh.innerHTML = '<div style="display:flex; align-items:center; gap:10px;"><div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:14px;">' + snDot(_billSheetSn, 20, 10) + ' ' + estEsc(nm.ta) + '</div><div style="font-size:11px; color:#777;">' + estEsc(nm.en) + '</div>' +
     '<div class="qs-price" style="font-size:13px; font-weight:800; color:#7a1414; margin-top:2px;">' + _pHtml + '</div></div>' +
     '<div style="display:flex; align-items:center; gap:6px;"><button onclick="changeQty(' + e.ci + ',' + e.ii + ',-1)" style="width:42px; height:42px; border-radius:11px; border:2px solid #1e7a3c; background:#fff; color:#1e7a3c; font-size:22px; font-weight:800; line-height:1;">&minus;</button>' +
     '<input class="qs-inp" type="number" inputmode="numeric" min="0" max="9999" value="' + c + '" onfocus="this.select()" onchange="setQty(' + e.ci + ',' + e.ii + ',this.value)" style="width:64px; height:42px; box-sizing:border-box; text-align:center; border:2px solid #1e7a3c; border-radius:11px; font-size:20px; font-weight:800; background:#fff;">' +
@@ -4723,12 +4680,10 @@ function render(){
   if(activeTab === 'history'){
     renderBillFilterBar(0);
     list.innerHTML = renderHistoryList();
-    const {count, subtotal, discount, grand} = computeTotals(cart);
+    const {count, subtotal, grand} = computeTotals(cart);
     document.getElementById('cbCount').textContent = count;
     document.getElementById('cbSub').textContent = subtotal.toLocaleString('en-IN');
     document.getElementById('cbTotal').textContent = grand.toLocaleString('en-IN');
-    document.getElementById('cbDiscRow').classList.toggle('hidden', discount<=0);
-    document.getElementById('cbDisc').textContent = discount.toLocaleString('en-IN');
     document.getElementById('billBtn').disabled = count === 0;
     return;
   }
@@ -4769,9 +4724,9 @@ function render(){
           : `<button class="add-cta2" onclick="changeQty(${ci},${ii},1)">&plus; Add</button>`;
         const _card = `<div class="item-card2 ${qty>0?'in-cart':''}">
               <div class="item-serial-badge" title="Item #${serial}">${serial}</div>
-              <div class="item-cat-badge2">${cn.en}</div>
-              <div class="item-ta3">${name.ta}</div>
-              <div class="item-en3">${name.en}</div>
+              <div class="item-cat-badge2">${estEsc(cn.en)}</div>
+              <div class="item-ta3">${estEsc(name.ta)}</div>
+              <div class="item-en3">${estEsc(name.en)}</div>
               <div class="item-price3">&#8377;${price} <span class="item-unit3">/ ${unit}</span></div>
               ${addControl}
             </div>`;
@@ -4779,8 +4734,8 @@ function render(){
         const _btn = 'width:36px; height:36px; border-radius:9px; font-size:20px; font-weight:800; line-height:1; cursor:pointer; padding:0;';
         const _lrow = `<div style="display:flex; align-items:center; gap:8px; padding:9px 10px 9px 12px; background:${_on ? '#fdf3dc' : '#fff'}; border-bottom:1px solid #f0e6d3;">
               <div style="width:26px; flex:0 0 auto;">${snDot(serial, 22, 11)}</div>
-              <div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:15px; color:#1a1a1a; line-height:1.25;">${name.ta}</div>
-                <div style="font-size:12px; color:#777;">${name.en}</div>
+              <div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:15px; color:#1a1a1a; line-height:1.25;">${estEsc(name.ta)}</div>
+                <div style="font-size:12px; color:#777;">${estEsc(name.en)}</div>
                 <div style="font-size:15px; font-weight:800; color:#7a1414; margin-top:1px;">&#8377;${price} <span style="font-weight:600; font-size:12px; color:#8a6a44;">/ ${unit}</span>${_on ? ` <span style="color:#1e7a3c; margin-left:8px;">= &#8377;${(qty * price).toLocaleString('en-IN')}</span>` : ''}</div></div>
               <div style="display:flex; align-items:center; gap:4px; flex:0 0 auto;">
                 <button type="button" onclick="changeQty(${ci},${ii},-1)" ${_on ? '' : 'disabled'} style="${_btn} border:1.5px solid var(--maroon); background:#fff; color:var(--maroon);${_on ? '' : ' opacity:0.35;'}">&minus;</button>
@@ -4791,7 +4746,7 @@ function render(){
       } else {
         rows += `<div class="price-row2">
             <div class="pr-serial-badge" title="Item #${serial}">${serial}</div>
-            <div class="pr-name"><div class="pr-ta3">${name.ta}</div><div class="pr-en3">${name.en}</div><div class="pr-cat3">${cn.en}</div></div>
+            <div class="pr-name"><div class="pr-ta3">${estEsc(name.ta)}</div><div class="pr-en3">${estEsc(name.en)}</div><div class="pr-cat3">${estEsc(cn.en)}</div></div>
             <div class="pr-right3"><div class="pr-price3">&#8377;${price}</div><div class="pr-unit3">per ${unit}</div></div>
           </div>`;
       }
@@ -4799,10 +4754,10 @@ function render(){
     if(rows){
       if(activeTab === 'billing1' || activeTab === 'billing2'){
         html += true
-          ? `<div style="background:#f6d9d9; color:#7a1414; font-weight:800; font-size:13px; padding:7px 12px; border-top:1px solid #eac4c4;"><span style="display:inline-block; min-width:20px; margin-right:4px; padding:0 5px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px; text-align:center;">${ci+1}</span>${cn.ta} <span style="font-weight:600; font-size:11px; color:#8a4a4a;">${cn.en}</span></div>${rows}`
-          : `<div class="cat-heading"><span style="padding:0 6px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px;">${ci+1}</span>${cn.ta} <span class="en">${cn.en}</span></div><div class="item-grid2">${rows}</div>`;
+          ? `<div style="background:#f6d9d9; color:#7a1414; font-weight:800; font-size:13px; padding:7px 12px; border-top:1px solid #eac4c4;"><span style="display:inline-block; min-width:20px; margin-right:4px; padding:0 5px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px; text-align:center;">${ci+1}</span>${estEsc(cn.ta)} <span style="font-weight:600; font-size:11px; color:#8a4a4a;">${estEsc(cn.en)}</span></div>${rows}`
+          : `<div class="cat-heading"><span style="padding:0 6px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px;">${ci+1}</span>${estEsc(cn.ta)} <span class="en">${estEsc(cn.en)}</span></div><div class="item-grid2">${rows}</div>`;
       } else {
-        html += `<div class="cat-heading"><span style="padding:0 6px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px;">${ci+1}</span>${cn.ta} <span class="en">${cn.en}</span></div>${rows}`;
+        html += `<div class="cat-heading"><span style="padding:0 6px; border-radius:9px; background:#7a1414; color:#fff8e6; font-size:11px;">${ci+1}</span>${estEsc(cn.ta)} <span class="en">${estEsc(cn.en)}</span></div>${rows}`;
       }
     }
   });
@@ -4815,12 +4770,10 @@ function render(){
   renderBillFilterBar(_shown);
   list.innerHTML = html || `<div class="empty-state">No items found.<br/>பொருள் இல்லை.</div>`;
 
-  const {count, subtotal, discount, grand} = computeTotals(cart);
+  const {count, subtotal, grand} = computeTotals(cart);
   document.getElementById('cbCount').textContent = count;
   document.getElementById('cbSub').textContent = subtotal.toLocaleString('en-IN');
   document.getElementById('cbTotal').textContent = grand.toLocaleString('en-IN');
-  document.getElementById('cbDiscRow').classList.toggle('hidden', discount<=0);
-  document.getElementById('cbDisc').textContent = discount.toLocaleString('en-IN');
   document.getElementById('billBtn').disabled = count === 0;
 }
 
@@ -4844,7 +4797,7 @@ function openBill(preserveEntries){
         const price = getPrice(ci,ii);
         const lt = qty*price;
         // same numbering as the printed bill: 1. 2. 3. ... in bill order
-        rows += `<tr><td><div style="display:flex; align-items:baseline;"><span style="flex:0 0 auto; min-width:20px; margin-right:4px; font-size:13px; font-weight:800; color:#000;">${sno}.</span><div>${name.ta}<br><span style="color:#8a6a44;font-size:10px;">${name.en}</span></div></div></td>
+        rows += `<tr><td><div style="display:flex; align-items:baseline;"><span style="flex:0 0 auto; min-width:20px; margin-right:4px; font-size:13px; font-weight:800; color:#000;">${sno}.</span><div>${estEsc(name.ta)}<br><span style="color:#8a6a44;font-size:10px;">${estEsc(name.en)}</span></div></div></td>
           <td class="num">&#8377;${price.toLocaleString('en-IN')}</td>
           <td class="num"><div class="stepper stepper-sm" style="justify-content:flex-end;">
             <button onclick="changeQtyInBill(${ci},${ii},-1)">&minus;</button>
@@ -5086,7 +5039,7 @@ function pickPriceBranch(){
     ov.innerHTML = '<div style="background:#fffaf0; border-radius:14px; padding:18px; width:100%; max-width:340px;">' +
       '<div style="font-weight:800; font-size:15px; color:var(--maroon); margin-bottom:4px;">Which branch price list?</div>' +
       '<div style="font-size:12px; color:#8a6a44; margin-bottom:12px;">Items and prices follow the branch you choose.</div>' +
-      enabled.map(function(b){ return '<button data-b="' + b.id + '" style="display:block; width:100%; margin-bottom:8px; padding:12px; border-radius:10px; border:1.5px solid var(--maroon); background:' + (b.id === activeBranchId ? 'var(--maroon)' : '#fff') + '; color:' + (b.id === activeBranchId ? '#fff8e6' : 'var(--maroon)') + '; font-weight:800; font-size:14px;">' + b.name + ' (' + b.short + ')</button>'; }).join('') +
+      enabled.map(function(b){ return '<button data-b="' + b.id + '" style="display:block; width:100%; margin-bottom:8px; padding:12px; border-radius:10px; border:1.5px solid var(--maroon); background:' + (b.id === activeBranchId ? 'var(--maroon)' : '#fff') + '; color:' + (b.id === activeBranchId ? '#fff8e6' : 'var(--maroon)') + '; font-weight:800; font-size:14px;">' + estEsc(b.name) + ' (' + estEsc(b.short) + ')</button>'; }).join('') +
       '<button data-b="" style="display:block; width:100%; padding:10px; border:none; background:none; color:#8a6a44; font-weight:700; font-size:13px;">Cancel</button></div>';
     ov.addEventListener('click', function(e){
       var t = e.target.closest('button[data-b]'); if(!t) return;
@@ -5098,7 +5051,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v72';
+var APP_BUILD = 'v73';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6078,7 +6031,7 @@ async function openUpiShowQr(n){
   _upiShow = { n: n, id: sl.id, name: sl.name || SHOP.name_en, branch: brName };
   var overlay = document.getElementById('priceQrOverlay'), box = document.getElementById('priceQrBox');
   document.getElementById('priceQrTitle').textContent = 'UPI QR \u2022 Account ' + n;
-  document.getElementById('priceQrNote').innerHTML = 'Customers scan this with any UPI app (GPay, PhonePe, Paytm) and type the amount.<br><b>' + _upiShow.name + '</b> \u2022 ' + brName;
+  document.getElementById('priceQrNote').innerHTML = 'Customers scan this with any UPI app (GPay, PhonePe, Paytm) and type the amount.<br><b>' + estEsc(_upiShow.name) + '</b> \u2022 ' + estEsc(brName);
   document.getElementById('priceQrUrl').textContent = sl.id;
   overlay.classList.add('show');
   box.innerHTML = '<div style="color:#8a6a44; font-size:13px;">Generating\u2026</div>';
@@ -6121,7 +6074,7 @@ async function printPriceQr(){
   if(!src){ var im = box.querySelector('img'); if(im && im.src) src = im.src; }
   if(!src){ alert('The QR is not ready yet. Please wait a moment and try again.'); return; }
   var title = _qrMode === 'price' ? 'SCAN FOR PRICE LIST' : (_qrMode === 'upi' ? 'SCAN &amp; PAY (UPI)' : 'SCAN TO OPEN BILLING APP');
-  var note = _qrMode === 'price' ? "Scan to see today's prices" : (_qrMode === 'upi' && _upiShow ? ('<b>' + _upiShow.name + '</b><br>' + _upiShow.id + '<br>GPay \u2022 PhonePe \u2022 Paytm') : 'Scan with your phone camera');
+  var note = _qrMode === 'price' ? "Scan to see today's prices" : (_qrMode === 'upi' && _upiShow ? ('<b>' + estEsc(_upiShow.name) + '</b><br>' + estEsc(_upiShow.id) + '<br>GPay \u2022 PhonePe \u2022 Paytm') : 'Scan with your phone camera');
   var img = new Image();
   img.src = src;
   try{ await img.decode(); }catch(e){}
@@ -6951,7 +6904,7 @@ function renderHistoryList(){
   if(isAdmin) html += branchChipsHtml(historyBranchFilter, 'setHistoryBranch');
   if(isAdmin && historyBranchFilter && BRANCHES[historyBranchFilter]){
     const hb = list.filter(s => isCountedSale(s));
-    html += `<div style="font-size:12px; font-weight:800; color:var(--maroon); background:#fff3d6; border-radius:8px; padding:8px 12px; margin-bottom:6px;">${BRANCHES[historyBranchFilter].name} (${BRANCHES[historyBranchFilter].short}) &bull; ${hb.length} bills &bull; &#8377;${hb.reduce((a,s)=>a+s.total,0).toLocaleString('en-IN')}</div>`;
+    html += `<div style="font-size:12px; font-weight:800; color:var(--maroon); background:#fff3d6; border-radius:8px; padding:8px 12px; margin-bottom:6px;">${estEsc(BRANCHES[historyBranchFilter].name)} (${estEsc(BRANCHES[historyBranchFilter].short)}) &bull; ${hb.length} bills &bull; &#8377;${hb.reduce((a,s)=>a+s.total,0).toLocaleString('en-IN')}</div>`;
   }
   html += historySellerSelectHtml();
   if(list.length === 0){
@@ -6971,7 +6924,7 @@ function renderHistoryList(){
         : status === 'cancel_pending'
           ? `<button class="cancel-ico undo" onclick="event.stopPropagation(); undoCancelBill('${s.id}')" title="Get back (undo cancel)">&#8617;</button>`
           : '';
-    let itemsHtml = s.items.map(it=>`<div><span>${it.en} x${it.qty}</span><span>₹${(it.qty*it.price).toLocaleString('en-IN')}</span></div>`).join('');
+    let itemsHtml = s.items.map(it=>`<div><span>${estEsc(it.en)} x${it.qty}</span><span>₹${(it.qty*it.price).toLocaleString('en-IN')}</span></div>`).join('');
     if(s.discount>0) itemsHtml += `<div class="sd-disc"><span>Discount${s.discountPercent?' ('+s.discountPercent+'%)':''}</span><span>-₹${s.discount.toLocaleString('en-IN')}</span></div>`;
     if(s.buyerName) itemsHtml += `<div><span>Customer</span><span>${custEsc(s.buyerName)}</span></div>`;
     if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${fmtPhones(s.buyerPhone)}</span></div>`;
@@ -6980,7 +6933,7 @@ function renderHistoryList(){
     html += `<div class="sale-card">
         <div class="sale-card-top" onclick="toggleSaleDetail('h-${s.id}')">
           <div>
-            <div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)} &middot; ${(isAdmin || s.sellerId !== session.id) ? s.sellerName + ' ' : ''}${statusBadge}${highDiscTag(s)}${saleEditTag(s)}</div>
+            <div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)} &middot; ${(isAdmin || s.sellerId !== session.id) ? estEsc(s.sellerName) + ' ' : ''}${statusBadge}${highDiscTag(s)}${saleEditTag(s)}</div>
             <div class="sc-time">${dt}</div>
           </div>
           <div style="display:flex; align-items:center;"><div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div>${cancelIco}</div>
@@ -7234,8 +7187,8 @@ function buildBillReceiptHTML(s){
   const totalStyle = 'font-weight:' + printW('tot') + '; color:#000; padding-right:6px;';
   // a rare very big number steps down a little so it never runs into the next column
   const fitNum = (st, size, txt, max) => st + ' font-size:' + (txt.length <= max ? size : Math.max(8, size - (txt.length <= max + 2 ? 1.5 : 2.5))) + 'px;';
-  let rows = s.items.map((it, idx) => `<tr class="br-ta-row"><td colspan="4"><div style="display:flex; align-items:baseline;"><span style="flex:0 0 ${idxW}px; font-size:${idxPx}px; font-weight:800;">${idx+1}.</span><span class="br-tam-item" style="flex:1 1 auto; min-width:0; font-size:${taFontPx}px; font-weight:${printW('ta')}; line-height:1.3;">${it.ta}</span></div></td></tr>
-      <tr><td class="br-col-item" style="padding-left:14px; padding-top:1px;"><div class="br-en" style="overflow-wrap:anywhere; line-height:1.2; font-size:${enFontPx}px; font-weight:${printW('en')};">${enName(it)}</div></td>
+  let rows = s.items.map((it, idx) => `<tr class="br-ta-row"><td colspan="4"><div style="display:flex; align-items:baseline;"><span style="flex:0 0 ${idxW}px; font-size:${idxPx}px; font-weight:800;">${idx+1}.</span><span class="br-tam-item" style="flex:1 1 auto; min-width:0; font-size:${taFontPx}px; font-weight:${printW('ta')}; line-height:1.3;">${estEsc(it.ta)}</span></div></td></tr>
+      <tr><td class="br-col-item" style="padding-left:14px; padding-top:1px;"><div class="br-en" style="overflow-wrap:anywhere; line-height:1.2; font-size:${enFontPx}px; font-weight:${printW('en')};">${estEsc(enName(it))}</div></td>
       <td class="num br-col-price" style="${fitNum(priceStyle, cPr.s, it.price.toLocaleString('en-IN'), 5)} padding-top:1px;">&#8377;${it.price.toLocaleString('en-IN')}</td><td class="num br-col-qty br-qty" style="${fitNum(qtyStyle, cQt.s, String(it.qty), 3)} padding-top:1px;">${it.qty}</td>
       <td class="num br-col-total" style="${fitNum(totalStyle, cTo.s, (it.price*it.qty).toLocaleString('en-IN'), 6)} padding-top:1px;">&#8377;${(it.price*it.qty).toLocaleString('en-IN')}</td></tr>`).join('');
   let summary = `<div class="br-row" style="font-size:12px; font-weight:800;"><span>Grand Total / <span class="br-tam">மொத்தம்</span></span><span style="font-weight:900;">&#8377;${s.subtotal.toLocaleString('en-IN')}</span></div>`;
@@ -7249,7 +7202,7 @@ function buildBillReceiptHTML(s){
         <div style="font-size:10.5px; color:#000; font-weight:700; margin-top:1px;">${billPhoneHtml(branchOfSale(s))}</div>
         <div style="font-size:12px; color:#000; font-weight:900; margin-top:4px;">Bill No: ${s.billNo || '-'}</div>
       </div>
-      <div class="br-meta"><span>${dt}</span><span>Seller: ${s.sellerName}</span></div>
+      <div class="br-meta"><span>${dt}</span><span>Seller: ${estEsc(s.sellerName)}</span></div>
       <table class="br-table">
         <thead><tr><th class="br-col-item" style="font-size:10.5px; font-weight:800;">Item / <span class="br-tam">பொருள்</span></th><th class="num br-col-price" style="font-size:10.5px; font-weight:800;">Price</th><th class="num br-col-qty" style="font-size:10.5px; font-weight:900; text-align:center;">Qty</th><th class="num br-col-total" style="font-size:10.5px; font-weight:800; padding-right:6px;">Total</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -7404,7 +7357,7 @@ function buildHistoryReportHTML(salesList, title){
     const status = saleStatus(s);
     return `<div class="br-hist-entry">
         <div class="br-hist-top"><span>${dt}</span><span class="num">&#8377;${s.total.toLocaleString('en-IN')}</span></div>
-        <div class="br-hist-sub">${s.sellerName}${status==='cancelled' ? ' <b>&middot; CANCELLED</b>' : status==='cancel_pending' ? ' <b>&middot; CANCEL REQUESTED</b>' : ''}</div>
+        <div class="br-hist-sub">${estEsc(s.sellerName)}${status==='cancelled' ? ' <b>&middot; CANCELLED</b>' : status==='cancel_pending' ? ' <b>&middot; CANCEL REQUESTED</b>' : ''}</div>
       </div>`;
   }).join('');
   const totalConfirmed = salesList.filter(s => isCountedSale(s)).reduce((a,s)=>a+s.total,0);
@@ -7420,13 +7373,13 @@ function buildHistoryReportHTML(salesList, title){
 
 /* ---- Seller summary report PDF (items sold, discount, sales total for one seller) ---- */
 function buildSellerSummaryReportHTML(summary){
-  let rows = summary.itemRows.map(([en, d], idx) => `<tr><td style="width:48%;">${idx+1}. ${d.ta}<br><span class="br-en">${en}</span></td>
+  let rows = summary.itemRows.map(([en, d], idx) => `<tr><td style="width:48%;">${idx+1}. ${estEsc(d.ta)}<br><span class="br-en">${estEsc(en)}</span></td>
       <td class="num" style="width:16%;">${d.qty}</td><td class="num" style="width:36%;">&#8377;${d.revenue.toLocaleString('en-IN')}</td></tr>`).join('');
   if(!rows) rows = `<tr><td colspan="3" style="text-align:center; color:#777;">No items sold yet.</td></tr>`;
   return `<div class="br-page" style="width:302px;">
       <div class="br-head">
         <div class="br-ta">${SHOP.name_ta}</div>
-        <div style="font-size:9.5px; color:#000; margin-top:4px;">Seller Summary &mdash; ${summary.sellerName}</div>
+        <div style="font-size:9.5px; color:#000; margin-top:4px;">Seller Summary &mdash; ${estEsc(summary.sellerName)}</div>
       </div>
       <div class="br-summary">
         <div class="br-row"><span>Items Sold (Qty)</span><span>${summary.qty}</span></div>
@@ -7452,7 +7405,7 @@ async function shareSellerSummaryPDF(){
 
 /* ---- Generic "items sold" report PDF (used for the Overall and Bill No breakdowns) ---- */
 function buildItemsSoldReportHTML(title, statRows, itemRows){
-  let rows = itemRows.map(([en, d], idx) => `<tr><td style="width:48%;">${idx+1}. ${d.ta}<br><span class="br-en">${en}</span></td>
+  let rows = itemRows.map(([en, d], idx) => `<tr><td style="width:48%;">${idx+1}. ${estEsc(d.ta)}<br><span class="br-en">${estEsc(en)}</span></td>
       <td class="num" style="width:16%;">${d.qty}</td><td class="num" style="width:36%;">&#8377;${d.revenue.toLocaleString('en-IN')}</td></tr>`).join('');
   if(!rows) rows = `<tr><td colspan="3" style="text-align:center; color:#777;">No items sold.</td></tr>`;
   const statHtml = statRows.map(s => `<div class="br-row"><span>${s.label}</span><span>${s.value}</span></div>`).join('');
@@ -7492,8 +7445,8 @@ async function shareBillItemsSoldPDF(){
 /* ---- Seller credentials list PDF (Name, ID, Password) — sellers only, never admins ---- */
 function buildSellerCredentialsHTML(sellersList){
   let rows = sellersList.map((s, idx) => `<div class="br-hist-entry">
-        <div class="br-hist-top"><span>${idx+1}. ${s.name}</span></div>
-        <div class="br-hist-sub">ID: <b>${s.id}</b> &nbsp;&middot;&nbsp; Password: <b>${s.pin ? custEsc(s.pin) : '&mdash;'}</b></div>
+        <div class="br-hist-top"><span>${idx+1}. ${estEsc(s.name)}</span></div>
+        <div class="br-hist-sub">ID: <b>${estEsc(s.id)}</b> &nbsp;&middot;&nbsp; Password: <b>${s.pin ? custEsc(s.pin) : '&mdash;'}</b></div>
       </div>`).join('');
   return `<div class="br-page" style="width:302px;">
       <div class="br-head">
@@ -7556,7 +7509,7 @@ function buildLoginHistoryReportHTML(loginsList){
     const dt = new Date(l.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
     return `<div class="br-hist-entry">
         <div class="br-hist-top"><span>${dt}</span><span>${l.role==='admin'?'Admin':'Seller'}</span></div>
-        <div class="br-hist-sub">${l.name} (${l.id})${l.device ? '<br>' + (deviceLabel(l.device) || '') : ''}</div>
+        <div class="br-hist-sub">${estEsc(l.name)} (${estEsc(l.id)})${l.device ? '<br>' + (deviceLabel(l.device) || '') : ''}</div>
       </div>`;
   }).join('');
   return `<div class="br-page" style="width:302px;">
@@ -7669,54 +7622,28 @@ var QR_LIB_SOURCES = [
   'https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js'
 ];
 
-/* Loads the QR library and keeps a copy on the device, so after it has
-   worked once the QR keeps working with no internet at all. Order tried:
-     1. the saved copy (instant, offline)
-     2. each mirror in turn, saving whichever one succeeds
-     3. a plain <script> tag as a last resort, for the case where fetch is
-        blocked but script loading is allowed */
+/* Loads the QR library with an ordinary <script> tag, trying each mirror in
+   turn. The browser keeps the file in its own cache, so after it has loaded
+   once it normally keeps working with no internet. (The old copy saved in
+   localStorage and run with eval() is no longer used, and is removed.) */
+try{ localStorage.removeItem('ars_qr_lib'); }catch(e){}
 function ensureQRCodeLib(){
   if(window.QRCode) return Promise.resolve();
   if(_qrLibLoadPromise) return _qrLibLoadPromise;
 
   _qrLibLoadPromise = (async function(){
-    function runSource(src){
-      try{
-        (0, eval)(src);
-        return !!window.QRCode;
-      }catch(e){ return false; }
+    function loadTag(src){
+      return new Promise(function(resolve){
+        var s = document.createElement('script');
+        s.src = src; s.async = true;
+        s.onload = function(){ resolve(!!window.QRCode); };
+        s.onerror = function(){ s.remove(); resolve(false); };
+        document.head.appendChild(s);
+      });
     }
-
-    // 1. saved copy from a previous successful load
-    try{
-      var cached = localStorage.getItem('ars_qr_lib');
-      if(cached && runSource(cached)) return;
-    }catch(e){}
-
-    // 2. try each mirror, remembering the first that works
     for(var i = 0; i < QR_LIB_SOURCES.length; i++){
-      try{
-        var res = await fetch(QR_LIB_SOURCES[i], { cache: 'force-cache' });
-        if(!res.ok) continue;
-        var src = await res.text();
-        if(runSource(src)){
-          try{ localStorage.setItem('ars_qr_lib', src); }catch(e){}   // may exceed quota; harmless
-          return;
-        }
-      }catch(e){ /* try the next mirror */ }
+      if(await loadTag(QR_LIB_SOURCES[i])) return;
     }
-
-    // 3. last resort: ordinary script tag (cannot be cached, but may work
-    //    where fetch is blocked by an extension or CORS)
-    var ok = await new Promise(function(resolve){
-      var s = document.createElement('script');
-      s.src = QR_LIB_SOURCES[0];
-      s.onload = function(){ resolve(!!window.QRCode); };
-      s.onerror = function(){ resolve(false); };
-      document.head.appendChild(s);
-    });
-    if(ok) return;
-
     _qrLibLoadPromise = null;   // allow a retry on the next attempt
     throw new Error('Could not load the QR code engine.\n\nConnect to the internet once and open this screen again — the QR will then keep working offline.\n\nMeanwhile you can still take the payment and tap "Payment Received".');
   })();
@@ -8212,10 +8139,10 @@ function buildPriceListTableHTML(noQr){
 
   const renderColTable = (rowsIn) => {
     const rows = rowsIn.map((item, idx) => item.kind === 'cat' ? `
-      <tr><td colspan="3" style="padding:3px 4px 2px; border-bottom:1.5px solid #7a1414; color:#7a1414; font-weight:800; font-size:9.5px;">${item.no}. ${item.en}${item.cont ? ' <span style="font-weight:600; font-size:8.5px; color:#999;">&hellip;</span>' : ''}</td></tr>` : `
+      <tr><td colspan="3" style="padding:3px 4px 2px; border-bottom:1.5px solid #7a1414; color:#7a1414; font-weight:800; font-size:9.5px;">${item.no}. ${estEsc(item.en)}${item.cont ? ' <span style="font-weight:600; font-size:8.5px; color:#999;">&hellip;</span>' : ''}</td></tr>` : `
       <tr data-sn="${item.s}" style="background:${(noQr && idx % 2 === 1) ? '#fdf3f1' : '#ffffff'};">
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; vertical-align:middle;">${snDot(item.s, 14, 7.5)}</td>
-        <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-size:${noQr ? 10.2 : 10}px; font-weight:800; line-height:1.2; color:#1a1a1a; vertical-align:middle;">${item.ta} <span style="display:inline-block; color:${noQr ? '#777' : '#444'}; font-size:${noQr ? 7 : 8}px;${noQr ? '' : ' font-weight:600;'}">(${String(item.en).replace(/-/g, '\u2011')})</span></td>
+        <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-size:${noQr ? 10.2 : 10}px; font-weight:800; line-height:1.2; color:#1a1a1a; vertical-align:middle;">${estEsc(item.ta)} <span style="display:inline-block; color:${noQr ? '#777' : '#444'}; font-size:${noQr ? 7 : 8}px;${noQr ? '' : ' font-weight:600;'}">(${estEsc(String(item.en).replace(/-/g, '\u2011'))})</span></td>
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-weight:800; color:#7a1414; font-size:9px; text-align:right; white-space:nowrap; vertical-align:middle;">₹${item.price.toLocaleString('en-IN')}</td>
       </tr>`).join('');
     return `<table style="width:100%; border-collapse:collapse; table-layout:fixed;">
@@ -8404,24 +8331,8 @@ function hideAdmin(){
   document.getElementById('app').classList.remove('hidden');
   render();
   refreshNotifBadges();
-  autoSaveOnExit();
 }
 
-/* Quietly re-saves to the same file picked earlier via "Save", every time the admin leaves
-   the admin panel — like autosave in Excel. Only runs once a save location has actually been
-   chosen at least once (we never want to suddenly pop up a file picker just because someone
-   tapped "Back"), and only on browsers that support saving back to a real file at all. */
-async function autoSaveOnExit(){
-  if(!supportsInPlaceSave() || !_backupFileHandle) return;
-  try{
-    const html = buildBackupHtmlString();
-    const writable = await _backupFileHandle.createWritable();
-    await writable.write(html);
-    await writable.close();
-  } catch(e){
-    // Background convenience save — fail silently and let the admin use "Save" manually instead.
-  }
-}
 function setAdminTab(t){
   if(adminScope() && !{ sales:1, items:1, branch:1 }[t]) t = 'sales';
   if(t !== adminTab){ listReset('sales'); listReset('logins'); }
@@ -9552,7 +9463,7 @@ function buildSalesDonutChartSVG(totalPaid, totalDiscount){
 function renderScopedItems(main, bid){
   const br = BRANCHES[bid] || { name: bid, short: bid };
   const q2 = adminItemSearchQuery.trim().toLowerCase();
-  let html = `<div class="section-title" style="margin-top:0;">${br.name} (${br.short}) &mdash; price list &amp; stock</div>
+  let html = `<div class="section-title" style="margin-top:0;">${estEsc(br.name)} (${estEsc(br.short)}) &mdash; price list &amp; stock</div>
     <div style="font-size:11.5px; color:#8a6a44; margin-bottom:8px;">Change only this branch's stock and price. Tap &#9998; on an item.</div>
     <div class="admin-search-wrap"><span class="ico">&#128269;</span>
       <input id="adminItemSearch" type="text" placeholder="Search..." value="${adminItemSearchQuery}" oninput="onAdminItemSearch()" style="padding-right:46px;">${itemFilterToggleHtml()}</div>
@@ -9570,9 +9481,9 @@ function renderScopedItems(main, bid){
       const sold = isItemInBranch(ci, ii, bid), pr = getBranchPrice(ci, ii, bid), base = getBasePrice(ci, ii);
       _rows.push({ serial: serial, price: Number(pr) || 0, t: itemLastChange(serial), h: `<div class="admin-item-row" style="${sold ? '' : 'opacity:0.5;'}">
           <div class="air-info">
-            <div class="air-ta">#${serial} &middot; ${name.ta}</div>
-            <div class="air-en">${name.en}</div>
-            <div class="air-meta">${cn.en} &bull; &#8377;${pr}${pr !== base ? ` <span style="color:#8a6a44;">(normal &#8377;${base})</span>` : ''} / ${getUnit(ci, ii)}${sold ? '' : ' &bull; <b style="color:#b3261e;">not sold here</b>'}</div>
+            <div class="air-ta">#${serial} &middot; ${estEsc(name.ta)}</div>
+            <div class="air-en">${estEsc(name.en)}</div>
+            <div class="air-meta">${estEsc(cn.en)} &bull; &#8377;${pr}${pr !== base ? ` <span style="color:#8a6a44;">(normal &#8377;${base})</span>` : ''} / ${getUnit(ci, ii)}${sold ? '' : ' &bull; <b style="color:#b3261e;">not sold here</b>'}</div>
           </div>
           <div class="air-actions"><button class="air-edit" onclick="openItemEditModal('${key(ci, ii)}')" title="Edit">&#9998;</button></div>
         </div>` });
@@ -9621,7 +9532,7 @@ function renderAdmin(){
     const scopeBr = salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch] : null;
     let html = branchChipsHtml(salesFilters.branch, 'setAdminBranch') +
       `<div style="display:flex; align-items:center; gap:8px; margin:0 2px ${salesStatsOpen ? '6px' : '12px'};">
-        <div style="flex:1; min-width:0; font-size:12px; font-weight:800; color:var(--maroon);">Showing: ${salesFilters.seller ? custEsc(sellerNames.get(salesFilters.seller) || salesFilters.seller) : 'All sellers'} &bull; ${scopeBr ? scopeBr.name + ' (' + scopeBr.short + ') only' : 'All branches'}${' &bull; ' + salesPeriodLabel()}</div>
+        <div style="flex:1; min-width:0; font-size:12px; font-weight:800; color:var(--maroon);">Showing: ${salesFilters.seller ? custEsc(sellerNames.get(salesFilters.seller) || salesFilters.seller) : 'All sellers'} &bull; ${scopeBr ? estEsc(scopeBr.name) + ' (' + estEsc(scopeBr.short) + ') only' : 'All branches'}${' &bull; ' + salesPeriodLabel()}</div>
         <button onclick="toggleSalesStats()" title="${salesStatsOpen ? 'Hide totals' : 'Show totals'}" aria-label="${salesStatsOpen ? 'Hide totals' : 'Show totals'}" style="flex:0 0 auto; display:flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px; border:1.5px solid var(--maroon); background:${salesStatsOpen ? 'var(--maroon)' : '#fff8e6'}; color:${salesStatsOpen ? '#fff8e6' : 'var(--maroon)'}; font-weight:800; font-size:12px; cursor:pointer;"><span style="font-size:16px; line-height:1;">${salesStatsOpen ? '&#128584;' : '&#128065;&#65039;'}</span>${salesStatsOpen ? 'Hide' : 'Show'}</button>
       </div>` +
       `<div class="stat-grid" style="${salesStatsOpen ? '' : 'display:none;'}">
@@ -9722,7 +9633,7 @@ function renderAdmin(){
       } else {
         billItemRows.forEach(([en, d]) => {
           html += `<div class="price-row">
-              <div class="pr-name"><div class="pr-ta">${d.ta}</div><div class="pr-en">${en}</div></div>
+              <div class="pr-name"><div class="pr-ta">${estEsc(d.ta)}</div><div class="pr-en">${estEsc(en)}</div></div>
               <div class="pr-right"><div class="pr-price">${d.qty} sold</div><div style="font-size:9.5px;color:var(--ink-soft);">₹${d.revenue.toLocaleString('en-IN')}</div></div>
             </div>`;
         });
@@ -9751,7 +9662,7 @@ function renderAdmin(){
           : status === 'cancel_pending'
             ? '<span class="status-badge pending">Cancel requested</span>'
             : '<span class="status-badge confirmed">Confirmed</span>';
-        let itemsHtml = s.items.map(it=>`<div><span>${it.en} x${it.qty}</span><span>₹${it.qty*it.price}</span></div>`).join('');
+        let itemsHtml = s.items.map(it=>`<div><span>${estEsc(it.en)} x${it.qty}</span><span>₹${it.qty*it.price}</span></div>`).join('');
         if(s.discount>0) itemsHtml += `<div class="sd-disc"><span>Discount${s.discountPercent?' ('+s.discountPercent+'%)':''}</span><span>-₹${s.discount}</span></div>`;
         if(s.buyerName) itemsHtml += `<div><span>Customer</span><span>${custEsc(s.buyerName)}</span></div>`;
     if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${fmtPhones(s.buyerPhone)}</span></div>`;
@@ -9760,7 +9671,7 @@ function renderAdmin(){
         const isNew = new Date(s.time).getTime() > lastSeen;
         html += `<div class="sale-card">
             <div class="sale-card-top" onclick="toggleSaleDetail('${s.id}')">
-              <div><div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)}${highDiscTag(s)} &middot; ${isNew ? '<span class="new-tag">NEW</span> ' : ''}<span style="text-decoration:underline dotted; cursor:pointer;" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${s.sellerName}</span> ${statusBadge}${saleEditTag(s)}</div>
+              <div><div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)}${highDiscTag(s)} &middot; ${isNew ? '<span class="new-tag">NEW</span> ' : ''}<span style="text-decoration:underline dotted; cursor:pointer;" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${estEsc(s.sellerName)}</span> ${statusBadge}${saleEditTag(s)}</div>
               <div class="sc-time">${dt}</div></div>
               <div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div>
             </div>
@@ -9845,15 +9756,15 @@ function renderAdmin(){
         const _tags = liveBranches().map(b => {
           const r = branchRule(ci, ii, b.id); if(!r) return '';
           return r.off
-            ? `<span style="font-size:10px; font-weight:800; background:#fde8e6; color:#b3261e; border-radius:6px; padding:2px 6px; margin-right:4px;">${b.short} &#10005; not sold</span>`
-            : (r.price != null ? `<span style="font-size:10px; font-weight:800; background:#fff3d6; color:#8a5a00; border-radius:6px; padding:2px 6px; margin-right:4px;">${b.short} &#8377;${r.price}</span>` : '');
+            ? `<span style="font-size:10px; font-weight:800; background:#fde8e6; color:#b3261e; border-radius:6px; padding:2px 6px; margin-right:4px;">${estEsc(b.short)} &#10005; not sold</span>`
+            : (r.price != null ? `<span style="font-size:10px; font-weight:800; background:#fff3d6; color:#8a5a00; border-radius:6px; padding:2px 6px; margin-right:4px;">${estEsc(b.short)} &#8377;${r.price}</span>` : '');
         }).join('');
         _rows.push({ serial: serial, price: Number(_shownPrice) || 0, t: itemLastChange(serial), h: `<div class="admin-item-row" style="${_soldHere ? '' : 'opacity:0.5;'}">
             <div class="air-info">
-              <div class="air-ta">#${serial} &middot; ${name.ta}</div>
-              <div class="air-en">${name.en}</div>
+              <div class="air-ta">#${serial} &middot; ${estEsc(name.ta)}</div>
+              <div class="air-en">${estEsc(name.en)}</div>
               <div class="air-meta" style="cursor:pointer;" onclick="${_vb ? `openItemEditModal('${k}')` : `editPriceInline(event, '${k}')`}">
-                Cat ${ci + 1} &middot; ${cn.en} &bull; ${listPriceHtml(_shownPrice, _offLoc)} / ${inv.unit || 'box'}${_soldHere ? '' : ' &bull; <b style="color:#b3261e;">not sold here</b>'}
+                Cat ${ci + 1} &middot; ${estEsc(cn.en)} &bull; ${listPriceHtml(_shownPrice, _offLoc)} / ${inv.unit || 'box'}${_soldHere ? '' : ' &bull; <b style="color:#b3261e;">not sold here</b>'}
               </div>
               ${_tags ? `<div style="margin-top:4px;">${_tags}</div>` : ''}
             </div>
@@ -9939,7 +9850,7 @@ function renderAdmin(){
         const dt = fmtBillTime(l.time);
         html += `<div class="sale-card">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div><b>${l.name}</b> <span style="font-size:10px;color:#8a6a44;">(${l.id})</span>
+              <div><b>${estEsc(l.name)}</b> <span style="font-size:10px;color:#8a6a44;">(${estEsc(l.id)})</span>
                 <span class="uer-role-badge ${l.role}" style="margin-left:6px;">${l.role==='admin'?'Admin':'Seller'}</span></div>
             </div>
             <div class="sc-time" style="margin-top:4px;">${dt}</div>
@@ -10013,13 +9924,13 @@ function renderAdmin(){
             <span class="uer-role-badge ${u.role}">${u.role === 'admin' ? 'Admin ' : 'Seller '}${_tagNo}</span><span style="font-size:11px; font-weight:800; color:#8a6a44;">${u.pid || ''}</span>
             <select title="${u.role === 'admin' ? 'Branch access' : 'Branch (locked for seller)'}" onchange="setUserBranch('${id}', this.value)" style="padding:4px 6px; border-radius:8px; border:1px solid var(--line); font-size:12px; font-weight:700; max-width:110px;">
                 ${u.role === 'admin' ? `<option value="" ${!u.branch?'selected':''}>All</option>` : ''}
-                ${Object.values(BRANCHES).filter(b => b.enabled || b.id === (u.role === 'admin' ? u.branch : (sellerBranchOf(id) || {}).id)).map(b => `<option value="${b.id}" ${(u.role === 'admin' ? u.branch : (sellerBranchOf(id) || {}).id)===b.id?'selected':''}>${b.short}</option>`).join('')}
+                ${Object.values(BRANCHES).filter(b => b.enabled || b.id === (u.role === 'admin' ? u.branch : (sellerBranchOf(id) || {}).id)).map(b => `<option value="${b.id}" ${(u.role === 'admin' ? u.branch : (sellerBranchOf(id) || {}).id)===b.id?'selected':''}>${estEsc(b.short)}</option>`).join('')}
               </select>
             <span class="ie-saved" style="margin-left:auto;" id="saved-user-${id}">Saved ✓</span>
           </div>
           <div class="uer-fields">
             <div class="ie-group"><label>Name</label>
-              <input type="text" value="${u.name}" onchange="updateUserField('${id}','name', this.value)"></div>
+              <input type="text" value="${estEsc(u.name)}" onchange="updateUserField('${id}','name', this.value)"></div>
             <div class="ie-group"><label>User ID</label>
               <input type="text" value="${id}" onchange="renameUserId('${id}', this.value)"></div>
             <div class="ie-group"><label>PIN / Password</label>
@@ -10055,7 +9966,7 @@ function renderAdmin(){
       const br = BRANCHES[bid], sel = bid === branchTabSel;
       html += `<div onclick="selectBranchTab('${bid}')" class="sale-card" style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer; ${sel ? 'border:2px solid var(--maroon);' : ''} ${br.enabled ? '' : 'opacity:0.65;'}">
           <div style="min-width:0;">
-            <div style="font-weight:800; font-size:14px;">${br.name} <span style="font-size:10px; font-weight:700; color:#8a6a44; background:#f3e6cc; border-radius:4px; padding:2px 5px; margin-left:4px;">${br.short}</span></div>
+            <div style="font-weight:800; font-size:14px;">${estEsc(br.name)} <span style="font-size:10px; font-weight:700; color:#8a6a44; background:#f3e6cc; border-radius:4px; padding:2px 5px; margin-left:4px;">${estEsc(br.short)}</span></div>
             <div style="font-size:11px; font-weight:700; color:${br.enabled ? '#1e7a3c' : '#b3261e'}; margin-top:2px;">${br.enabled ? 'Active' : '&#9208; On hold'}</div>
           </div>
           ${_scope ? '' : `<div style="display:flex; gap:6px; flex-shrink:0;" onclick="event.stopPropagation()">
@@ -10068,7 +9979,7 @@ function renderAdmin(){
     const bid = branchTabSel, br = BRANCHES[bid];
     if(br){
       if(!br.enabled){
-        html += `<div class="empty-admin" style="text-align:left;">&#9208; ${br.name} is on hold. Its items, bills and options are hidden everywhere until it is resumed.</div>`;
+        html += `<div class="empty-admin" style="text-align:left;">&#9208; ${estEsc(br.name)} is on hold. Its items, bills and options are hidden everywhere until it is resumed.</div>`;
       } else {
         const brAll = SALES.filter(s => inBr(s, bid));
         const brSales = brAll.filter(s => isCountedSale(s));
@@ -10076,7 +9987,7 @@ function renderAdmin(){
         let notSold = 0, diffPrice = 0;
         CATEGORIES.forEach((c, ci) => c.items.forEach((it, ii) => { const r = branchRule(ci, ii, bid); if(r && r.off) notSold++; else if(r && r.price != null && Number(r.price) !== Number(getBasePrice(ci, ii))) diffPrice++; }));
         const _fld = 'width:100%; padding:9px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:7px;';
-        html += `<div style="display:flex; align-items:center; justify-content:space-between; margin-top:14px;"><div class="section-title" style="margin:0;">${br.name} (${br.short})${br.phone ? ' &bull; ' + br.phone : ''}</div>
+        html += `<div style="display:flex; align-items:center; justify-content:space-between; margin-top:14px;"><div class="section-title" style="margin:0;">${estEsc(br.name)} (${estEsc(br.short)})${br.phone ? ' &bull; ' + estEsc(br.phone) : ''}</div>
           <button title="Edit branch details" onclick="var c=document.getElementById('brDetailCard'); c.style.display = c.style.display==='none' ? 'block' : 'none';" style="background:none; border:1px solid var(--line); border-radius:8px; width:36px; height:34px; font-size:17px; cursor:pointer;">&#9998;&#65039;</button></div>
           <div id="brDetailCard" class="add-seller-card" style="display:none; margin:8px 0 12px;">
             <label class="field-label">Title (heading on price list &amp; bills)</label>
@@ -10113,7 +10024,7 @@ function renderAdmin(){
         people.forEach(u => {
           const mine = brSales.filter(s => s.sellerId === u);
           html += `<div style="display:flex; justify-content:space-between; padding:7px 4px; border-bottom:1px solid var(--line); font-size:12.5px;">
-              <span><b>${USERS[u].name}</b> <span style="font-size:10px; font-weight:800; color:#8a6a44;">${USERS[u].role === 'admin' ? 'Branch admin' : 'Seller'}</span></span>
+              <span><b>${estEsc(USERS[u].name)}</b> <span style="font-size:10px; font-weight:800; color:#8a6a44;">${USERS[u].role === 'admin' ? 'Branch admin' : 'Seller'}</span></span>
               <span style="color:var(--maroon); font-weight:800;">${mine.length} bills &bull; ${fmt(mine.reduce((a,s)=>a+s.total,0))}</span>
             </div>`;
         });
@@ -10123,7 +10034,7 @@ function renderAdmin(){
         latest.forEach(s => {
           const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'short', timeStyle:'short'});
           html += `<div class="price-row">
-              <div class="pr-name"><div class="pr-ta">#${s.billNo||'-'} ${s.sellerName}${isCountedSale(s) ? '' : ' <span class="status-badge cancelled">Cancelled</span>'}${saleEditTag(s)}</div><div class="pr-en">${dt}</div></div>
+              <div class="pr-name"><div class="pr-ta">#${s.billNo||'-'} ${estEsc(s.sellerName)}${isCountedSale(s) ? '' : ' <span class="status-badge cancelled">Cancelled</span>'}${saleEditTag(s)}</div><div class="pr-en">${dt}</div></div>
               <div class="pr-right"><div class="pr-price">${fmt(s.total)}</div></div>
             </div>`;
         });
@@ -10138,7 +10049,7 @@ function renderAdmin(){
 
   } else if(adminTab === 'upi'){
     normalizeUpi();
-    const brOpts = sel => `<option value="" ${!sel?'selected':''}>All branches</option>` + liveBranches().map(b => `<option value="${b.id}" ${sel===b.id?'selected':''}>${b.name} (${b.short})</option>`).join('');
+    const brOpts = sel => `<option value="" ${!sel?'selected':''}>All branches</option>` + liveBranches().map(b => `<option value="${b.id}" ${sel===b.id?'selected':''}>${estEsc(b.name)} (${estEsc(b.short)})</option>`).join('');
     const upiCard = (n, sl) => `<div class="discount-card" style="position:relative;">
         <button type="button" onclick="openUpiShowQr(${n})" title="Show &amp; print this UPI QR" aria-label="Print UPI QR ${n}" style="position:absolute; top:8px; right:10px; width:auto; padding:2px 4px; background:none; border:none; box-shadow:none; font-size:22px; line-height:1; color:var(--maroon); cursor:pointer;">&#128424;</button>
         <div class="section-title" style="margin-top:0;">UPI Account ${n}</div>
@@ -10152,11 +10063,11 @@ function renderAdmin(){
         <label class="field-label">Used for branch</label>
         <select id="upiBranch${n}" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); margin-bottom:8px; font-size:13px;">${brOpts(sl.branch)}</select>
         <label class="field-label">UPI ID</label>
-        <input type="text" id="upiId${n}" placeholder="example@upi" value="${sl.id}">
+        <input type="text" id="upiId${n}" placeholder="example@upi" value="${estEsc(sl.id)}">
         <label class="field-label">Display Name (optional)</label>
-        <input type="text" id="upiName${n}" placeholder="e.g. A.R.S Crackers" value="${sl.name}">
+        <input type="text" id="upiName${n}" placeholder="e.g. A.R.S Crackers" value="${estEsc(sl.name)}">
       </div>`;
-    const note = sl => sl.enabled && sl.id ? `<b>${sl.id}</b> &rarr; ${sl.branch && BRANCHES[sl.branch] ? BRANCHES[sl.branch].name : 'All branches'}` : 'Off';
+    const note = sl => sl.enabled && sl.id ? `<b>${estEsc(sl.id)}</b> &rarr; ${sl.branch && BRANCHES[sl.branch] ? estEsc(BRANCHES[sl.branch].name) : 'All branches'}` : 'Off';
     main.innerHTML = upiCard(1, UPI.slot1) + upiCard(2, UPI.slot2) + `
       <button onclick="saveUpiSettings()" style="width:100%;">Save UPI Details</button>
       <div class="empty-admin" style="text-align:left; padding:8px 4px;">
@@ -10949,7 +10860,7 @@ function itemFilterBarHtml(){
     var row = function(val, label, cnt){ var sel = String(f.cat) === String(val); return '<button type="button" onclick="pickItemCat(\'' + val + '\')" style="display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; padding:9px 11px; border:none; border-bottom:1px solid var(--line); background:' + (sel ? 'var(--maroon)' : '#fff') + '; color:' + (sel ? '#fff8e6' : 'var(--maroon)') + '; font-weight:700; font-size:12.5px; cursor:pointer;"><span>' + label + '</span><span>' + cnt + '</span></button>'; };
     var total = 0; CATEGORIES.forEach(function(c){ total += c.items.length; });
     h += '<div style="margin-top:' + (itemFilterOpen ? '8px' : '0') + '; max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('', 'All categories', total) +
-      CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci); return row(String(ci), (ci + 1) + '. ' + (n.ta || n.en) + ' (' + n.en + ')', c.items.length); }).join('') + '</div>';
+      CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci); return row(String(ci), (ci + 1) + '. ' + estEsc(n.ta || n.en) + ' (' + estEsc(n.en) + ')', c.items.length); }).join('') + '</div>';
   }
   return h + '</div>';
 }
@@ -10964,7 +10875,7 @@ function populateItemEditCategoryOptions(selectedCi){
   const sel = document.getElementById('itemEditCategory');
   sel.innerHTML = CATEGORIES.map((c, idx) => {
     const cn = getCategoryName(idx);
-    return `<option value="${idx}" ${idx===selectedCi?'selected':''}>${cn.ta} (${cn.en})</option>`;
+    return `<option value="${idx}" ${idx===selectedCi?'selected':''}>${estEsc(cn.ta)} (${estEsc(cn.en)})</option>`;
   }).join('');
 }
 
@@ -10977,7 +10888,7 @@ function renderItemEditBranches(inv){
     var r = br[b.id] || {}, sold = !r.off;
     return '<div data-bid="' + b.id + '" style="border:1.5px solid var(--line); border-radius:10px; padding:9px 11px; margin-bottom:8px; background:#fffaf0;">' +
       '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">' +
-        '<b style="font-size:13px; color:var(--maroon);">' + b.short + ' <span style="font-weight:600; color:#8a6a44; font-size:11.5px;">' + b.name + '</span></b>' +
+        '<b style="font-size:13px; color:var(--maroon);">' + estEsc(b.short) + ' <span style="font-weight:600; color:#8a6a44; font-size:11.5px;">' + estEsc(b.name) + '</span></b>' +
         '<label style="display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700;"><input type="checkbox" class="ib-sold" ' + (sold ? 'checked' : '') + ' style="width:20px; height:20px;"> Sold here</label>' +
       '</div>' +
       '<input type="number" min="0" class="ib-price" inputmode="decimal" placeholder="Same as normal price" value="' + (r.price != null && r.price !== '' ? r.price : '') + '" style="width:100%; margin-top:7px;">' +
@@ -11282,7 +11193,7 @@ function setNewAccountRole(role){
   var pr = document.getElementById('newSellerAdminPwdRow'); if(pr) pr.style.display = isAdmin ? '' : 'none';
   var br = document.getElementById('newSellerBranchRow'); if(br) br.style.display = '';
   var nbSel = document.getElementById('newSellerBranch');
-  if(nbSel){ var cur = nbSel.value; nbSel.innerHTML = (isAdmin ? '<option value="">All branches (full admin)</option>' : '') + liveBranches().map(function(b){ return '<option value="' + b.id + '">' + b.name + ' (' + b.short + ')' + (isAdmin ? ' only' : '') + '</option>'; }).join(''); if(cur) nbSel.value = cur; }
+  if(nbSel){ var cur = nbSel.value; nbSel.innerHTML = (isAdmin ? '<option value="">All branches (full admin)</option>' : '') + liveBranches().map(function(b){ return '<option value="' + b.id + '">' + estEsc(b.name) + ' (' + estEsc(b.short) + ')' + (isAdmin ? ' only' : '') + '</option>'; }).join(''); if(cur) nbSel.value = cur; }
 }
 function openNewSellerModal(){
   document.getElementById('newSellerName').value = '';
@@ -11399,7 +11310,7 @@ function catEditInnerHtml(){
         <label class="field-label">Select Category</label>
         <select id="catSelect" onchange="renderCatEdit(this.value)" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:10px;">
           <option value="">-- Choose a category --</option>
-          ${CATEGORIES.map((c, idx) => `<option value="${idx}">${idx + 1}. ${c.ta} (${c.en})</option>`).join('')}
+          ${CATEGORIES.map((c, idx) => `<option value="${idx}">${idx + 1}. ${estEsc(c.ta)} (${estEsc(c.en)})</option>`).join('')}
         </select>
         <div id="catEditForm"></div>
       </div>
@@ -11426,9 +11337,9 @@ function renderCatEdit(idx){
   const catTa = (catName.name_ta || cat.ta).trim();
   const catEn = (catName.name_en || cat.en).trim();
   form.innerHTML = `<label class="field-label">Category Name (Tamil)</label>
-    <input type="text" id="editCatTa" value="${catTa}" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:7px;">
+    <input type="text" id="editCatTa" value="${estEsc(catTa)}" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:7px;">
     <label class="field-label">Category Name (English)</label>
-    <input type="text" id="editCatEn" value="${catEn}" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:7px;">
+    <input type="text" id="editCatEn" value="${estEsc(catEn)}" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:7px;">
     <button onclick="saveCategoryNames(${idx})" style="width:100%; padding:11px; background:var(--maroon); color:#fff8e6; border:none; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer; margin-bottom:10px;">Save Category Names</button>`;
 }
 
@@ -11459,119 +11370,6 @@ function addNewCategory(){
   setTimeout(()=>{ statusEl.textContent = ''; }, 2000);
 }
 
-/* Builds the complete, self-contained backup HTML string (markup + CSS + JS + today's
-   data embedded). Shared by both "Download Backup File" (always a new download) and
-   "Save" (overwrites the same file in place, on browsers that support it). */
-function buildBackupHtmlString(){
-  const backup = {
-    exportedAt: new Date().toISOString(),
-    categories: CATEGORIES, users: USERS, inventory: INV, discount: DISCOUNT, upi: UPI,
-    categoryNames: CATNAMES, sales: SALES, loginHistory: LOGIN_HISTORY,
-    priceListVersion: _plDocVersion
-  };
-
-  // Take a full copy of this running app (markup + all CSS + all JS, unchanged) and embed
-  // today's data inside it as a real element, so the resulting file is a complete,
-  // self-contained, working copy — opening it directly restores everything automatically.
-  // This is done with real DOM methods (not text/regex surgery on the page's own HTML),
-  // since the page's own source code mentions these same element names in comments and
-  // strings — regex matching against the whole page text would wrongly match those too.
-
-  const loginEl = document.getElementById('loginScreen');
-  const appEl = document.getElementById('app');
-  const adminEl = document.getElementById('adminScreen');
-  const prevLoginClass = loginEl.className;
-  const prevAppClass = appEl.className;
-  const prevAdminClass = adminEl.className;
-  const openOverlays = Array.prototype.slice.call(document.querySelectorAll('.modal-overlay.show, .confirm-overlay.show'));
-
-  const existingSeed = document.getElementById('backup-seed-data');
-  if(existingSeed) existingSeed.remove();
-
-  // Force a clean "just opened" screen state for the snapshot, so the backup always boots
-  // straight to the login screen correctly, no matter what was on screen right now.
-  loginEl.className = '';
-  appEl.className = 'hidden';
-  adminEl.className = 'hidden';
-  openOverlays.forEach(el => el.classList.remove('show'));
-
-  const seedEl = document.createElement('script');
-  seedEl.type = 'application/json';
-  seedEl.id = 'backup-seed-data';
-  seedEl.textContent = JSON.stringify(backup).replace(/<\/script>/gi, '<\\/script>');
-  document.body.insertBefore(seedEl, document.body.firstChild);
-
-  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-
-  // Restore the live page exactly as it was — this admin's current screen is undisturbed
-  seedEl.remove();
-  loginEl.className = prevLoginClass;
-  appEl.className = prevAppClass;
-  adminEl.className = prevAdminClass;
-  openOverlays.forEach(el => el.classList.add('show'));
-
-  return html;
-}
-
-
-/* ---------------- SAVE (overwrite the same file in place) ----------------
-   Real "Save" (replacing the exact file this was opened from, with no new copy and no
-   re-picking a location each time) is only possible on browsers that support the File
-   System Access API — currently desktop Chrome/Edge. Most phone browsers (Chrome/Safari
-   on Android & iOS) do not support this at all; there, this falls back to a normal
-   download, using a fixed filename (no date) so the device's downloads/file manager can
-   offer to replace the previous one, which is the closest equivalent available there. */
-let _backupFileHandle = null;
-
-function supportsInPlaceSave(){
-  return typeof window.showSaveFilePicker === 'function';
-}
-
-
-function handleRestoreFile(evt){
-  const file = evt.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = async function(){
-    try{
-      const raw = reader.result.trim();
-      let data;
-      if(raw.startsWith('<')){
-        // HTML backup file — pull the embedded seed-data block out of it
-        const m = raw.match(/<script[^>]*id=["']backup-seed-data["'][^>]*>([\s\S]*?)<\/script>/i);
-        if(!m) throw new Error('no-seed-block');
-        data = JSON.parse(m[1]);
-      } else {
-        // Legacy plain-JSON backup file
-        data = JSON.parse(raw);
-      }
-      const ok = await showConfirm('Restore data from this backup? This will replace current price list, sellers, prices, discount rule, sales and login history.');
-      if(!ok) return;
-      if(data.categories && Array.isArray(data.categories)){
-        CATEGORIES.length = 0;
-        data.categories.forEach(c => CATEGORIES.push(c));
-        ensureSerials();
-        saveCatalog();
-      }
-      if(data.users) { USERS = data.users; saveJSON('ars_users', USERS); }
-      if(data.inventory) { INV = data.inventory; saveJSON('ars_inventory', INV); }
-      if(data.discount) { DISCOUNT = data.discount; saveJSON('ars_discount', DISCOUNT); }
-      if(data.upi) { UPI = data.upi; saveJSON('ars_upi', UPI); }
-      if(data.categoryNames) { CATNAMES = data.categoryNames; saveJSON('ars_catnames', CATNAMES); }
-      if(data.sales) { SALES = data.sales; saveJSON('ars_sales', SALES); }
-      if(data.loginHistory) { LOGIN_HISTORY = data.loginHistory; saveJSON('ars_login_history', LOGIN_HISTORY); }
-      document.getElementById('backupStatus').textContent = 'Backup restored successfully ✓';
-      buildCatNav();
-      render();
-      renderAdmin();
-    } catch(e){
-      document.getElementById('backupStatus').textContent = 'Could not read this file. Please choose a valid .html or .json backup file.';
-    }
-  };
-  reader.readAsText(file);
-  evt.target.value = '';
-}
-
 /* ========== PROFESSIONAL A4 REPORT FORMAT PDF EXPORTS - ENGLISH ONLY ========== */
 
 async function downloadSalesReportBankFormat(){
@@ -11600,7 +11398,7 @@ async function downloadSalesReportBankFormat(){
     sellerMap[k].disc += (s.discount||0); sellerMap[k].net += s.total;
   });
   const sellerRows = Object.values(sellerMap).map((sl, i) =>
-    `<tr><td class="num" style="width:44px;">${i+1}</td><td>${sl.name}</td><td class="num">${sl.orders}</td><td class="num">${inr(sl.gross)}</td><td class="num">(${inr(sl.disc)})</td><td class="num">${inr(sl.net)}</td></tr>`
+    `<tr><td class="num" style="width:44px;">${i+1}</td><td>${estEsc(sl.name)}</td><td class="num">${sl.orders}</td><td class="num">${inr(sl.gross)}</td><td class="num">(${inr(sl.disc)})</td><td class="num">${inr(sl.net)}</td></tr>`
   ).join('');
 
   const today = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
@@ -12974,7 +12772,7 @@ function populateBranchSelector(){
   }
   sel.style.display = '';
   sel.innerHTML = enabled.map(b =>
-    `<option value="${b.id}" ${activeBranchId===b.id?'selected':''}>${b.short} — ${b.name}</option>`
+    `<option value="${b.id}" ${activeBranchId===b.id?'selected':''}>${estEsc(b.short)} — ${estEsc(b.name)}</option>`
   ).join('');
 }
 
