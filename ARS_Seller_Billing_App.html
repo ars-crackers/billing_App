@@ -441,6 +441,8 @@
   .bank-report .bkr-decl{font-size:11.5px; line-height:1.65; text-align:justify; margin-top:6px;}
   .bank-report .bkr-sign{display:flex; justify-content:space-between; margin-top:70px; font-size:12px;}
   .bank-report .bkr-sign .sig-block{text-align:center;}
+  .bank-report .sig-name{font-weight:bold; font-size:12px; margin-bottom:2px;}
+  .bank-report .bkr-bd th, .bank-report .bkr-bd td{font-size:11px; padding:4px 8px 5px; line-height:1.3;}
   .bank-report .bkr-sign .sig-line{border-top:1px solid #000; padding-top:5px; margin-top:44px; min-width:190px;}
   .bank-report .bkr-meta{font-size:11px; color:#333; margin-top:26px; display:flex; justify-content:space-between;}
   .pl-header{
@@ -1342,10 +1344,10 @@ function __appNotLoaded(){
 </div>
 
 <div class="modal-overlay" id="a4EdOverlay" style="z-index:9998;">
-  <div class="bill-sheet" style="max-width:980px; width:96vw; padding:0; display:flex; flex-direction:column; max-height:94vh; overflow:hidden;">
+  <div class="bill-sheet" id="a4EdSheet" style="max-width:980px; width:96vw; padding:0; display:flex; flex-direction:column; max-height:94vh; overflow:hidden;">
     <div class="bill-head" style="display:flex; align-items:center; justify-content:space-between; background:#fff8ea;">
       <button onclick="a4EdClose()" style="background:none; border:none; font-size:14px; font-weight:700; cursor:pointer; color:var(--maroon); padding:6px 10px; border-radius:8px;">&#8592; Back</button>
-      <div class="bn" style="font-size:14px;">Edit &amp; export document</div>
+      <div class="bn" id="a4EdTitle" style="font-size:14px;">Edit &amp; export document</div>
       <div style="width:70px;"></div>
     </div>
     <div class="a4ed-body">
@@ -1353,7 +1355,7 @@ function __appNotLoaded(){
       <div class="a4ed-prev" id="a4EdPrev"></div>
     </div>
     <div class="a4ed-foot">
-      <div class="a4ed-exp"><button onclick="a4EdExport('pdf')">📄 Export PDF</button><button onclick="a4EdExport('word')">📝 Export Word (.doc)</button></div>
+      <div class="a4ed-exp"><button onclick="a4EdExport('pdf')">📄 Export PDF</button><button id="a4EdWordBtn" onclick="a4EdExport('word')">📝 Export Word (.doc)</button></div>
       <div id="a4EdStatus" class="a4ed-hint"></div>
     </div>
   </div>
@@ -2178,7 +2180,7 @@ function mergeRemoteSales(list){
     }
     else if(existing.status !== remote.status && !_fbUnsentSales[remote.id]){
       if(remote.status === 'cancel_pending' && typeof session !== 'undefined' && session && session.role === 'admin'){
-        try{ adminAlert('\u26A0 Cancel request: Bill #' + (remote.billNo || '-'), (remote.sellerName || '') + ' \u2014 approve in Sales'); }catch(e){}
+        try{ adminAlert('\u26A0 Cancel request: Bill ' + billNoRef(remote), (remote.sellerName || '') + ' \u2014 approve in Sales'); }catch(e){}
       }
       existing.status = remote.status; changed = true;
     }
@@ -2193,6 +2195,7 @@ function mergeRemoteSales(list){
     }
     if(existing && !_fbUnsentSales[remote.id] && remote.billNo && (existing.billNo !== remote.billNo || !!existing.billNoTemp !== !!remote.billNoTemp)){
       existing.billNo = remote.billNo; changed = true;                                       // a temporary (no-signal) number was confirmed / changed
+      if(remote.billCode) existing.billCode = remote.billCode;
       if(remote.billNoTemp) existing.billNoTemp = true; else delete existing.billNoTemp;
       if(remote.billNoWas) existing.billNoWas = remote.billNoWas;
     }
@@ -2202,11 +2205,11 @@ function mergeRemoteSales(list){
     var hiBills = newBills.filter(saleIsHighDisc);
     if(hiBills.length){
       var hb = hiBills[hiBills.length - 1];
-      adminAlert('\u26A0 ' + saleDiscPct(hb) + '% discount \u2014 Bill #' + (hb.billNo || '-') + ' \u20B9' + (hb.total || 0).toLocaleString('en-IN'),
+      adminAlert('\u26A0 ' + saleDiscPct(hb) + '% discount \u2014 Bill ' + billNoRef(hb) + ' \u20B9' + (hb.total || 0).toLocaleString('en-IN'),
         (hb.sellerName || 'Seller') + ' \u00B7 bill \u20B9' + (hb.subtotal || 0).toLocaleString('en-IN') + (hiBills.length > 1 ? ' \u00B7 ' + hiBills.length + ' bills with ' + HIGH_DISC_PCT + '%+ discount' : ''), 'highdisc', hb.total, saleDiscPct(hb));
     } else if(newBills.length === 1){
       var nb = newBills[0];
-      adminAlert('\uD83D\uDCF1 New bill #' + (nb.billNo || '-') + ' \u2014 \u20B9' + (nb.total || 0).toLocaleString('en-IN'), (nb.sellerName || 'Seller') + ' \u00B7 ' + paymentMethodLabel(nb), 'bill', nb.total);
+      adminAlert('\uD83D\uDCF1 New bill ' + billNoRef(nb) + ' \u2014 \u20B9' + (nb.total || 0).toLocaleString('en-IN'), (nb.sellerName || 'Seller') + ' \u00B7 ' + paymentMethodLabel(nb), 'bill', nb.total);
     } else {
       adminAlert('\uD83D\uDCF1 ' + newBills.length + ' new bills', 'from your sellers', 'bill', 0);
     }
@@ -2215,8 +2218,9 @@ function mergeRemoteSales(list){
   SALES = salesTrimForPhone(SALES);
   _rawSaveJSON('ars_sales', SALES);
   // Keep this phone's next bill number ahead of every bill it now knows about.
-  var maxNo = 0; SALES.forEach(function(s){ if(s.billNo > maxNo) maxNo = s.billNo; });
+  var maxNo = 0; SALES.forEach(function(s){ if(!s.billCode && s.billNo > maxNo) maxNo = s.billNo; });
   if(maxNo > BILL_COUNTER){ BILL_COUNTER = maxNo; _rawSaveJSON('ars_bill_counter', BILL_COUNTER); }
+  billCountersRaise(billSeriesMaxes(SALES));
   fbRefreshUI('sales');
 }
 /* Seller phones keep: their own bills, every bill of the last 2 days, and bills still waiting for the server.
@@ -2283,7 +2287,7 @@ function fbFlushPendingResets(){
   if(!_fbDb || _fbReadOnly) return;
   var pending = loadJSON('ars_fb_pending_reset', {}) || {};
   Object.keys(pending).forEach(function(name){
-    var c = FB_COLL[name], ts = pending[name], keptMax = 0;
+    var c = FB_COLL[name], ts = pending[name], keptMax = 0, keptBr = {};
     if(!c){ return; }
     _fbDb.ref(c.path).once('value').then(function(snap){
       var all = snap.val() || {}, upd = {}, gone = {};
@@ -2292,10 +2296,11 @@ function fbFlushPendingResets(){
         if(!(t > ts)){ gone[k] = 1; upd[c.path + '/' + k] = null; upd[c.path + 'Archive/' + ts + '/' + k] = all[k]; }   // removed, but kept in the archive (Backup -> Restore)
       });
       keptMax = 0;
-      Object.keys(all).forEach(function(k){ if(!gone[k] && all[k] && all[k].billNo > keptMax) keptMax = all[k].billNo; });
+      Object.keys(all).forEach(function(k){ if(!gone[k] && all[k] && !all[k].billCode && all[k].billNo > keptMax) keptMax = all[k].billNo; });
+      keptBr = billSeriesMaxes(Object.keys(all).filter(function(k){ return !gone[k]; }).map(function(k){ return all[k]; }));
       return Object.keys(upd).length ? _fbDb.ref().update(upd) : null;
     }).then(function(){
-      return name === 'sales' ? _fbDb.ref('meta/billCounter').set(keptMax) : null;   // the next bill number starts again after a reset
+      return name === 'sales' ? _fbDb.ref('meta').update({ billCounter: keptMax, billCounters: keptBr }) : null;   // each branch's next bill number starts again after a reset
     }).then(function(){
       return _fbDb.ref('meta/' + name + 'ResetAt').set(ts);
     }).then(function(){
@@ -2337,7 +2342,8 @@ function fbReloadColl(name){
 async function restoreBills(bills){
   bills = (bills || []).filter(function(b){ return b && b.id && b.time; });
   bills.forEach(function(b){ if(!Array.isArray(b.items)) b.items = fbToArr(b.items); });
-  var maxNo = 0; bills.forEach(function(b){ if(Number(b.billNo) > maxNo) maxNo = Number(b.billNo); });
+  var maxNo = 0; bills.forEach(function(b){ if(!b.billCode && Number(b.billNo) > maxNo) maxNo = Number(b.billNo); });
+  var brMax = billSeriesMaxes(bills);
   var p = loadJSON('ars_fb_pending_reset', {}) || {}; if(p.sales){ delete p.sales; _rawSaveJSON('ars_fb_pending_reset', p); }   // a reset not yet sent must not remove them again
   var added = bills.length;
   if(_fbDb && !_fbReadOnly){
@@ -2346,12 +2352,14 @@ async function restoreBills(bills){
     var upd = {}; added = 0;
     bills.forEach(function(b){ if(!have[b.id]){ upd['sales/' + b.id] = fbClean(b); added++; } });
     upd['meta/billCounter'] = Math.max(Number(meta.billCounter) || 0, maxNo);
+    Object.keys(brMax).forEach(function(b){ upd['meta/billCounters/' + fbSafeKey(b)] = Math.max(Number((meta.billCounters || {})[fbSafeKey(b)]) || 0, brMax[b]); });
     upd['meta/salesResetAt'] = null;                         // phones that still hold bills keep them
     upd['meta/salesRestoreAt'] = Date.now();
     await fbTimeout(_fbDb.ref().update(upd), 60000, 'Restore');
   }
   mergeRemoteSales(bills);
   if(maxNo > BILL_COUNTER){ BILL_COUNTER = maxNo; _rawSaveJSON('ars_bill_counter', BILL_COUNTER); }
+  billCountersRaise(brMax);
   return added;
 }
 var _rsArch = null, _rsBusy = false;
@@ -2522,8 +2530,10 @@ async function bkRestore(data, types, overwrite){
   }
   if(want.bills || want.shop){
     var cm = (await fbTimeout(_fbDb.ref('meta').once('value'), 30000, 'Restore')).val() || {}, bm = data.meta || {}, maxNo = 0;
-    Object.keys(data.sales || {}).forEach(function(k){ var b = data.sales[k]; if(b && Number(b.billNo) > maxNo) maxNo = Number(b.billNo); });
+    Object.keys(data.sales || {}).forEach(function(k){ var b = data.sales[k]; if(b && !b.billCode && Number(b.billNo) > maxNo) maxNo = Number(b.billNo); });
     upd['meta/billCounter'] = Math.max(Number(cm.billCounter) || 0, Number(bm.billCounter) || 0, want.bills ? maxNo : 0);
+    var _brMax = want.bills ? billSeriesMaxes(Object.keys(data.sales || {}).map(function(k){ return data.sales[k]; })) : {}, _cb = cm.billCounters || {}, _bb = bm.billCounters || {};
+    Object.keys(Object.assign({}, _cb, _bb, _brMax)).forEach(function(b){ upd['meta/billCounters/' + b] = Math.max(Number(_cb[b]) || 0, Number(_bb[b]) || 0, Number(_brMax[b]) || 0); });
     if(want.bills){ upd['meta/salesResetAt'] = null; upd['meta/salesRestoreAt'] = Date.now(); }
   }
   var keys = Object.keys(upd);
@@ -2679,8 +2689,9 @@ function fbApplyMeta(meta){
     _rawSaveJSON(pair[1], list);
     if(pair[0] === 'sales'){
       SALES = list;
-      var maxNo = 0; SALES.forEach(function(s){ if(s.billNo > maxNo) maxNo = s.billNo; });
+      var maxNo = 0; SALES.forEach(function(s){ if(!s.billCode && s.billNo > maxNo) maxNo = s.billNo; });
       BILL_COUNTER = maxNo; _rawSaveJSON('ars_bill_counter', BILL_COUNTER);
+      BILL_COUNTERS = billSeriesMaxes(SALES); _rawSaveJSON('ars_bill_counters', BILL_COUNTERS);
     } else {
       LOGIN_HISTORY = list;
     }
@@ -3548,7 +3559,7 @@ async function pushSaleToSheet(sale){
     var res = await fetch(SHEET_BACKUP.webAppUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(Object.assign({}, sale, { secret: SHEET_BACKUP.secret || '' }))
+      body: JSON.stringify(Object.assign({}, sale, sale.billCode ? { billNo: billNoLabel(sale) } : {}, { secret: SHEET_BACKUP.secret || '' }))
     });
     var data = await res.json().catch(function(){ return null; });
     if(data && data.status === 'ok'){
@@ -3652,19 +3663,39 @@ let BILL_COUNTER = loadJSON('ars_bill_counter', 0);
 const BILL_CLAIM_WAIT_MS = 2500;
 var _billClaims = loadJSON('ars_bill_claims', {}) || {};      // saleId -> 1: bills made on THIS phone still holding a temporary number
 var _billClaimBusy = {};
-function billClaim(want){
+/* ---- Bill numbers PER BRANCH: every branch has its own series (TPL/1, TPL/2 ... and TBP/1, TBP/2 ...). The server keeps
+   one counter per branch (meta/billCounters/<branch>), so two phones of the same branch never get the same number.
+   The branch code is stored on the bill (billCode) and saved to the server with it. Bills made before this keep their
+   old shop-wide number (no billCode, shown as #12); their temporary numbers are still confirmed on meta/billCounter. ---- */
+var BILL_COUNTERS = loadJSON('ars_bill_counters', {}) || {};
+function billBrOf(s){ return (s && s.branchId) || 'main'; }
+function billCodeFor(bid){ var b = BRANCHES && BRANCHES[bid]; return String((b && b.short) || bid || 'BR').toUpperCase().replace(/[^A-Z0-9]/g, '') || 'BR'; }
+function billNoLabel(s){ if(!s || s.billNo == null || s.billNo === '') return '-'; return (s.billCode ? s.billCode + '/' : '') + s.billNo; }
+function billNoRef(s){ return (s && s.billCode) ? billNoLabel(s) : '#' + ((s && s.billNo) || '-'); }
+function billSeriesMaxes(list){
+  var m = {};
+  (list || []).forEach(function(s){ var n = Number(s && s.billNo); if(s && s.billCode && n > 0){ var b = billBrOf(s); if(n > (m[b] || 0)) m[b] = n; } });
+  return m;
+}
+function billCountersRaise(m){
+  var ch = false;
+  Object.keys(m || {}).forEach(function(b){ var v = Number(m[b]) || 0; if(v > (Number(BILL_COUNTERS[b]) || 0)){ BILL_COUNTERS[b] = v; ch = true; } });
+  if(ch) _rawSaveJSON('ars_bill_counters', BILL_COUNTERS);
+}
+function billPendingText(bid){ bid = bid || 'main'; return billCodeFor(bid) + '/' + ((Number(BILL_COUNTERS[bid]) || 0) + 1) + ' (pending)'; }
+function billSeriesNext(bid){ billCountersRaise(billSeriesMaxes(loadJSON('ars_sales', []) || [])); return (Number(BILL_COUNTERS[bid]) || 0) + 1; }
+function billClaim(want, bid){
   // the server keeps the last number handed out: take 'want' if it is still free, else the next free one
-  return _fbDb.ref('meta/billCounter').transaction(function(cur){ cur = Number(cur) || 0; return cur < want ? want : cur + 1; })
+  var path = bid ? 'meta/billCounters/' + fbSafeKey(bid) : 'meta/billCounter';
+  return _fbDb.ref(path).transaction(function(cur){ cur = Number(cur) || 0; return cur < want ? want : cur + 1; })
     .then(function(r){ if(!r || !r.committed) throw new Error('Bill number not confirmed'); return Number(r.snapshot.val()) || 0; });
 }
-function billNoNext(){
-  var maxNo = 0;
-  (loadJSON('ars_sales', []) || []).forEach(function(x){ if(x.billNo > maxNo) maxNo = x.billNo; });
-  if(maxNo > BILL_COUNTER) BILL_COUNTER = maxNo;
-  var want = BILL_COUNTER + 1;
+function billNoNext(bid){
+  bid = bid || 'main';
+  var want = billSeriesNext(bid);
   if(!_fbDb || _fbReadOnly || !navigator.onLine) return Promise.resolve({ n: want, temp: true, claim: null });
   var claim;
-  try{ claim = billClaim(want); }catch(e){ return Promise.resolve({ n: want, temp: true, claim: null }); }
+  try{ claim = billClaim(want, bid); }catch(e){ return Promise.resolve({ n: want, temp: true, claim: null }); }
   return Promise.race([
     claim.then(function(n){ return { n: n, temp: false, claim: null }; }),
     new Promise(function(res){ setTimeout(function(){ res({ n: want, temp: true, claim: claim }); }, BILL_CLAIM_WAIT_MS); })
@@ -3684,7 +3715,7 @@ function highDiscNotice(list){
   if(!hits.length) return '';
   return '<div style="margin:8px 0; padding:9px 11px; border-radius:10px; background:#fdecea; border:1.5px solid #b3261e; color:#7a1414; font-size:12px; font-weight:700; line-height:1.45;">' +
     '<div style="font-weight:800; color:#b3261e; margin-bottom:2px;">&#9888; ' + HIGH_DISC_PCT + '%+ discount today: ' + hits.length + ' bill' + (hits.length > 1 ? 's' : '') + '</div>' +
-    hits.slice(-6).reverse().map(function(x){ return '#' + (x.billNo || '-') + ' &bull; ' + custEsc(x.sellerName || '') + ' &bull; ' + saleDiscPct(x) + '% (&#8377;' + (x.subtotal || 0).toLocaleString('en-IN') + ' &rarr; &#8377;' + (x.total || 0).toLocaleString('en-IN') + ')'; }).join('<br>') +
+    hits.slice(-6).reverse().map(function(x){ return billNoRef(x) + ' &bull; ' + custEsc(x.sellerName || '') + ' &bull; ' + saleDiscPct(x) + '% (&#8377;' + (x.subtotal || 0).toLocaleString('en-IN') + ' &rarr; &#8377;' + (x.total || 0).toLocaleString('en-IN') + ')'; }).join('<br>') +
     '</div>';
 }
 /* Bill header amount: the amount received; with a discount the price-list amount is shown struck out before it. */
@@ -3694,14 +3725,15 @@ function saleAmtHtml(s){
 }
 function billNoTag(s){
   return (s && s.billNoTemp ? ' <span style="font-size:10px; font-weight:800; color:#b45309;">(temp)</span>' : '') +
-    (s && s.billNoWas ? ' <span style="font-size:10px; color:#8a6a44;">was #' + s.billNoWas + '</span>' : '');
+    (s && s.billNoWas ? ' <span style="font-size:10px; color:#8a6a44;">was ' + (s.billCode ? s.billCode + '/' : '#') + s.billNoWas + '</span>' : '');
 }
 /* A temporary number got its server number n: keep it (same number) or change it, everywhere. */
 function billNoFinal(saleId, n){
   delete _billClaims[saleId]; _rawSaveJSON('ars_bill_claims', _billClaims);
   if(!n) return;
-  if(n > BILL_COUNTER){ BILL_COUNTER = n; _rawSaveJSON('ars_bill_counter', BILL_COUNTER); }
   var list = loadJSON('ars_sales', []) || [], s = list.find(function(x){ return x.id === saleId; });
+  if(s && s.billCode){ var _m = {}; _m[billBrOf(s)] = n; billCountersRaise(_m); }
+  else if(n > BILL_COUNTER){ BILL_COUNTER = n; _rawSaveJSON('ars_bill_counter', BILL_COUNTER); }
   if(!s || (!s.billNoTemp && s.billNo === n)) return;
   var was = s.billNo;
   delete s.billNoTemp;
@@ -3709,7 +3741,7 @@ function billNoFinal(saleId, n){
   saveJSON('ars_sales', list); SALES = list;
   if(lastCompletedSale && lastCompletedSale.id === saleId){
     lastCompletedSale.billNo = n; delete lastCompletedSale.billNoTemp; if(was !== n) lastCompletedSale.billNoWas = was;
-    var d = document.getElementById('billNoDisplay'); if(d && _saleSaved()) d.textContent = n;
+    var d = document.getElementById('billNoDisplay'); if(d && _saleSaved()) d.textContent = billNoLabel(lastCompletedSale);
   }
   pushSaleToFirebase(s, true);
   fbRefreshUI('sales');
@@ -3730,7 +3762,7 @@ function billClaimsReconcile(){
   var p = Promise.resolve();
   ids.forEach(function(id){
     _billClaimBusy[id] = 1;
-    p = p.then(function(){ return billClaim(byId[id].billNo).then(function(n){ billNoFinal(id, n); }); })
+    p = p.then(function(){ var b = byId[id]; return billClaim(b.billNo, b.billCode ? billBrOf(b) : '').then(function(n){ billNoFinal(id, n); }); })
       .catch(function(){}).then(function(){ delete _billClaimBusy[id]; });
   });
 }
@@ -3741,6 +3773,7 @@ function fbSyncBillCounter(){
   _fbDb.ref('meta/billCounter').once('value').then(function(snap){
     var srv = Number(snap.val()) || 0;
     if(srv > BILL_COUNTER){ BILL_COUNTER = srv; _rawSaveJSON('ars_bill_counter', BILL_COUNTER); }
+    return _fbDb.ref('meta/billCounters').once('value').then(function(s2){ billCountersRaise(s2.val() || {}); });   // each branch's series
   }).catch(function(){}).then(billClaimsReconcile);
 }
 let LOGIN_HISTORY = loadJSON('ars_login_history', []);
@@ -4830,7 +4863,7 @@ function openBill(preserveEntries){
     if(btag){ var enabledCount = BRANCHES ? Object.values(BRANCHES).filter(b=>b.enabled).length : 0;
       btag.textContent = (enabledCount > 1 && br) ? br.short + ' — ' + br.name : ''; } })();
   document.getElementById('billDate').textContent = new Date().toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
-  document.getElementById('billNoDisplay').textContent = (BILL_COUNTER + 1) + ' (pending)';
+  document.getElementById('billNoDisplay').textContent = billPendingText(activeBranchId);
   document.getElementById('saleSavedMsg').classList.add('hidden');
   document.getElementById('billDiscOn').disabled = false;
   document.getElementById('cashBtn').disabled = false;
@@ -4970,7 +5003,7 @@ function buildPendingSaleForPrint(){
     });
   });
   return {
-    billNo: (BILL_COUNTER + 1) + ' (pending)',
+    billNo: billPendingText(activeBranchId),
     time: new Date().toISOString(),
     sellerName: session ? session.name : '-',
     items: items,
@@ -5051,7 +5084,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v73';
+var APP_BUILD = 'v76';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6256,14 +6289,16 @@ async function completeSale(paymentMethod, splitDetails){
   _saleSaving = true;
   const _payBtns = ['cashBtn', 'upiBtn', 'splitBtn'].map(function(id){ return document.getElementById(id); }).filter(Boolean);
   _payBtns.forEach(function(b){ b.disabled = true; });
+  const _bBid = activeBranchId || 'main';
   let bn;
-  try{ bn = await billNoNext(); }
-  catch(e){ bn = { n: BILL_COUNTER + 1, temp: true, claim: null }; }
+  try{ bn = await billNoNext(_bBid); }
+  catch(e){ bn = { n: (Number(BILL_COUNTERS[_bBid]) || 0) + 1, temp: true, claim: null }; }
   finally{ _saleSaving = false; }
-  if(bn.n > BILL_COUNTER){ BILL_COUNTER = bn.n; saveJSON('ars_bill_counter', BILL_COUNTER); }
+  (function(){ var _m = {}; _m[_bBid] = bn.n; billCountersRaise(_m); })();
   const newSale = {
     id: 'S' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
     billNo: bn.n,
+    billCode: billCodeFor(_bBid),
     sellerId: session.id, sellerName: session.name, sellerPid: pidOf(session.id) || '',
     time: new Date().toISOString(),
     items, subtotal, discount, discountPercent: percent, total: grand,
@@ -6274,7 +6309,7 @@ async function completeSale(paymentMethod, splitDetails){
     buyerName: buyerName || null,
     estVid: _scanVids[activeBillingTab] || null,
     status: 'confirmed',
-    branchId: activeBranchId || 'main'
+    branchId: _bBid
   };
   if(bn.temp){
     newSale.billNoTemp = true;
@@ -6292,7 +6327,7 @@ async function completeSale(paymentMethod, splitDetails){
   sendBillToAdminSMS(newSale);
   
   cart = {}; saveCart();
-  document.getElementById('billNoDisplay').textContent = newSale.billNo + (newSale.billNoTemp ? ' (temp)' : '');
+  document.getElementById('billNoDisplay').textContent = billNoLabel(newSale) + (newSale.billNoTemp ? ' (temp)' : '');
   document.getElementById('saleSavedMsg').classList.remove('hidden');
   document.getElementById('billGuess').style.display = 'none';           // saved: amount can no longer change
   document.getElementById('billDiscOn').disabled = true;
@@ -6438,10 +6473,10 @@ function buildWhatsAppBillText(sale){
   const inr = n => '\u20B9' + (Number(n) || 0).toLocaleString('en-IN');
   const paid = sale.paidAmount != null ? sale.paidAmount : sale.total;
   const method = sale.paymentMethod === 'upi' ? 'upi' : sale.paymentMethod === 'split' ? 'split' : 'cash';
-  const no = (sale.billNo && !/pending/i.test(String(sale.billNo))) ? sale.billNo + ' ' : '';
+  const no = (sale.billNo && !/pending/i.test(String(sale.billNo))) ? billNoLabel(sale) + ' ' : '';
   const lines = [];
   lines.push('\uD83E\uDDFE *' + SHOP.name_ta + '*');
-  lines.push('*Bill #' + no + '(' + method + ')*');
+  lines.push('*Bill ' + (sale.billCode ? '' : '#') + no + '(' + method + ')*');
   lines.push('\uD83D\uDCDE Ph: ' + fmtPhones(SHOP.phones[0] || ''));
   if(sale.sellerName) lines.push('Seller: ' + sale.sellerName);
   lines.push('Bill Value: ' + inr(sale.subtotal));
@@ -6477,7 +6512,7 @@ async function sendBillToAdminSMS(sale){
     // Build bill summary message
     const lines = [];
     lines.push(`${SHOP.name_en} - New Bill`);
-    lines.push(`Bill: ${sale.billNo} | ${sale.sellerName}`);
+    lines.push(`Bill: ${billNoLabel(sale)} | ${sale.sellerName}`);
     lines.push('');
     
     sale.items.forEach(it => {
@@ -6494,7 +6529,7 @@ async function sendBillToAdminSMS(sale){
     const message = lines.join('\n');
 
     // Show in-app toast notification to admin (no auto SMS)
-    showAdminNotification(`📱 Bill ${sale.billNo} - ₹${sale.total.toLocaleString('en-IN')} (${paymentMethodLabel(sale)})`);
+    showAdminNotification(`📱 Bill ${billNoLabel(sale)} - ₹${sale.total.toLocaleString('en-IN')} (${paymentMethodLabel(sale)})`);
     
   } catch(e){
     console.log('Auto-send to admin: ' + (e && e.message ? e.message : 'unable to send'));
@@ -6933,7 +6968,7 @@ function renderHistoryList(){
     html += `<div class="sale-card">
         <div class="sale-card-top" onclick="toggleSaleDetail('h-${s.id}')">
           <div>
-            <div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)} &middot; ${(isAdmin || s.sellerId !== session.id) ? estEsc(s.sellerName) + ' ' : ''}${statusBadge}${highDiscTag(s)}${saleEditTag(s)}</div>
+            <div class="sc-seller">${billNoRef(s)}${billNoTag(s)} &middot; ${(isAdmin || s.sellerId !== session.id) ? estEsc(s.sellerName) + ' ' : ''}${statusBadge}${highDiscTag(s)}${saleEditTag(s)}</div>
             <div class="sc-time">${dt}</div>
           </div>
           <div style="display:flex; align-items:center;"><div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div>${cancelIco}</div>
@@ -7024,7 +7059,7 @@ function buildBillPictureHTML(s){
         <div style="font-size:25px; font-weight:800; letter-spacing:0.3px;">${custEsc(branchTitle(br) || SHOP.name_ta)}</div>
         <div style="font-size:14px; font-weight:600; margin-top:3px;">Branch: ${custEsc(br.name || 'Thanneerpandhal')}</div>
         <div style="font-size:16px; font-weight:800; margin-top:1px;">${billPhoneHtml(br)}</div>
-        <div style="font-size:20px; font-weight:800; margin-top:5px;">Bill No: ${s.billNo || '-'}</div>
+        <div style="font-size:20px; font-weight:800; margin-top:5px;">Bill No: ${billNoLabel(s)}</div>
       </div>
       <div style="display:flex; justify-content:space-between; gap:8px; padding:8px 10px 0; font-size:14px;"><span>${dt}</span><span>Seller: <b>${custEsc(s.sellerName || '')}</b></span></div>
       <table style="width:100%; table-layout:fixed; border-collapse:collapse; margin-top:5px; color:#000;">
@@ -7060,7 +7095,7 @@ async function renderBillPictures(s){
     total = r0.height;
     canvas = await window.html2canvas(pageEl, { scale: S, backgroundColor: '#ffffff', useCORS: true, width: r0.width, windowWidth: r0.width });
   } finally { host.remove(); }
-  const name = 'ARS_Bill_' + (s.billNo || Date.now());
+  const name = 'ARS_Bill_' + (s.billNo ? billNoLabel(s).replace(/\//g, '-') : Date.now());   // "/" is not allowed in a file name: TPL/12 -> TPL-12
   const toFile = (cv, nm) => new Promise(res => cv.toBlob(b => res(b ? new File([b], nm, { type: 'image/png' }) : null), 'image/png'));
   // where to cut: between item rows; the totals stay with at least two items
   const cuts = []; let start = 0, i = 0;
@@ -7087,7 +7122,7 @@ async function renderBillPictures(s){
     cx.fillStyle = '#000000'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     cx.font = 'bold ' + Math.round(14.5 * S) + 'px ' + RECEIPT_FONT_FAMILY;
     if(t){
-      cx.fillText('Bill No: ' + (s.billNo || '-') + '  •  Page ' + (k + 1) + ' of ' + n, W / 2, t / 2);
+      cx.fillText('Bill No: ' + billNoLabel(s) + '  •  Page ' + (k + 1) + ' of ' + n, W / 2, t / 2);
       cx.fillRect(0, t - Math.round(S), W, Math.round(S));
     }
     if(bt){
@@ -7200,7 +7235,7 @@ function buildBillReceiptHTML(s){
         <div class="br-ta br-tam" style="font-size:${printCfg('shop').s}px; font-weight:${printW('shop')};">${branchTitle(branchOfSale(s)) || SHOP.name_ta}</div>
         <div style="font-size:10px; color:#000; margin-top:3px;">Branch: ${(branchOfSale(s) || {}).name || 'Thanneerpandhal'}</div>
         <div style="font-size:10.5px; color:#000; font-weight:700; margin-top:1px;">${billPhoneHtml(branchOfSale(s))}</div>
-        <div style="font-size:12px; color:#000; font-weight:900; margin-top:4px;">Bill No: ${s.billNo || '-'}</div>
+        <div style="font-size:12px; color:#000; font-weight:900; margin-top:4px;">Bill No: ${billNoLabel(s)}</div>
       </div>
       <div class="br-meta"><span>${dt}</span><span>Seller: ${estEsc(s.sellerName)}</span></div>
       <table class="br-table">
@@ -7362,10 +7397,7 @@ function buildHistoryReportHTML(salesList, title){
   }).join('');
   const totalConfirmed = salesList.filter(s => isCountedSale(s)).reduce((a,s)=>a+s.total,0);
   return `<div class="br-page" style="width:302px;">
-      <div class="br-head">
-        <div class="br-ta">${SHOP.name_ta}</div>
-        <div style="font-size:10.5px; color:#000; margin-top:4px;">${title}</div>
-      </div>
+      ${rptThermHead(estEsc(title), '', rptBidOfList(salesList, ''))}
       <div class="br-hist-list">${rows || '<div style="text-align:center;color:#777;padding:10px;">No records.</div>'}</div>
       <div class="br-total-row"><span>TOTAL (Confirmed)</span><span>&#8377;${totalConfirmed.toLocaleString('en-IN')}</span></div>
     </div>`;
@@ -7377,10 +7409,7 @@ function buildSellerSummaryReportHTML(summary){
       <td class="num" style="width:16%;">${d.qty}</td><td class="num" style="width:36%;">&#8377;${d.revenue.toLocaleString('en-IN')}</td></tr>`).join('');
   if(!rows) rows = `<tr><td colspan="3" style="text-align:center; color:#777;">No items sold yet.</td></tr>`;
   return `<div class="br-page" style="width:302px;">
-      <div class="br-head">
-        <div class="br-ta">${SHOP.name_ta}</div>
-        <div style="font-size:9.5px; color:#000; margin-top:4px;">Seller Summary &mdash; ${estEsc(summary.sellerName)}</div>
-      </div>
+      ${rptThermHead('Seller Summary &mdash; ' + estEsc(summary.sellerName), '', summary.bid)}
       <div class="br-summary">
         <div class="br-row"><span>Items Sold (Qty)</span><span>${summary.qty}</span></div>
         <div class="br-row br-disc"><span>Discount (${summary.discPct}%)</span><span>-&#8377;${summary.discount.toLocaleString('en-IN')}</span></div>
@@ -7404,16 +7433,13 @@ async function shareSellerSummaryPDF(){
 }
 
 /* ---- Generic "items sold" report PDF (used for the Overall and Bill No breakdowns) ---- */
-function buildItemsSoldReportHTML(title, statRows, itemRows){
+function buildItemsSoldReportHTML(title, statRows, itemRows, bid){
   let rows = itemRows.map(([en, d], idx) => `<tr><td style="width:48%;">${idx+1}. ${estEsc(d.ta)}<br><span class="br-en">${estEsc(en)}</span></td>
       <td class="num" style="width:16%;">${d.qty}</td><td class="num" style="width:36%;">&#8377;${d.revenue.toLocaleString('en-IN')}</td></tr>`).join('');
   if(!rows) rows = `<tr><td colspan="3" style="text-align:center; color:#777;">No items sold.</td></tr>`;
   const statHtml = statRows.map(s => `<div class="br-row"><span>${s.label}</span><span>${s.value}</span></div>`).join('');
   return `<div class="br-page" style="width:302px;">
-      <div class="br-head">
-        <div class="br-ta">${SHOP.name_ta}</div>
-        <div style="font-size:9.5px; color:#000; margin-top:4px;">${title}</div>
-      </div>
+      ${rptThermHead(estEsc(title), '', bid)}
       <div class="br-summary">${statHtml}</div>
       <table class="br-table" style="margin-top:8px;">
         <thead><tr><th style="width:48%;">Item</th><th class="num" style="width:16%;">Qty</th><th class="num" style="width:36%;">Revenue</th></tr></thead>
@@ -7425,7 +7451,7 @@ function buildItemsSoldReportHTML(title, statRows, itemRows){
 async function shareOverallItemsSoldPDF(){
   if(!lastOverallItemsSummary){ alert('No data to share.'); return; }
   try{
-    const doc = await renderOffscreenToPDF(buildItemsSoldReportHTML('Items Sold — Overall (All Sellers)', lastOverallItemsSummary.statRows, lastOverallItemsSummary.itemRows));
+    const doc = await renderOffscreenToPDF(buildItemsSoldReportHTML('Items Sold — Overall (All Sellers)', lastOverallItemsSummary.statRows, lastOverallItemsSummary.itemRows, lastOverallItemsSummary.bid));
     await shareGeneratedPDF(doc, 'Items_Sold_Overall_' + new Date().toISOString().slice(0,10) + '.pdf', SHOP.name_en + ' — Items Sold Overall');
   } catch(e){
     alert('Could not generate/share the PDF. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
@@ -7435,7 +7461,7 @@ async function shareOverallItemsSoldPDF(){
 async function shareBillItemsSoldPDF(){
   if(!lastBillItemsSummary){ alert('Enter a Bill No first.'); return; }
   try{
-    const doc = await renderOffscreenToPDF(buildItemsSoldReportHTML('Bill No "' + lastBillItemsSummary.billNo + '" — Items Sold', lastBillItemsSummary.statRows, lastBillItemsSummary.itemRows));
+    const doc = await renderOffscreenToPDF(buildItemsSoldReportHTML('Bill No "' + lastBillItemsSummary.billNo + '" — Items Sold', lastBillItemsSummary.statRows, lastBillItemsSummary.itemRows, lastBillItemsSummary.bid));
     await shareGeneratedPDF(doc, 'Bill_' + lastBillItemsSummary.billNo + '_Items_' + new Date().toISOString().slice(0,10) + '.pdf', SHOP.name_en + ' — Bill ' + lastBillItemsSummary.billNo);
   } catch(e){
     alert('Could not generate/share the PDF. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
@@ -7449,9 +7475,7 @@ function buildSellerCredentialsHTML(sellersList){
         <div class="br-hist-sub">ID: <b>${estEsc(s.id)}</b> &nbsp;&middot;&nbsp; Password: <b>${s.pin ? custEsc(s.pin) : '&mdash;'}</b></div>
       </div>`).join('');
   return `<div class="br-page" style="width:302px;">
-      <div class="br-head">
-        <div class="br-ta">User Login Details</div>
-      </div>
+      ${rptThermHead('User Login Details', '', '')}
       <div class="br-hist-list">${rows || '<div style="text-align:center;color:#777;padding:10px;">No sellers added yet.</div>'}</div>
       <div style="padding:8px 10px 4px; font-size:8.5px; color:#000; text-align:center;">Keep this list secure &mdash; for office use only.${sellersList.some(x => !x.pin) ? ' &mdash; = shows after that seller logs in once more.' : ''}</div>
     </div>`;
@@ -7483,11 +7507,11 @@ function printSellerSummary(){
 }
 function printOverallItemsSold(){
   if(!lastOverallItemsSummary){ alert('No data to print.'); return; }
-  printThermalHtml(buildItemsSoldReportHTML('Items Sold \u2014 Overall (All Sellers)', lastOverallItemsSummary.statRows, lastOverallItemsSummary.itemRows));
+  printThermalHtml(buildItemsSoldReportHTML('Items Sold \u2014 Overall (All Sellers)', lastOverallItemsSummary.statRows, lastOverallItemsSummary.itemRows, lastOverallItemsSummary.bid));
 }
 function printBillItemsSold(){
   if(!lastBillItemsSummary){ alert('Enter a Bill No first.'); return; }
-  printThermalHtml(buildItemsSoldReportHTML('Bill No "' + lastBillItemsSummary.billNo + '" \u2014 Items Sold', lastBillItemsSummary.statRows, lastBillItemsSummary.itemRows));
+  printThermalHtml(buildItemsSoldReportHTML('Bill No "' + lastBillItemsSummary.billNo + '" \u2014 Items Sold', lastBillItemsSummary.statRows, lastBillItemsSummary.itemRows, lastBillItemsSummary.bid));
 }
 
 async function shareFullHistoryPDF(mode){
@@ -7513,10 +7537,7 @@ function buildLoginHistoryReportHTML(loginsList){
       </div>`;
   }).join('');
   return `<div class="br-page" style="width:302px;">
-      <div class="br-head">
-        <div class="br-ta">${SHOP.name_ta}</div>
-        <div style="font-size:10.5px; color:#000; margin-top:4px;">Login History Report</div>
-      </div>
+      ${rptThermHead('Login History Report', '', '')}
       <div class="br-hist-list">${rows || '<div style="text-align:center;color:#777;padding:10px;">No records.</div>'}</div>
     </div>`;
 }
@@ -8285,7 +8306,7 @@ function shPaint(){
   if(top.v === 'items'){
     var a = _shAgg(sales);
     title.textContent = '📦 Item History' + br;
-    lastOverallItemsSummary = { statRows: [ { label: 'Total Items Sold (Qty)', value: String(a.qty) }, { label: 'Total Discount Given', value: '₹' + a.disc.toLocaleString('en-IN') }, { label: 'Total Sales Amount', value: '₹' + a.tot.toLocaleString('en-IN') } ], itemRows: a.rows };
+    lastOverallItemsSummary = { statRows: [ { label: 'Total Items Sold (Qty)', value: String(a.qty) }, { label: 'Total Discount Given', value: '₹' + a.disc.toLocaleString('en-IN') }, { label: 'Total Sales Amount', value: '₹' + a.tot.toLocaleString('en-IN') } ], itemRows: a.rows, bid: salesFilters.branch };
     h = _shStats(a) + '<div class="history-head-row"><div class="section-title" style="margin:0;">Items Sold (All Sellers)</div>' + btns('printOverallItemsSold()', 'shareOverallItemsSoldPDF()') + '</div>' + _shRowsHtml(a.rows);
   } else if(top.v === 'sellers'){
     title.textContent = '👤 Seller History' + br;
@@ -8303,7 +8324,7 @@ function shPaint(){
     var nm = (SALES.filter(function(x){ return x.sellerId === top.sid; })[0] || {}).sellerName || top.sid;
     var a2 = _shAgg(mine);
     title.textContent = '👤 ' + nm + br;
-    lastSellerSummary = { sellerName: nm + br, qty: a2.qty, discount: a2.disc, discPct: a2.pct, totalSales: a2.tot, itemRows: a2.rows };
+    lastSellerSummary = { sellerName: nm + br, qty: a2.qty, discount: a2.disc, discPct: a2.pct, totalSales: a2.tot, itemRows: a2.rows, bid: rptBidOfList(mine, salesFilters.branch) };
     h = _shStats(a2) + '<div class="history-head-row"><div class="section-title" style="margin:0;">Items Sold by ' + estEsc(nm) + '</div>' + btns('printSellerSummary()', 'shareSellerSummaryPDF()') + '</div>' + _shRowsHtml(a2.rows);
   }
   body.innerHTML = h; body.scrollTop = keep;
@@ -8408,7 +8429,7 @@ function openSaleEdit(id){
   _seMode = 'amt'; _seAmt = Number(s.total) || 0;                          // opens with the bill exactly as it is
   _sePct = (Number(s.subtotal) > 0) ? Math.round((Number(s.discount) || 0) / Number(s.subtotal) * 10000) / 100 : 0;
   var dt = ''; try{ dt = new Date(s.time).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }); }catch(e){}
-  document.getElementById('saleEditTitle').textContent = 'Edit Bill #' + (s.billNo || '-');
+  document.getElementById('saleEditTitle').textContent = 'Edit Bill ' + billNoRef(s);
   document.getElementById('saleEditSub').innerHTML = custEsc(s.sellerName || '') + ' &middot; ' + dt + (s.buyerName ? ' &middot; ' + custEsc(s.buyerName) : '');
   document.getElementById('saleEditItems').innerHTML = _seRows.map(function(r, i){
     return '<div class="se-row" id="seRow' + i + '"><div class="se-name"><b>' + custEsc(r.it.ta || r.it.en || '') + '</b>' + (r.it.en && r.it.ta ? '<small>' + custEsc(r.it.en) + '</small>' : '') + '</div>' +
@@ -8465,7 +8486,7 @@ async function saveSaleEdit(){
   var same = c.tot === Number(s.total) && kept.length === (s.items || []).length &&
     _seRows.every(function(r){ return r.qty === (Number(r.it.qty) || 0) && r.price === (Number(r.it.price) || 0); });
   if(same){ closeSaleEdit(); return; }
-  var ok = await showConfirm('Save changes to bill #' + (s.billNo || '-') + '?\n\n₹' + (Number(s.total) || 0).toLocaleString('en-IN') + '  →  ₹' + c.tot.toLocaleString('en-IN') + '\n\nThe bill will show "Edited" on every phone.');
+  var ok = await showConfirm('Save changes to bill ' + billNoRef(s) + '?\n\n₹' + (Number(s.total) || 0).toLocaleString('en-IN') + '  →  ₹' + c.tot.toLocaleString('en-IN') + '\n\nThe bill will show "Edited" on every phone.');
   if(!ok) return;
   if(!s.editOrig) s.editOrig = { items: (s.items || []).map(function(it){ return Object.assign({}, it); }), subtotal: s.subtotal, discount: s.discount, discountPercent: s.discountPercent, total: s.total, paymentMethod: s.paymentMethod || 'cash' };
   var oldTot = Number(s.total) || 0;
@@ -8485,14 +8506,14 @@ async function saveSaleEdit(){
   closeSaleEdit();
   if(!document.getElementById('adminScreen').classList.contains('hidden')) renderAdmin(); else render();
   refreshNotifBadges();
-  try{ scanToast('✎ Bill #' + (s.billNo || '-') + ' updated • ₹' + c.tot.toLocaleString('en-IN'), 'green'); }catch(e){}
+  try{ scanToast('✎ Bill ' + billNoRef(s) + ' updated • ₹' + c.tot.toLocaleString('en-IN'), 'green'); }catch(e){}
 }
 /* Seller: ask the admin to cancel one of their own bills. The bill stops counting in the totals
    straight away; the admin then approves or rejects. */
 async function requestCancelBill(saleId){
   const s = SALES.find(x => x.id === saleId);
   if(!s || saleStatus(s) !== 'confirmed') return;
-  const ok = await showConfirm('Cancel bill #' + (s.billNo || '-') + '? The admin will be asked to approve. / பில்லை ரத்து செய்யவா?');
+  const ok = await showConfirm('Cancel bill ' + billNoRef(s) + '? The admin will be asked to approve. / பில்லை ரத்து செய்யவா?');
   if(!ok) return;
   setSaleStatus(saleId, 'cancel_pending');
 }
@@ -8565,6 +8586,7 @@ function salesDefaultYr(){ return 'y:' + new Date().getFullYear(); }
 function salesRange(){
   if(salesFilters.from || salesFilters.to) return { from: salesFilters.from || '', to: salesFilters.to || '' };
   var p = String(salesFilters.yr || ''), k = p.slice(2);
+  if(p === 'today' || p === 'yday'){ var d = saleLocalDate(Date.now() - (p === 'yday' ? 86400000 : 0)); return { from: d, to: d }; }
   if(p.indexOf('y:') === 0 && k) return { from: k + '-01-01', to: k + '-12-31' };
   if(p.indexOf('d:') === 0 && k) return diwaliRange(k);
   return { from: '', to: '' };
@@ -8572,6 +8594,7 @@ function salesRange(){
 function salesPeriodLabel(){
   if(salesFilters.from || salesFilters.to) return salesDateLabel(salesFilters.from || salesFilters.to) + (salesFilters.to && salesFilters.to !== salesFilters.from ? ' – ' + salesDateLabel(salesFilters.to) : '');
   var p = String(salesFilters.yr || ''), k = p.slice(2);
+  if(p === 'today' || p === 'yday') return (p === 'today' ? 'Today' : 'Yesterday') + ' (' + salesDateLabel(salesRange().from) + ')';
   if(p.indexOf('y:') === 0 && k) return k === String(new Date().getFullYear()) ? k + ' (this year)' : k;
   if(p.indexOf('d:') === 0 && k){ var r = diwaliRange(k); return 'Diwali ' + k + ' (' + salesDateLabel(r.from) + ' – ' + salesDateLabel(r.to) + ')'; }
   return 'All years';
@@ -8584,6 +8607,8 @@ function salesYears(){
 function salesYearOptionsHtml(){
   var cur = salesFilters.yr || '', custom = !!(salesFilters.from || salesFilters.to), ys = salesYears(), thisY = String(new Date().getFullYear());
   var h = custom ? '<option value="" selected>Dates chosen (📅)</option>' : '';
+  h += '<option value="today"' + (!custom && cur === 'today' ? ' selected' : '') + '>Today (' + salesDateLabel(saleLocalDate(new Date())) + ')</option>';
+  h += '<option value="yday"' + (!custom && cur === 'yday' ? ' selected' : '') + '>Yesterday (' + salesDateLabel(saleLocalDate(Date.now() - 86400000)) + ')</option>';
   h += '<option value="all"' + (!custom && cur === 'all' ? ' selected' : '') + '>All years</option>';
   ys.forEach(function(y){ h += '<option value="y:' + y + '"' + (!custom && cur === 'y:' + y ? ' selected' : '') + '>' + y + (y === thisY ? ' (this year)' : '') + '</option>'; });
   ys.forEach(function(y){ h += '<option value="d:' + y + '"' + (!custom && cur === 'd:' + y ? ' selected' : '') + '>Diwali ' + y + '</option>'; });
@@ -8628,10 +8653,72 @@ function dashDayRows(list){
   });
   return Array.from(m.values()).sort(function(a, b){ return a.day < b.day ? -1 : a.day > b.day ? 1 : 0; });
 }
-function a4Head(title, scopeHtml){
-  return '<div class="bkr-head"><div class="bkr-shop-ta">' + SHOP.name_ta + '</div><div class="bkr-shop-en">' + SHOP.name_en + '</div>' +
-    '<div class="bkr-addr">Phone: ' + fmtPhones(SHOP.phones.join(' / ')) + '</div></div>' +
-    '<div class="bkr-title">' + title + '</div><div class="bkr-period">' + scopeHtml + '</div>';
+/* ---- Report letterhead + Branch details, always filled from Admin -> Branches (title, branch name & code, owner,
+   contact number, short address, Google Maps link). A report for one branch shows that branch; "All branches" shows
+   the main shop on top and every branch in the Branch details table. A blank title / number falls back to the shop's. ---- */
+var a4FootName = '';
+function rptBid(bid){ bid = adminScope() || bid || ''; return (bid && BRANCHES[bid]) ? bid : ''; }
+/* Reports made from a list of bills (history, one bill no): the branch of those bills when they are all from one branch. */
+function rptBidOfList(list, bid){
+  var id = rptBid(bid); if(id) return id;
+  var ids = {}; (list || []).forEach(function(s){ ids[(s && s.branchId) || 'main'] = 1; });
+  var k = Object.keys(ids); return (k.length === 1 && BRANCHES[k[0]]) ? k[0] : '';
+}
+function rptBranches(bid){
+  var id = rptBid(bid); if(id) return [BRANCHES[id]];
+  var rank = function(b){ return b.id === 'main' ? 0 : b.enabled === false ? 3 : branchSoon(b) ? 2 : 1; };
+  return Object.values(BRANCHES || {}).filter(Boolean).sort(function(a, b){ return rank(a) - rank(b); });
+}
+function rptInfo(b){
+  b = b || {};
+  return { title: branchTitle(b) || SHOP.name_ta, name: b.name || b.short || b.id || '', code: b.short || '', owner: String(b.owner || '').trim(),
+    phone: branchPhoneText(b), addr: branchAddr(b), map: branchMapShort(b),
+    status: b.enabled === false ? 'On hold' : branchSoon(b) ? 'Opening soon' : 'Active' };
+}
+function rptNameCode(i){ return i.name + (i.code ? ' (' + i.code + ')' : ''); }
+function rptMain(bid){ return rptInfo(rptBranches(bid)[0] || BRANCHES.main); }
+/* Certificate wording: "Thanneerpandhal branch (TPL)" or "all branches - Thanneerpandhal (TPL), Thennalakudi Bypass (TBP)". */
+function rptCertBranches(bid){ var id = rptBid(bid); return id ? rptInfo(BRANCHES[id]).name + ' branch' + (BRANCHES[id].short ? ' (' + BRANCHES[id].short + ')' : '') : 'all branches \u2014 ' + rptBranches('').map(function(b){ return rptNameCode(rptInfo(b)); }).join(', '); }
+function rptScopeName(bid){ var id = rptBid(bid); return id ? rptNameCode(rptInfo(BRANCHES[id])) : 'All branches'; }
+/* Owner's name under the signature line, above "Proprietor / Authorised Signatory" (the branch's owner; the main shop's for all branches). */
+function rptOwnerLine(bid){ var o = rptMain(bid).owner; return o ? '<b>' + estEsc(o) + '</b><br>' : ''; }
+var RPT_DASH = '&mdash;';
+function a4BranchTable(bid){
+  var one = !!rptBid(bid), v = function(t){ return t ? estEsc(t) : RPT_DASH; };
+  if(one){
+    var i = rptMain(bid), th = function(t){ return '<th style="width:17%;">' + t + '</th>'; };
+    return '<div class="bkr-bd" style="margin-bottom:16px;"><div class="bkr-sec">Branch details</div><table style="margin:0;"><tbody>' +
+      '<tr>' + th('Branch name') + '<td>' + v(rptNameCode(i)) + '</td>' + th('Status') + '<td>' + i.status + '</td></tr>' +
+      '<tr>' + th('Branch owner') + '<td>' + v(i.owner) + '</td>' + th('Contact number') + '<td>' + v(i.phone) + '</td></tr>' +
+      '<tr>' + th('Address') + '<td colspan="3">' + v(i.addr) + '</td></tr>' +
+      '<tr>' + th('Google Maps') + '<td colspan="3" style="word-break:break-all;">' + v(i.map) + '</td></tr></tbody></table></div>';
+  }
+  return '<div class="bkr-bd" style="margin-bottom:16px;"><div class="bkr-sec">Branch details</div><table style="margin:0;"><thead><tr><th style="width:40px;">Code</th><th style="width:120px;">Branch</th><th style="width:96px;">Owner</th><th style="width:104px;">Contact number</th><th>Address / Google Maps</th><th style="width:62px;">Status</th></tr></thead><tbody>' +
+    rptBranches(bid).map(function(b){
+      var i = rptInfo(b);
+      return '<tr><td>' + v(i.code) + '</td><td><b>' + v(i.name) + '</b></td><td>' + v(i.owner) + '</td><td style="white-space:nowrap;">' + v(i.phone).replace(/ \/ /g, '<br>') + '</td>' +
+        '<td>' + v(i.addr) + (i.map ? '<div style="font-size:9.5px; word-break:break-all; margin-top:1px;">' + estEsc(i.map) + '</div>' : '') + '</td><td style="white-space:nowrap;">' + i.status + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+}
+function a4Head(title, scopeHtml, bid){
+  var one = !!rptBid(bid), m = rptMain(bid);
+  a4FootName = SHOP.name_en + (one ? ' • ' + rptNameCode(m) : '');
+  return '<div class="bkr-head"><div class="bkr-shop-ta">' + estEsc(m.title) + '</div><div class="bkr-shop-en">' + estEsc(SHOP.name_en) + '</div>' +
+    (m.addr ? '<div class="bkr-addr">' + estEsc(m.addr) + '</div>' : '') +
+    '<div class="bkr-addr" style="margin-top:3px;">' + (one ? 'Branch' : 'Main shop') + ': <b>' + estEsc(rptNameCode(m)) + '</b> &nbsp;&bull;&nbsp; Phone: ' + estEsc(m.phone) +
+    (m.owner ? ' &nbsp;&bull;&nbsp; Owner: ' + estEsc(m.owner) : '') + '</div></div>' +
+    '<div class="bkr-title">' + title + '</div><div class="bkr-period">' + scopeHtml + '</div>' + a4BranchTable(bid);
+}
+/* 80mm reports: the same details, kept short to save paper. */
+function rptThermHead(titleHtml, subHtml, bid){
+  var one = !!rptBid(bid), list = rptBranches(bid), m = rptInfo(list[0] || BRANCHES.main), s = 'font-size:9px; color:#000; line-height:1.35;';
+  var h = '<div class="br-head"><div class="br-ta">' + estEsc(m.title) + '</div><div style="font-size:8.5px; letter-spacing:1.5px; color:#000; font-weight:700;">' + estEsc(SHOP.name_en) + '</div>';
+  h += (one ? [m] : list.map(rptInfo)).map(function(i){
+    return '<div style="' + s + ' margin-top:3px;"><b>' + (one ? 'Branch: ' : '') + estEsc(rptNameCode(i)) + '</b>' + (i.status !== 'Active' ? ' (' + i.status + ')' : '') +
+      (i.addr ? '<br>' + estEsc(i.addr) : '') + '<br>Ph: ' + estEsc(i.phone) + (i.owner ? ' &bull; Owner: ' + estEsc(i.owner) : '') + '</div>';
+  }).join('');
+  return h + '<div style="font-size:10.5px; color:#000; margin-top:5px; padding-top:4px; border-top:1px dashed #000; font-weight:800;">' + titleHtml + '</div>' +
+    (subHtml ? '<div style="font-size:9px; color:#000; margin-top:2px;">' + subHtml + '</div>' : '') + '</div>';
 }
 function a4SummaryTable(d){
   return '<div class="bkr-sec">1. Summary</div><table><thead><tr><th>Particulars</th><th class="num">Amount</th></tr></thead><tbody>' +
@@ -8654,7 +8741,7 @@ function a4SellerBlock(num, sellers){
 function a4BillRow(s, no){
   var st = saleStatus(s), status = st === 'cancelled' ? 'Cancelled' : st === 'cancel_pending' ? 'Cancel requested' : 'Confirmed';
   var when = new Date(s.time).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  return '<tr><td class="num">' + no + '</td><td>#' + estEsc(s.billNo || '-') + '</td><td>' + when + '</td><td>' + estEsc(s.sellerName || '') + '</td><td>' + status + '</td><td class="num">' + (isCountedSale(s) ? a4Inr(s.total || 0) : '-') + '</td></tr>';
+  return '<tr><td class="num">' + no + '</td><td>' + estEsc(billNoRef(s)) + '</td><td>' + when + '</td><td>' + estEsc(s.sellerName || '') + '</td><td>' + status + '</td><td class="num">' + (isCountedSale(s) ? a4Inr(s.total || 0) : '-') + '</td></tr>';
 }
 /* A4 sheets: each page is a fixed 794 x 1123 sheet. Blocks are placed one after another and every sheet is measured, so a page is filled down to its footer, a table only breaks between two rows, and its header repeats on the next sheet. */
 function a4Css(){
@@ -8680,7 +8767,7 @@ function a4Paginate(host, blocks, docTitle){
     var el = document.createElement('div'); el.className = 'bank-report a4s';
     el.innerHTML = '<div class="a4s-body"></div><div class="a4s-foot"><span>Generated on: ' + today + '</span><span class="a4s-pg"></span></div>';
     host.appendChild(el); pages.push(el); cur = el.querySelector('.a4s-body');
-    if(pages.length > 1) cur.innerHTML = '<div class="a4s-mini"><span>' + SHOP.name_en + '</span><span>' + docTitle + ' (continued)</span></div>';
+    if(pages.length > 1) cur.innerHTML = '<div class="a4s-mini"><span>' + estEsc(a4FootName || SHOP.name_en) + '</span><span>' + docTitle + ' (continued)</span></div>';
   }
   function fits(){ return cur.scrollHeight <= cur.clientHeight + 1; }
   function blocksOnPage(except){ return Array.prototype.filter.call(cur.children, function(c){ return c !== except && c.classList.contains('a4s-blk'); }).length; }
@@ -8709,7 +8796,7 @@ function a4Paginate(host, blocks, docTitle){
   }
   newPage();
   blocks.forEach(function(b){ if(b.html != null) addStatic(b.html); else addTable(b); });
-  pages.forEach(function(el, i){ el.querySelector('.a4s-pg').textContent = SHOP.name_en + ' — Page ' + (i + 1) + ' of ' + pages.length; });
+  pages.forEach(function(el, i){ el.querySelector('.a4s-pg').textContent = (a4FootName || SHOP.name_en) + ' — Page ' + (i + 1) + ' of ' + pages.length; });
   return pages;
 }
 async function a4MakePdf(blocks, docTitle){
@@ -8732,7 +8819,7 @@ async function a4MakePdf(blocks, docTitle){
 
 /* ---- Sales dashboard print (the filter on the Sales tab: seller / branch / period) ---- */
 function dashScopeLine(){
-  var br = salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch].name : 'All branches';
+  var br = rptScopeName(salesFilters.branch);
   return 'Period: ' + salesPeriodLabel() + '  •  ' + (salesFilters.seller ? 'Seller: ' + sellerNameOf(salesFilters.seller) : 'All sellers') + '  •  ' + br;
 }
 function buildDashboardThermalHTML(list, title, scope){
@@ -8740,10 +8827,10 @@ function buildDashboardThermalHTML(list, title, scope){
   var stat = function(l, v, cls){ return '<div class="br-row' + (cls ? ' ' + cls : '') + '"><span>' + l + '</span><span>' + v + '</span></div>'; };
   var bills = list.slice(0, 300).map(function(s){
     var st = saleStatus(s), tag = st === 'cancelled' ? ' <b>&middot; CANCELLED</b>' : st === 'cancel_pending' ? ' <b>&middot; CANCEL REQUESTED</b>' : '';
-    return '<div class="br-hist-entry"><div class="br-hist-top"><span>#' + estEsc(s.billNo || '-') + ' &middot; ' + new Date(s.time).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '</span><span class="num">' + (isCountedSale(s) ? a4Inr(s.total || 0) : '-') + '</span></div><div class="br-hist-sub">' + estEsc(s.sellerName || '') + tag + '</div></div>';
+    return '<div class="br-hist-entry"><div class="br-hist-top"><span>' + estEsc(billNoRef(s)) + ' &middot; ' + new Date(s.time).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '</span><span class="num">' + (isCountedSale(s) ? a4Inr(s.total || 0) : '-') + '</span></div><div class="br-hist-sub">' + estEsc(s.sellerName || '') + tag + '</div></div>';
   }).join('');
   return '<div class="br-page" style="width:302px;">' +
-    '<div class="br-head"><div class="br-ta">' + SHOP.name_ta + '</div><div style="font-size:10.5px; color:#000; margin-top:3px; font-weight:800;">' + estEsc(title) + '</div><div style="font-size:9px; color:#000; margin-top:2px;">' + estEsc(scope) + '</div></div>' +
+    rptThermHead(estEsc(title), estEsc(scope), salesFilters.branch) +
     '<div class="br-summary">' + stat('Total sales (confirmed)', a4Inr(d.net)) + stat('Bills (all)', d.all) + stat('Confirmed bills', d.bills) + stat('Items sold (qty)', d.items) + stat('Discount given', '-' + a4Inr(d.disc), 'br-disc') + stat('Discount %', d.pct + '%') + stat('Cash', a4Inr(d.cash)) + stat('UPI / digital', a4Inr(d.upi)) + stat('Cancelled', d.cancelled) + '</div>' +
     (sellers.length > 1 ? '<table class="br-table" style="margin-top:6px;"><thead><tr><th style="width:50%;">Seller</th><th class="num" style="width:16%;">Bills</th><th class="num" style="width:34%;">Net</th></tr></thead><tbody>' + sellers.map(function(r){ return '<tr><td>' + estEsc(r.name) + (sellerNoLabel(r.key) ? ' <span style="font-size:8.5px;">' + sellerNoLabel(r.key) + '</span>' : '') + '</td><td class="num">' + r.bills + '</td><td class="num">' + a4Inr(r.net) + '</td></tr>'; }).join('') + '</tbody></table>' : '') +
     '<div class="br-hist-list" style="margin-top:6px;">' + (bills || '<div style="text-align:center;color:#777;padding:10px;">No bills.</div>') + '</div>' +
@@ -8753,7 +8840,7 @@ function buildDashboardThermalHTML(list, title, scope){
 }
 function buildDashboardA4Blocks(list, title, scope){
   var d = dashSummary(list), sellers = dashSellerRows(list), blocks = [], n = 2;
-  blocks.push({ id: 'head', fixedTop: true, html: a4Head(a4TitleOr(title), estEsc(scope)) + a4SummaryTable(d) });
+  blocks.push({ id: 'head', fixedTop: true, html: a4Head(a4TitleOr(title), estEsc(scope), salesFilters.branch) + a4SummaryTable(d) });
   if(!list.length) blocks.push({ html: '<div class="bkr-decl">No bills for this filter.</div>' });
   if(sellers.length > 1) blocks.push(a4SellerBlock(n++, sellers));
   if(list.length){
@@ -8773,17 +8860,17 @@ function printDashboardThermal(){
    Bill-wise and day-wise history rows, figures and the declaration stay as recorded. Export as PDF or Word. ---- */
 var a4Ed = { names: {}, admin: '', title: '', note: '', noteOn: false, order: [], kind: '', list: [], f: null, r: null, scope: '', fileBase: '', shareTitle: '', sellerRows: [], timer: null };
 var A4_ED_LABELS = { sellers: 'Seller-wise table', bills: 'Bill-wise history (locked)', days: 'Day-wise history (locked)', note: 'Remarks (your note)' };
-function a4TitleOr(t){ return (a4Ed.title || '').trim() || t; }
-function a4SellerName(r){ var v = a4Ed.names ? a4Ed.names[r.key] : null; return (v != null && String(v).trim() !== '') ? String(v) : r.name; }
-function a4SigName(){ var v = (a4Ed.admin || '').trim(); return v ? '<div class="sig-name">' + estEsc(v) + '</div>' : ''; }
+function a4TitleOr(t){ return a4Ed.preview ? t : ((a4Ed.title || '').trim() || t); }
+function a4SellerName(r){ var v = (a4Ed.names && !a4Ed.preview) ? a4Ed.names[r.key] : null; return (v != null && String(v).trim() !== '') ? String(v) : r.name; }
+function a4SigName(){ var v = a4Ed.preview ? '' : (a4Ed.admin || '').trim(); return v ? '<div class="sig-name">' + estEsc(v) + '</div>' : ''; }
 function a4EdSrcBlocks(){
   return a4Ed.kind === 'dash' ? buildDashboardA4Blocks(a4Ed.list, 'SALES DASHBOARD', a4Ed.scope) : buildSalesStatementBlocks(a4Ed.f, a4Ed.r, a4Ed.list);
 }
 function a4EdBlocks(){
   var blocks = a4EdSrcBlocks();
-  if(a4Ed.noteOn && (a4Ed.note || '').trim()) blocks.push({ id: 'note', html: '<div class="bkr-sec">Remarks</div><div class="bkr-decl">' + estEsc(a4Ed.note.trim()).replace(/\n/g, '<br>') + '</div>' });
+  if(!a4Ed.preview && a4Ed.noteOn && (a4Ed.note || '').trim()) blocks.push({ id: 'note', html: '<div class="bkr-sec">Remarks</div><div class="bkr-decl">' + estEsc(a4Ed.note.trim()).replace(/\n/g, '<br>') + '</div>' });
   var top = blocks.filter(function(b){ return b.fixedTop; }), end = blocks.filter(function(b){ return b.fixedEnd; }), mid = blocks.filter(function(b){ return !b.fixedTop && !b.fixedEnd; });
-  var ord = a4Ed.order || [];
+  var ord = a4Ed.preview ? [] : (a4Ed.order || []);
   mid.forEach(function(b, i){ var k = ord.indexOf(b.id); b._k = k >= 0 ? k : 100 + i; });
   mid.sort(function(x, y){ return x._k - y._k; });
   return top.concat(mid, end);
@@ -8922,21 +9009,43 @@ function a4EdCss(){
 }
 function a4EdOpen(opts){
   a4Css(); a4EdCss();
-  if(a4Ed.kind !== opts.kind){ a4Ed.title = ''; a4Ed.note = ''; a4Ed.noteOn = false; }
-  a4Ed.order = [];
-  Object.assign(a4Ed, { kind: opts.kind, list: opts.list, f: opts.f || null, r: opts.r || null, scope: opts.scope || '', fileBase: opts.fileBase, shareTitle: opts.shareTitle });
+  var pv = !!opts.previewOnly;
+  if(!pv && a4Ed.kind !== opts.kind){ a4Ed.title = ''; a4Ed.note = ''; a4Ed.noteOn = false; }
+  if(!pv) a4Ed.order = [];
+  Object.assign(a4Ed, { kind: opts.kind, list: opts.list, f: opts.f || null, r: opts.r || null, scope: opts.scope || '', fileBase: opts.fileBase, shareTitle: opts.shareTitle, preview: pv });
+  a4EdMode(pv);
   document.getElementById('a4EdOverlay').classList.add('show');
   a4EdRefresh(true);
+}
+/* Preview-only (Sales tab): the whole screen shows the A4 pages (pinch to zoom) with just Export PDF.
+   Edit mode (Reports statement): the edit panel, preview, Export PDF and Export Word, as before. */
+function a4EdMode(pv){
+  var sh = document.getElementById('a4EdSheet'), side = document.getElementById('a4EdSide'), wb = document.getElementById('a4EdWordBtn'), tt = document.getElementById('a4EdTitle');
+  if(sh){
+    sh.style.width = pv ? '100vw' : '96vw'; sh.style.maxWidth = pv ? '100vw' : '980px';
+    sh.style.height = pv ? '100dvh' : ''; sh.style.maxHeight = pv ? '100dvh' : '94vh';
+    sh.style.borderRadius = pv ? '0' : '';
+    sh.style.paddingTop = pv ? 'env(safe-area-inset-top)' : '';
+  }
+  var a2 = document.getElementById('a2hsBar');   // keep the install bar from covering "Back" in full view
+  if(a2) a2.style.visibility = pv ? 'hidden' : '';
+  if(side) side.style.display = pv ? 'none' : '';
+  if(wb) wb.style.display = pv ? 'none' : '';
+  if(tt) tt.textContent = pv ? 'PDF preview' : 'Edit & export document';
+  var vp = document.querySelector('meta[name="viewport"]');
+  if(vp) vp.setAttribute('content', pv ? 'width=device-width, initial-scale=1, maximum-scale=5, minimum-scale=1, user-scalable=yes, viewport-fit=cover'
+                                        : 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover');
 }
 function a4EdClose(){
   clearTimeout(a4Ed.timer);
   var o = document.getElementById('a4EdOverlay'); if(o) o.classList.remove('show');
+  if(a4Ed.preview){ a4Ed.preview = false; a4EdMode(false); }
 }
 async function shareDashboardA4(){
   var sc = salesRecordsScope();
   if(!sc.list.length){ alert('No bills for this filter.'); return; }
   var scope = dashScopeLine();
-  a4EdOpen({ kind: 'dash', list: [...sc.list].reverse(), scope: scope, fileBase: 'Sales_Dashboard_' + new Date().toISOString().slice(0, 10), shareTitle: 'Sales Dashboard — ' + scope });
+  a4EdOpen({ kind: 'dash', previewOnly: true, list: [...sc.list].reverse(), scope: scope, fileBase: 'Sales_Dashboard_' + new Date().toISOString().slice(0, 10), shareTitle: 'Sales Dashboard — ' + scope });
 }
 
 /* ---- Reports tab: A4 sales statement for a Date, Month, Year (overall) or Diwali season (+ seller, branch) ---- */
@@ -8961,8 +9070,8 @@ function a4StatementList(f, r){
 }
 function buildSalesStatementBlocks(f, r, list){
   var d = dashSummary(list), sellers = dashSellerRows(list), blocks = [], n = 2;
-  var scope = 'Period: <b>' + estEsc(r.label) + '</b> &nbsp;&bull;&nbsp; Seller: <b>' + estEsc(f.seller ? sellerNameOf(f.seller) : 'All sellers') + '</b> &nbsp;&bull;&nbsp; Branch: <b>' + estEsc(salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch].name : 'All branches') + '</b>';
-  blocks.push({ id: 'head', fixedTop: true, html: a4Head(a4TitleOr('SALES STATEMENT'), scope) + a4SummaryTable(d) });
+  var scope = 'Period: <b>' + estEsc(r.label) + '</b> &nbsp;&bull;&nbsp; Seller: <b>' + estEsc(f.seller ? sellerNameOf(f.seller) : 'All sellers') + '</b> &nbsp;&bull;&nbsp; Branch: <b>' + estEsc(rptScopeName(salesFilters.branch)) + '</b>';
+  blocks.push({ id: 'head', fixedTop: true, html: a4Head(a4TitleOr('SALES STATEMENT'), scope, salesFilters.branch) + a4SummaryTable(d) });
   if(!list.length) blocks.push({ html: '<div class="bkr-decl">No sales in this period.</div>' });
   if(!f.seller && sellers.length) blocks.push(a4SellerBlock(n++, sellers));
   if(f.detail === 'daily' && list.length){
@@ -8972,7 +9081,7 @@ function buildSalesStatementBlocks(f, r, list){
     blocks.push({ id: 'days', sec: (n++) + '. Day-wise', head: '<th>Date</th><th class="num">Bills</th><th class="num">Items</th><th class="num">Discount</th><th class="num">Net</th>', units: units });
   }
   blocks.push({ id: 'decl', fixedEnd: true, html: '<div class="bkr-decl"><b>Declaration:</b> I hereby declare that the information furnished above is true, complete and correct to the best of my knowledge and belief, and is drawn from the sales records maintained in the ordinary course of business. All amounts are in Indian Rupees (INR).</div>' +
-    '<div class="bkr-sign"><div class="sig-block"><div class="sig-line">Place &amp; Date</div></div><div class="sig-block">' + a4SigName() + '<div class="sig-line">Proprietor / Authorised Signatory<br>(Seal &amp; Signature)</div></div></div>' });
+    '<div class="bkr-sign"><div class="sig-block"><div class="sig-line">Place &amp; Date</div></div><div class="sig-block">' + a4SigName() + '<div class="sig-line">' + (a4SigName() ? '' : rptOwnerLine(salesFilters.branch)) + 'Proprietor / Authorised Signatory<br>(Seal &amp; Signature)</div></div></div>' });
   return blocks;
 }
 async function shareSalesA4(){
@@ -9162,17 +9271,16 @@ function clearReportFilters(){
   renderAdmin();
 }
 
-function buildReportPDFHTML(totalPaid, totalDiscount, label){
+function buildReportPDFHTML(totalPaid, totalDiscount, label, cash, upi, bid){
   const totalBilled = totalPaid + totalDiscount;
   const discPct = totalBilled > 0 ? Math.round((totalDiscount/totalBilled)*1000)/10 : 0;
   return `<div class="br-page" style="width:302px;">
-      <div class="br-head">
-        <div class="br-ta">${SHOP.name_ta}</div>
-        <div style="font-size:10.5px; color:#000; margin-top:4px;">Sales Report &mdash; ${label}</div>
-      </div>
+      ${rptThermHead('Sales Report &mdash; ' + estEsc(label), '', bid)}
       <div style="padding:12px 10px 0; text-align:center;">${buildSalesDonutChartSVG(totalPaid, totalDiscount)}</div>
       <div class="br-summary" style="padding:6px 10px 12px;">
         <div class="br-row"><span>Total Sales</span><span>&#8377;${totalPaid.toLocaleString('en-IN')}</span></div>
+        <div class="br-row" style="padding-left:10px;"><span>&#8226; Cash</span><span>&#8377;${Math.round(cash || 0).toLocaleString('en-IN')}</span></div>
+        <div class="br-row" style="padding-left:10px;"><span>&#8226; UPI</span><span>&#8377;${Math.round(upi || 0).toLocaleString('en-IN')}</span></div>
         <div class="br-row"><span>Total Discount</span><span>&#8377;${totalDiscount.toLocaleString('en-IN')}</span></div>
         <div class="br-row" style="font-weight:700;"><span>Total Billed Value</span><span>&#8377;${totalBilled.toLocaleString('en-IN')}</span></div>
         <div class="br-row"><span>Overall Discount %</span><span>${discPct}%</span></div>
@@ -9182,16 +9290,17 @@ function buildReportPDFHTML(totalPaid, totalDiscount, label){
 
 async function shareReportPDF(){
   SALES = loadJSON('ars_sales', []);
-  const dateFilteredSales = reportFilters.date
-    ? SALES.filter(s => saleLocalDate(s.time) === reportFilters.date)
-    : SALES;
+  const bid = rptBid(salesFilters.branch);   // same branch as the Reports tab shows
+  const dateFilteredSales = SALES.filter(s => saleInBranch(s, bid) && (!reportFilters.date || saleLocalDate(s.time) === reportFilters.date));
   const confirmedSales = dateFilteredSales.filter(s => isCountedSale(s));
   const totalPaid = confirmedSales.reduce((a,s)=>a+s.total,0);
   const totalDiscountGiven = confirmedSales.reduce((a,s)=>a+(s.discount||0),0);
+  const totalCash = confirmedSales.reduce((a,s)=>a+saleCashAmount(s),0);
+  const totalUpi = confirmedSales.reduce((a,s)=>a+saleUpiAmount(s),0);
   const label = reportFilters.date ? new Date(reportFilters.date).toLocaleDateString('en-IN', {dateStyle:'medium'}) : 'Overall (All Time)';
   if(totalPaid + totalDiscountGiven === 0){ alert('No sales data to export for this period.'); return; }
   try{
-    const doc = await renderOffscreenToPDF(buildReportPDFHTML(totalPaid, totalDiscountGiven, label));
+    const doc = await renderOffscreenToPDF(buildReportPDFHTML(totalPaid, totalDiscountGiven, label, totalCash, totalUpi, bid));
     await shareGeneratedPDF(doc, 'Sales_Report_' + (reportFilters.date || 'overall') + '.pdf', 'A.R.S Crackers — Sales Report');
   } catch(e){
     alert('Could not generate/share the PDF. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
@@ -9332,7 +9441,8 @@ function buildBankReportHTML(type, periodKey){
 /* Bank income statement on the measured A4 sheets (same paginator as the Sales statement): rows never split
    across a page, the header row repeats, and the declaration and signature stay together at the end. */
 function bankReportA4Blocks(type, periodKey){
-  const inPeriod = SALES.filter(s => isCountedSale(s) && bankPeriodKey(type, new Date(s.time)) === periodKey);
+  const bid = rptBid(salesFilters.branch);   // the branch chosen on the Reports tab (all branches when none)
+  const inPeriod = SALES.filter(s => isCountedSale(s) && saleInBranch(s, bid) && bankPeriodKey(type, new Date(s.time)) === periodKey);
   const gross = inPeriod.reduce((a,s)=>a+(s.subtotal||s.total),0);
   const disc = inPeriod.reduce((a,s)=>a+(s.discount||0),0);
   const net = inPeriod.reduce((a,s)=>a+s.total,0);
@@ -9358,8 +9468,8 @@ function bankReportA4Blocks(type, periodKey){
   units.push(`<tr class="bkr-total-row"><td>TOTAL</td><td class="num">${bills}</td><td class="num">${inr(gross)}</td><td class="num">${inr(disc)}</td><td class="num">${inr(net)}</td></tr>`);
   const periodLabel = bankPeriodLabel(type, periodKey);
   return [
-    { html: a4Head('BUSINESS INCOME STATEMENT', 'For the period: <b>' + estEsc(periodLabel) + '</b>') +
-        '<div class="bkr-cert">This is to certify that the particulars given below are a true and correct summary of the sales income of <b>' + estEsc(SHOP.name_en) + '</b> (' + estEsc(SHOP.name_ta) + '), Thanneerpandhal branch, for the period stated above, as recorded in the shop\'s billing system. This statement is issued at the request of the proprietor for the purpose of submission to the bank / financial institution.</div>' },
+    { html: a4Head('BUSINESS INCOME STATEMENT', 'For the period: <b>' + estEsc(periodLabel) + '</b> &nbsp;&bull;&nbsp; Branch: <b>' + estEsc(rptScopeName(bid)) + '</b>', bid) +
+        '<div class="bkr-cert">This is to certify that the particulars given below are a true and correct summary of the sales income of <b>' + estEsc(SHOP.name_en) + '</b> (' + estEsc(rptMain(bid).title) + '), ' + estEsc(rptCertBranches(bid)) + ', for the period stated above, as recorded in the shop\'s billing system. This statement is issued at the request of the proprietor for the purpose of submission to the bank / financial institution.</div>' },
     { html: '<div class="bkr-sec">1. Income Summary</div><table><thead><tr><th>Particulars</th><th class="num">Amount</th></tr></thead><tbody>' +
         '<tr><td>Total Number of Bills Issued</td><td class="num">' + bills + '</td></tr>' +
         '<tr><td>Gross Sales Value</td><td class="num">' + inr(gross) + '</td></tr>' +
@@ -9373,7 +9483,7 @@ function bankReportA4Blocks(type, periodKey){
       head: '<th>' + (type === 'monthly' ? 'Date' : 'Month') + '</th><th class="num">Bills</th><th class="num">Gross</th><th class="num">Discount</th><th class="num">Net Income</th>',
       units: units },
     { fixedEnd: true, html: '<div class="bkr-decl"><b>Declaration:</b> I hereby declare that the information furnished above is true, complete and correct to the best of my knowledge and belief, and is drawn from the sales records maintained in the ordinary course of business.</div>' +
-        '<div class="bkr-sign"><div class="sig-block"><div class="sig-line">Place &amp; Date</div></div><div class="sig-block"><div class="sig-line">Proprietor / Authorised Signatory<br>(Seal &amp; Signature)</div></div></div>' }
+        '<div class="bkr-sign"><div class="sig-block"><div class="sig-line">Place &amp; Date</div></div><div class="sig-block"><div class="sig-line">' + rptOwnerLine(bid) + 'Proprietor / Authorised Signatory<br>(Seal &amp; Signature)</div></div></div>' }
   ];
 }
 
@@ -9427,6 +9537,20 @@ async function shareBankReportPDF(){
 }
 
 /* Builds a circular (donut) chart: Total Sales (Net Paid) vs Total Discount Given */
+/* Cash and UPI parts of Total Sales (split bills counted in both), shown under the Total Sales chart. */
+function cashUpiSplitHtml(cash, upi){
+  const tot = cash + upi;
+  if(tot <= 0) return '';
+  const cp = Math.round(cash / tot * 1000) / 10, up = Math.round((100 - cp) * 10) / 10;
+  const tile = (ico, label, amt, pct, col) => `<div style="flex:1; min-width:0; border:1.5px solid ${col}; border-radius:10px; padding:8px 6px; text-align:center;">
+      <div style="font-size:11.5px; font-weight:700; color:#5b4630;">${ico} ${label}</div>
+      <div style="font-size:17px; font-weight:800; color:${col}; margin-top:2px;">&#8377;${Math.round(amt).toLocaleString('en-IN')}</div>
+      <div style="font-size:10.5px; color:#8a6a44;">${pct}% of Total Sales</div></div>`;
+  return `<div style="margin-top:12px;">
+      <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#eadcc0;"><div style="width:${cp}%; background:#b45309;"></div><div style="width:${up}%; background:#0b5fd8;"></div></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">${tile('&#128181;', 'Cash', cash, cp, '#b45309')}${tile('&#128241;', 'UPI', upi, up, '#0b5fd8')}</div>
+    </div>`;
+}
 function buildSalesDonutChartSVG(totalPaid, totalDiscount){
   const total = totalPaid + totalDiscount;
   const W = 220, H = 220, cx = W/2, cy = H/2, r = 80, strokeW = 28;
@@ -9612,7 +9736,8 @@ function renderAdmin(){
           { label: 'Discount Given', value: '₹' + billTotalDiscount.toLocaleString('en-IN') },
           { label: 'Total Sales Amount', value: '₹' + billTotalSales.toLocaleString('en-IN') }
         ],
-        itemRows: billItemRows
+        itemRows: billItemRows,
+        bid: rptBidOfList(billMatchedSales, salesFilters.branch)
       };
 
       html += `<div class="seller-summary-sticky">
@@ -9671,7 +9796,7 @@ function renderAdmin(){
         const isNew = new Date(s.time).getTime() > lastSeen;
         html += `<div class="sale-card">
             <div class="sale-card-top" onclick="toggleSaleDetail('${s.id}')">
-              <div><div class="sc-seller">#${s.billNo || '-'}${billNoTag(s)}${highDiscTag(s)} &middot; ${isNew ? '<span class="new-tag">NEW</span> ' : ''}<span style="text-decoration:underline dotted; cursor:pointer;" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${estEsc(s.sellerName)}</span> ${statusBadge}${saleEditTag(s)}</div>
+              <div><div class="sc-seller">${billNoRef(s)}${billNoTag(s)}${highDiscTag(s)} &middot; ${isNew ? '<span class="new-tag">NEW</span> ' : ''}<span style="text-decoration:underline dotted; cursor:pointer;" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${estEsc(s.sellerName)}</span> ${statusBadge}${saleEditTag(s)}</div>
               <div class="sc-time">${dt}</div></div>
               <div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div>
             </div>
@@ -9862,10 +9987,12 @@ function renderAdmin(){
     main.innerHTML = html;
 
   } else if(adminTab === 'reports'){
-    const dateFilteredSales = SALES.filter(s => saleInBranch(s, salesFilters.branch) && (!reportFilters.date || saleLocalDate(s.time) === reportFilters.date));
+    const dateFilteredSales = SALES.filter(s => saleInBranch(s, rptBid(salesFilters.branch)) && (!reportFilters.date || saleLocalDate(s.time) === reportFilters.date));
     const confirmedSales = dateFilteredSales.filter(s => isCountedSale(s));
     const totalPaid = confirmedSales.reduce((a,s)=>a+s.total,0);
     const totalDiscountGiven = confirmedSales.reduce((a,s)=>a+(s.discount||0),0);
+    const totalCash = confirmedSales.reduce((a,s)=>a+saleCashAmount(s),0);
+    const totalUpi = confirmedSales.reduce((a,s)=>a+saleUpiAmount(s),0);
     let html = branchChipsHtml(salesFilters.branch, 'setAdminBranch') + `<div class="section-title" style="margin-top:0;">Filters</div>
       <div class="filter-bar">
         <div class="filter-field">
@@ -9877,7 +10004,7 @@ function renderAdmin(){
         </div>
       </div>
       <div class="section-title">Total Sales vs Total Discount${reportFilters.date ? ' — ' + new Date(reportFilters.date).toLocaleDateString('en-IN', {dateStyle:'medium'}) : ' (Overall)'}</div>
-      <div class="chart-card">${buildSalesDonutChartSVG(totalPaid, totalDiscountGiven)}</div>
+      <div class="chart-card">${buildSalesDonutChartSVG(totalPaid, totalDiscountGiven)}${cashUpiSplitHtml(totalCash, totalUpi)}</div>
       <button onclick="shareReportPDF()" style="width:100%; background:var(--maroon); color:#fff8e6; border:none; padding:11px; border-radius:8px; font-size:13px; font-weight:700; margin-top:4px;">${SHARE_ICON_SVG_SM}PDF</button>
 
       <div class="section-title" style="margin-top:26px;">Bank / Loan Report (A4 Income Statement)</div>
@@ -10034,7 +10161,7 @@ function renderAdmin(){
         latest.forEach(s => {
           const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'short', timeStyle:'short'});
           html += `<div class="price-row">
-              <div class="pr-name"><div class="pr-ta">#${s.billNo||'-'} ${estEsc(s.sellerName)}${isCountedSale(s) ? '' : ' <span class="status-badge cancelled">Cancelled</span>'}${saleEditTag(s)}</div><div class="pr-en">${dt}</div></div>
+              <div class="pr-name"><div class="pr-ta">${billNoRef(s)} ${estEsc(s.sellerName)}${isCountedSale(s) ? '' : ' <span class="status-badge cancelled">Cancelled</span>'}${saleEditTag(s)}</div><div class="pr-en">${dt}</div></div>
               <div class="pr-right"><div class="pr-price">${fmt(s.total)}</div></div>
             </div>`;
         });
@@ -11373,7 +11500,8 @@ function addNewCategory(){
 /* ========== PROFESSIONAL A4 REPORT FORMAT PDF EXPORTS - ENGLISH ONLY ========== */
 
 async function downloadSalesReportBankFormat(){
-  const valid = SALES.filter(s => isCountedSale(s));
+  const bid = rptBid(salesFilters.branch);   // the branch chosen on the Sales tab (all branches when none)
+  const valid = SALES.filter(s => isCountedSale(s) && saleInBranch(s, bid));
   const inr = v => '&#8377;' + v.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const totalGross = valid.reduce((a,s)=>a+(s.subtotal||s.total),0);
   const totalDisc = valid.reduce((a,s)=>a+(s.discount||0),0);
@@ -11404,18 +11532,11 @@ async function downloadSalesReportBankFormat(){
   const today = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
 
   const html = `<div class="bank-report">
-      <div class="bkr-head">
-        <div class="bkr-shop-ta">${SHOP.name_ta}</div>
-        <div class="bkr-shop-en">${SHOP.name_en}</div>
-        <div class="bkr-addr">Thanneerpandhal, Puthur, Tamil Nadu &nbsp;&bull;&nbsp; Phone: ${fmtPhones(SHOP.phones.join(' / '))}</div>
-      </div>
-
-      <div class="bkr-title">SALES &amp; REVENUE STATEMENT</div>
-      <div class="bkr-period">${periodLine ? 'For the period: <b>' + periodLine + '</b>' : 'No sales recorded'}</div>
+      ${a4Head('SALES &amp; REVENUE STATEMENT', (periodLine ? 'For the period: <b>' + periodLine + '</b>' : 'No sales recorded') + ' &nbsp;&bull;&nbsp; Branch: <b>' + estEsc(rptScopeName(bid)) + '</b>', bid)}
 
       <div class="bkr-cert">
         This is to certify that the particulars given below are a true and correct summary of the sales
-        income of <b>${SHOP.name_en}</b> (${SHOP.name_ta}), Thanneerpandhal branch, as recorded in the
+        income of <b>${estEsc(SHOP.name_en)}</b> (${estEsc(rptMain(bid).title)}), ${estEsc(rptCertBranches(bid))}, as recorded in the
         shop's billing system. This statement is issued for the purpose of submission to banks,
         financial institutions, and statutory authorities.
       </div>
@@ -11457,10 +11578,10 @@ async function downloadSalesReportBankFormat(){
 
       <div class="bkr-sign">
         <div class="sig-block"><div class="sig-line">Place &amp; Date</div></div>
-        <div class="sig-block"><div class="sig-line">Proprietor / Authorised Signatory<br>(Seal &amp; Signature)</div></div>
+        <div class="sig-block"><div class="sig-line">${rptOwnerLine(bid)}Proprietor / Authorised Signatory<br>(Seal &amp; Signature)</div></div>
       </div>
 
-      <div class="bkr-meta"><span>Generated on: ${today}</span><span>${SHOP.name_en} — Billing System</span></div>
+      <div class="bkr-meta"><span>Generated on: ${today}</span><span>${estEsc(a4FootName || SHOP.name_en)} — Billing System</span></div>
     </div>`;
 
   const doc = await renderOffscreenToA4PDF(html);
