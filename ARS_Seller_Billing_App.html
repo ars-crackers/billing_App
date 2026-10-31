@@ -843,6 +843,10 @@
   .sl-kpi{background:#fffaf0; border-radius:10px; padding:8px 10px;}
   .sl-kpi b{display:block; font-size:15px; font-weight:900; color:var(--ink);}
   .sl-kpi span{font-size:11px; font-weight:700; color:#8a6a44;}
+  .sl-kpi.k-bills{background:#fbeed2;} .sl-kpi.k-bills b{color:var(--maroon);}
+  .sl-kpi.k-disc{background:#fdecea;} .sl-kpi.k-disc b{color:#b3261e;}
+  .sl-kpi.k-cash{background:#fff1dc;} .sl-kpi.k-cash b{color:#b45309;}
+  .sl-kpi.k-upi{background:#e6efff;} .sl-kpi.k-upi b{color:#0b5fd8;}
   .sl-quick{display:flex; gap:8px; margin:0 0 10px;}
   .sl-quick button{flex:1; height:40px; border-radius:12px; border:1.5px solid var(--line); background:#fff; color:var(--maroon); font-weight:800; font-size:13px; cursor:pointer;}
   .sl-card{background:#fff; border-radius:12px; padding:10px 12px; margin-bottom:6px;}
@@ -876,7 +880,7 @@
   .pe-act{position:absolute; right:0; top:0; bottom:0; width:96px; display:flex; justify-content:flex-end; border-radius:0 12px 12px 0; overflow:hidden; opacity:0; transition:opacity .15s;}
   .pe-swipe.open .pe-act, .pe-swipe.drag .pe-act{opacity:1;}
   .pe-act button{width:84px; flex:0 0 84px; border:none; background:var(--maroon); color:#fff8e6; font-size:20px; font-weight:800; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; line-height:1;}
-  .pe-act button span{font-size:11px; letter-spacing:.3px;}
+  .pe-act button span{font-size:11px; letter-spacing:.3px; text-align:center; line-height:1.15;}
   .pe-row{position:relative; display:flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; touch-action:pan-y; user-select:none; -webkit-user-select:none; transition:transform .22s ease; will-change:transform;}
   .pe-swipe.open .pe-row{transform:translateX(-84px);}
   .pe-sn{flex:0 0 auto; min-width:30px; height:30px; padding:0 5px; box-sizing:border-box; border-radius:15px; background:#fbeed2; color:var(--maroon); font-size:11.5px; font-weight:900; display:flex; align-items:center; justify-content:center;}
@@ -1026,10 +1030,15 @@ function __appNotLoaded(){
       </div>
       <div class="search-wrap sw-flex">
         <button id="billCatBtn" type="button" class="cat-pick-btn" title="Category filter" aria-label="Category filter" onclick="toggleBillCat()"><span class="cpb-ico">&#128193;</span><span class="cpb-txt" id="billCatLbl">Category</span></button>
-        <div style="position:relative; flex:1; min-width:0;">
-          <span class="ico">&#128269;</span>
+        <button id="billFilterBtn" type="button" class="cat-pick-btn" title="Filter / sort items" aria-label="Filter items" onclick="toggleBillFilters()"><span class="cpb-ico">&#8645;</span><span class="cpb-txt">Filter</span></button>
+        <button id="billSearchBtn" type="button" class="cat-pick-btn" title="Search item" aria-label="Search item" onclick="toggleBillSearch()"><span class="cpb-ico">&#128269;</span><span class="cpb-txt">Search</span></button>
+        <span id="billItemCount" style="flex:1; min-width:0; text-align:right; font-size:11.5px; font-weight:800; color:#8a6a44;"></span>
+      </div>
+      <div id="billSearchRow" class="hidden" style="padding:0 14px 8px;">
+        <div class="search-wrap" style="padding:0;">
+          <span class="ico" style="left:11px;">&#128269;</span>
           <input id="search" type="text" placeholder="Search item... / பொருள் தேடு..." oninput="render()" style="padding-right:42px;">
-          <button id="billFilterBtn" type="button" title="Filter items" onclick="toggleBillFilters()" style="position:absolute; right:5px; top:50%; transform:translateY(-50%); width:34px; height:32px; border:none; border-radius:8px; background:transparent; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
+          <button type="button" title="Close search" aria-label="Close search" onclick="closeBillSearch()" style="position:absolute; right:5px; top:50%; transform:translateY(-50%); width:32px; height:32px; border:none; border-radius:50%; background:#f1e6d2; color:var(--maroon); font-size:15px; font-weight:900; cursor:pointer;">&#10005;</button>
         </div>
       </div>
       <div id="billFilterBar" class="hidden" style="padding:0 14px 8px;"></div>
@@ -1451,7 +1460,11 @@ function __appNotLoaded(){
     <div class="bill-head" style="display:flex; align-items:center; justify-content:space-between; background:#fff8ea;">
       <button onclick="a4EdClose()" style="background:none; border:none; font-size:14px; font-weight:700; cursor:pointer; color:var(--maroon); padding:6px 10px; border-radius:8px;">&#8592; Back</button>
       <div class="bn" id="a4EdTitle" style="font-size:14px;">Edit &amp; export document</div>
-      <div style="width:70px;"></div>
+      <div id="a4EdZoom" style="display:flex; gap:6px; align-items:center;">
+        <button type="button" onclick="a4EdZoomBy(-1)" aria-label="Zoom out" style="width:36px; height:34px; border-radius:10px; border:1.5px solid var(--line); background:#fff; color:var(--maroon); font-size:18px; font-weight:900; cursor:pointer;">&minus;</button>
+        <button type="button" id="a4EdZoomPct" onclick="a4EdZoomBy(0)" title="Fit to screen" style="height:34px; padding:0 7px; border-radius:10px; border:1.5px solid var(--line); background:#fff; color:var(--maroon); font-size:12px; font-weight:900; cursor:pointer;">100%</button>
+        <button type="button" onclick="a4EdZoomBy(1)" aria-label="Zoom in" style="width:36px; height:34px; border-radius:10px; border:1.5px solid var(--line); background:#fff; color:var(--maroon); font-size:18px; font-weight:900; cursor:pointer;">+</button>
+      </div>
     </div>
     <div class="a4ed-body">
       <div class="a4ed-side" id="a4EdSide"></div>
@@ -4106,7 +4119,8 @@ function fmtBillTime(t){
 let lastSellerSummary = null;
 let lastOverallItemsSummary = null;
 let lastBillItemsSummary = null;
-let reportFilters = { date:'' };
+let reportFilters = { date: saleLocalDateSafe() };   // Reports open on Today
+function saleLocalDateSafe(){ try{ var d = new Date(), p = function(x){ return (x < 10 ? '0' : '') + x; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }catch(e){ return ''; } }
 let adminItemSearchQuery = '';
 let itemEditingKey = null;
 
@@ -4691,8 +4705,12 @@ function recentBilledMap(){
   return map;
 }
 function toggleBillFilters(){ billFilterOpen = !billFilterOpen; render(); }
+/* Bill 1 / Bill 2 item search: a 🔍 button; the search bar opens under the Category / Filter / Search row */
+var billSearchOpen = false;
+function toggleBillSearch(){ if(billSearchOpen){ closeBillSearch(); return; } billSearchOpen = true; render(); var el = document.getElementById('search'); if(el) el.focus(); }
+function closeBillSearch(){ billSearchOpen = false; var el = document.getElementById('search'); if(el) el.value = ''; render(); }
 function setBillFilter(k, v){ billFilters[k] = (k === 'incart' || k === 'recent') ? !billFilters[k] : v; render(); }
-function resetBillFilters(){ billFilters = { incart:false, recent:false, sort:'' }; var el = document.getElementById('search'); if(el) el.value = ''; activeCat = 'ALL'; try{ buildCatNav(); }catch(e){} render(); }
+function resetBillFilters(){ billFilters = { incart:false, recent:false, sort:'' }; billSearchOpen = false; var el = document.getElementById('search'); if(el) el.value = ''; activeCat = 'ALL'; try{ buildCatNav(); }catch(e){} render(); }
 function billFilterPass(price, qty, rk){
   var f = billFilters;
   if(f.recent && !(rk && _recentMap && _recentMap[rk])) return false;
@@ -4704,10 +4722,11 @@ function renderBillFilterBar(shown){
   if(!btn || !bar) return;
   var billing = (activeTab === 'billing1' || activeTab === 'billing2');
   btn.classList.toggle('hidden', !billing);
-  btn.innerHTML = billFilterOpen ? '&#9650;' : '&#9660;';
   var on = billFilterActive();
-  btn.style.background = (billFilterOpen || on) ? 'var(--maroon)' : 'transparent';
-  btn.style.color = (billFilterOpen || on) ? '#fff8e6' : 'var(--maroon)';
+  btn.classList.toggle('on', billFilterOpen || on);
+  var sb = document.getElementById('billSearchBtn'), sv = (document.getElementById('search') || {}).value || '';
+  if(sb) sb.classList.toggle('on', billSearchOpen || !!sv);
+  var ic = document.getElementById('billItemCount'); if(ic) ic.textContent = billing ? shown + ' items' : '';
   var cb = document.getElementById('billCatBtn'), cl = document.getElementById('billCatLbl'), catOn0 = activeCat !== 'ALL';
   if(cb){
     cb.classList.toggle('on', catOn0 || billCatOpen);
@@ -4800,6 +4819,8 @@ function billSheetPaint(){
 function _billChrome(){
   var billing = (activeTab === 'billing1' || activeTab === 'billing2'), tbl = billing && billLayout === 'table';
   var sw = document.querySelector('.search-wrap'); if(sw) sw.classList.toggle('hidden', tbl || activeTab === 'history');   // History: no item search
+  var sr = document.getElementById('billSearchRow'), sv = (document.getElementById('search') || {}).value || '';
+  if(sr) sr.classList.toggle('hidden', !(billing && !tbl && (billSearchOpen || !!sv)));
   var lb = document.getElementById('billLayoutBtn');
   if(lb){
     lb.classList.toggle('hidden', !billing);
@@ -5187,7 +5208,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v78';
+var APP_BUILD = 'v79';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6904,8 +6925,10 @@ function openShareMenu(){
   closeShareMenu();
   var rows = [
     ['openPromoShare', '&#128227;', 'Promotion poster', 'Choose items & style, share to WhatsApp / Instagram / Facebook', '#1a5276'],
-    ['openMySummary', '&#128202;', 'Seller summary', 'All sellers or one seller: today & total, cash / UPI, present days \u2022 save as image', '#1e7a3c']
-  ].filter(function(r){ return r[0] !== 'openMySummary' || (session && session.role === 'admin'); });   // the summary is for admin only
+    session && session.role === 'admin'
+      ? ['openMySummary', '&#128202;', 'Seller summary', 'My sales; pick any seller or All sellers \u2022 today & total, cash / UPI, present days \u2022 save as image', '#1e7a3c']
+      : ['openMySummary', '&#128202;', 'My summary', 'My bills today & total, cash / UPI received, present days \u2022 save as image', '#1e7a3c']
+  ];
   var ov = document.createElement('div'); ov.id = 'shareMenuOv';
   ov.style.cssText = 'position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.45); display:flex; align-items:flex-end; justify-content:center;';
   ov.innerHTML = '<div style="background:#fffaf0; width:100%; max-width:480px; border-radius:18px 18px 0 0; padding:14px 14px calc(14px + env(safe-area-inset-bottom));">' +
@@ -6934,10 +6957,11 @@ function closeMySummary(){ var o = document.getElementById('mySumOv'); if(o && o
 var mySumWho = '';
 function mySumIsAdmin(){ return !!(session && session.role === 'admin'); }
 function mySumSet(v){ mySumWho = v || ''; mySumPaint(); }
+/* The picker lists the admin who is logged in + only the people who made at least 1 bill (no empty names). */
 function mySumPeople(){
   var m = {};
-  (loadJSON('ars_sales', []) || SALES || []).forEach(function(s){ if(s && s.sellerId && saleInBranch(s, adminScope())) m[s.sellerId] = s.sellerName || m[s.sellerId] || s.sellerId; });
-  Object.keys(USERS || {}).forEach(function(id){ var u = USERS[id]; if(u && (!adminScope() || (u.role === 'admin' ? u.branch === adminScope() : (sellerBranchOf(id) || {}).id === adminScope()))) m[id] = u.name || id; });
+  (loadJSON('ars_sales', []) || SALES || []).forEach(function(s){ if(s && s.sellerId && isCountedSale(s) && saleInBranch(s, adminScope())) m[s.sellerId] = (USERS[s.sellerId] && USERS[s.sellerId].name) || s.sellerName || m[s.sellerId] || s.sellerId; });
+  if(session && session.id) m[session.id] = (USERS[session.id] && USERS[session.id].name) || session.name || session.id;
   return Object.keys(m).map(function(id){ return { id: id, name: m[id], admin: !!(USERS[id] && USERS[id].role === 'admin') }; })
     .sort(function(a, b){ return (a.admin - b.admin) || String(a.name).localeCompare(String(b.name)); });
 }
@@ -7011,11 +7035,12 @@ function mySummaryCardHtml(d){
 }
 function openMySummary(){
   closeShareMenu(); closeMySummary();
-  if(!session || session.role !== 'admin'){ return; }   // admin only
+  if(!session){ return; }
+  mySumWho = session.id;   // opens on the logged-in person's own sales (admin can pick another seller or All sellers)
   var ov = document.createElement('div'); ov.id = 'mySumOv';
   var pick = !mySumIsAdmin() ? '' : '<div style="display:flex; align-items:center; gap:8px; margin:0 0 10px;"><span style="font-size:12.5px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>' +
     '<select id="mySumSel" onchange="mySumSet(this.value)" style="flex:1; min-width:0; height:42px; padding:0 10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:800; color:var(--maroon); font-family:inherit;">' +
-    '<option value="">All sellers</option>' + mySumPeople().map(function(p){ return '<option value="' + estEsc(p.id) + '"' + (mySumWho === p.id ? ' selected' : '') + '>' + estEsc(p.name) + (p.admin ? ' (admin)' : '') + (pidOf(p.id) ? ' · ' + estEsc(pidOf(p.id)) : '') + '</option>'; }).join('') + '</select></div>';
+    '<option value="">All sellers</option>' + mySumPeople().map(function(p){ return '<option value="' + estEsc(p.id) + '"' + (mySumWho === p.id ? ' selected' : '') + '>' + estEsc(p.name) + (p.id === session.id ? ' (me)' : p.admin ? ' (admin)' : '') + (pidOf(p.id) ? ' · ' + estEsc(pidOf(p.id)) : '') + '</option>'; }).join('') + '</select></div>';
   ov.style.cssText = 'position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.5); display:flex; align-items:flex-end; justify-content:center;';
   var btn = 'flex:1; padding:12px 8px; border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;';
   ov.innerHTML = '<div style="background:#f3e9d6; width:100%; max-width:480px; max-height:94vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:12px 12px calc(12px + env(safe-area-inset-bottom)); box-sizing:border-box;">' +
@@ -7190,6 +7215,7 @@ function renderHistoryList(){
     html += `<div style="font-size:12px; font-weight:800; color:var(--maroon); background:#fff3d6; border-radius:8px; padding:8px 12px; margin-bottom:6px;">${estEsc(BRANCHES[historyBranchFilter].name)} (${estEsc(BRANCHES[historyBranchFilter].short)}) &bull; ${hb.length} bills &bull; &#8377;${hb.reduce((a,s)=>a+s.total,0).toLocaleString('en-IN')}</div>`;
   }
   html += historySellerSelectHtml();
+  if(!isAdmin && list.some(function(x){ return saleStatus(x) === 'confirmed'; })) html += '<div style="font-size:11px; font-weight:700; color:#8a6a44; margin:0 4px 6px;">Swipe a bill left to cancel it &middot; tap a bill for its details</div>';
   if(list.length === 0){
     return html + `<div class="empty-state">${historySellerFilter ? 'No bills for this seller here yet.' : 'No sales yet.<br/>விற்பனை இல்லை.'}</div>`;
   }
@@ -7201,11 +7227,12 @@ function renderHistoryList(){
       : status === 'cancel_pending'
         ? '<span class="status-badge pending">Cancel requested</span>'
         : '<span class="status-badge confirmed">Confirmed</span>';
-    const cancelIco = (isAdmin || s.sellerId !== session.id) ? ''
+    // seller's own bill: swipe it left to show "Cancel bill" (or "Undo" while the cancel waits for the admin)
+    const swAct = (isAdmin || s.sellerId !== session.id) ? ''
       : status === 'confirmed'
-        ? `<button class="cancel-ico do" onclick="event.stopPropagation(); requestCancelBill('${s.id}')" title="Cancel this bill">&#10060;</button>`
+        ? `<button type="button" style="background:#b3261e;" onclick="peSwipeCloseAll(); requestCancelBill('${s.id}')" aria-label="Cancel this bill">&#128683;<span>Cancel bill</span></button>`
         : status === 'cancel_pending'
-          ? `<button class="cancel-ico undo" onclick="event.stopPropagation(); undoCancelBill('${s.id}')" title="Get back (undo cancel)">&#8617;</button>`
+          ? `<button type="button" style="background:#b45309;" onclick="peSwipeCloseAll(); undoCancelBill('${s.id}')" aria-label="Undo cancel">&#8617;<span>Undo</span></button>`
           : '';
     let itemsHtml = s.items.map(it=>`<div><span>${estEsc(it.en)} x${it.qty}</span><span>₹${(it.qty*it.price).toLocaleString('en-IN')}</span></div>`).join('');
     if(s.discount>0) itemsHtml += `<div class="sd-disc"><span>Discount${s.discountPercent?' ('+s.discountPercent+'%)':''}</span><span>-₹${s.discount.toLocaleString('en-IN')}</span></div>`;
@@ -7213,13 +7240,13 @@ function renderHistoryList(){
     if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${fmtPhones(s.buyerPhone)}</span></div>`;
     if(s.paidAmount) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
     itemsHtml += saleEditNote(s);
-    html += `<div class="sale-card">
+    html += (swAct ? `<div class="pe-swipe" style="margin-bottom:7px;"><div class="pe-act">${swAct}</div><div class="sale-card pe-row" style="display:block; margin:0; padding:10px 12px;">` : `<div class="sale-card">`) + `
         <div class="sale-card-top" onclick="toggleSaleDetail('h-${s.id}')">
           <div>
             <div class="sc-seller">${billNoRef(s)}${billNoTag(s)} &middot; ${(isAdmin || s.sellerId !== session.id) ? estEsc(s.sellerName) + ' ' : ''}${statusBadge}${highDiscTag(s)}${saleEditTag(s)}</div>
             <div class="sc-time">${dt}</div>
           </div>
-          <div style="display:flex; align-items:center;"><div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div>${cancelIco}</div>
+          <div style="display:flex; align-items:center;"><div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div></div>
         </div>
         <div class="sale-detail" id="detail-h-${s.id}">${itemsHtml}
           <div class="sale-card-actions">
@@ -7229,7 +7256,7 @@ function renderHistoryList(){
             <button class="btn-share-pdf-sm ico-only" style="background:#0b5fd8;" onclick="event.stopPropagation(); printSaleById('${s.id}')" title="Print this bill" aria-label="Print this bill">&#128424;</button>
           </div>
         </div>
-      </div>`;
+      </div>` + (swAct ? '</div>' : '');
   });
   html += listMoreBtn('hist', list.length);
   return html;
@@ -7580,6 +7607,7 @@ async function renderOffscreenToPDF(html){
     // swap the page dimensions and the right side of the image gets clipped.
     const doc = new jsPDF({ orientation: hPt >= wPt ? 'portrait' : 'landscape', unit: 'pt', format: [wPt, hPt] });
     doc.addImage(imgData, 'JPEG', 0, 0, wPt, hPt);
+    doc._arsPrev = [imgData]; doc._arsNarrow = true;   // for the full-view preview before sharing
     return doc;
   } finally {
     host.remove();
@@ -7803,7 +7831,56 @@ async function shareLoginHistoryPDF(){
 }
 
 
+/* Every PDF opens a full-view preview first: pinch or − / + to zoom, one finger to move, then Share PDF or Save PDF. */
+function pdfPreviewClose(){
+  var o = document.getElementById('pdfPrevOv'); if(!o) return false;
+  o.remove();
+  var a2 = document.getElementById('a2hsBar'); if(a2) a2.style.visibility = '';
+  var vp = document.querySelector('meta[name="viewport"]');
+  if(vp && !document.querySelector('#a4EdOverlay.show, #priceListPreviewOverlay.show')) vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover');
+  return true;
+}
+var _pdfPrev = null;
+function pdfPreviewOpen(doc, fileName, shareTitle){
+  pdfPreviewClose();
+  _pdfPrev = { doc: doc, fileName: fileName, title: shareTitle, z: 1, maxW: doc._arsNarrow ? 460 : 900 };
+  var ov = document.createElement('div'); ov.id = 'pdfPrevOv';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:100001; background:#e8e2d6; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top);';
+  var zb = 'width:38px; height:36px; border-radius:10px; border:1.5px solid var(--line); background:#fff; color:var(--maroon); font-size:18px; font-weight:900; cursor:pointer;';
+  ov.innerHTML = '<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:#fff8ea; border-bottom:1px dashed var(--line);">' +
+      '<button type="button" onclick="pdfPreviewClose()" style="flex:0 0 auto; background:none; border:none; font-size:14px; font-weight:800; color:var(--maroon); padding:6px 8px; cursor:pointer;">&#8592; Back</button>' +
+      '<div style="flex:1; min-width:0; font-size:13.5px; font-weight:900; color:var(--maroon); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">PDF preview</div>' +
+      '<button type="button" onclick="pdfPreviewZoom(-1)" aria-label="Zoom out" style="' + zb + '">&minus;</button>' +
+      '<button type="button" id="pdfPrevPct" onclick="pdfPreviewZoom(0)" title="Fit to screen" style="' + zb + ' width:auto; padding:0 8px; font-size:12px;">100%</button>' +
+      '<button type="button" onclick="pdfPreviewZoom(1)" aria-label="Zoom in" style="' + zb + '">+</button></div>' +
+    '<div id="pdfPrevBody" style="flex:1; min-height:0; overflow:auto; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y pinch-zoom; overscroll-behavior:contain; padding:12px;">' +
+      '<div id="pdfPrevPages" style="margin:0 auto;">' + (doc._arsPrev || []).map(function(src, i){ return '<img src="' + src + '" alt="Page ' + (i + 1) + '" style="display:block; width:100%; height:auto; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.25); margin:0 0 12px;">'; }).join('') + '</div></div>' +
+    '<div style="flex:0 0 auto; display:flex; gap:8px; padding:10px 10px calc(10px + env(safe-area-inset-bottom)); background:#fff; border-top:1px solid var(--line);">' +
+      '<button type="button" onclick="pdfPreviewDo(\'share\')" style="flex:1; padding:13px; border:none; border-radius:12px; background:var(--maroon); color:#fff8e6; font-weight:800; font-size:14px; cursor:pointer;">&#128228; Share PDF</button>' +
+      '<button type="button" onclick="pdfPreviewDo(\'save\')" style="flex:1; padding:13px; border:1.5px solid var(--maroon); border-radius:12px; background:#fff; color:var(--maroon); font-weight:800; font-size:14px; cursor:pointer;">&#11015; Save PDF</button></div>';
+  document.body.appendChild(ov);
+  var a2 = document.getElementById('a2hsBar'); if(a2) a2.style.visibility = 'hidden';
+  var vp = document.querySelector('meta[name="viewport"]');
+  if(vp) vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=5, minimum-scale=1, user-scalable=yes, viewport-fit=cover');
+  pdfPreviewZoom(0);
+}
+function pdfPreviewZoom(d){
+  var st = _pdfPrev, pg = document.getElementById('pdfPrevPages'), lb = document.getElementById('pdfPrevPct'); if(!st || !pg) return;
+  st.z = d === 0 ? 1 : Math.max(1, Math.min(4, Math.round(st.z * (d > 0 ? 1.25 : 0.8) * 100) / 100));
+  var body = document.getElementById('pdfPrevBody'), fit = Math.min(st.maxW, (body ? body.clientWidth : window.innerWidth) - 24);
+  pg.style.width = Math.round(fit * st.z) + 'px';
+  if(lb) lb.textContent = Math.round(st.z * 100) + '%';
+}
+async function pdfPreviewDo(a){
+  var st = _pdfPrev; if(!st) return;
+  if(a === 'save'){ try{ st.doc.save(st.fileName); }catch(e){ alert('Could not save the PDF.'); } return; }
+  await shareGeneratedPDFNow(st.doc, st.fileName, st.title);
+}
 async function shareGeneratedPDF(doc, fileName, shareTitle){
+  if(doc && doc._arsPrev && doc._arsPrev.length && !doc._arsNoPrev){ pdfPreviewOpen(doc, fileName, shareTitle); return; }
+  return shareGeneratedPDFNow(doc, fileName, shareTitle);
+}
+async function shareGeneratedPDFNow(doc, fileName, shareTitle){
   const blob = doc.output('blob');
 
   // 1) Native share sheet — this lets the user pick ANY app instantly
@@ -9234,10 +9311,13 @@ async function a4MakePdf(blocks, docTitle, onePage){
   const host = document.createElement('div'); host.className = 'pl-host'; document.body.appendChild(host);
   try{
     const pages = a4Paginate(host, blocks, docTitle, onePage);
+    doc._arsPrev = [];   // page pictures for the full-view preview before sharing
     for(let i = 0; i < pages.length; i++){
       const canvas = await window.html2canvas(pages[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true, width: 794, height: 1123, windowWidth: 794, windowHeight: 1123 });
       if(i > 0) doc.addPage();
-      doc.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, pdfH);   // exactly one A4 sheet per page
+      const img = canvas.toDataURL('image/jpeg', 0.95);
+      doc.addImage(img, 'JPEG', 0, 0, pdfW, pdfH);   // exactly one A4 sheet per page
+      doc._arsPrev.push(img);
     }
     return doc;
   } finally { host.remove(); }
@@ -9352,8 +9432,10 @@ async function a4EdPreview(){
   var blocks = a4EdBlocks(), docTitle = a4TitleOr(a4Ed.kind === 'dash' ? 'SALES DASHBOARD' : 'SALES STATEMENT');
   host.innerHTML = '';
   var stack = document.createElement('div'); stack.className = 'a4ed-stack';
-  var s = Math.min(1, Math.max(0.2, (host.clientWidth - 28) / 794));
+  var s = Math.min(1, Math.max(0.2, (host.clientWidth - 28) / 794)) * (a4Ed.zoom || 1);   // fit to screen x zoom
   stack.style.width = (794 * s) + 'px';
+  host.style.overflowX = 'auto'; host.style.touchAction = 'pan-x pan-y pinch-zoom';
+  var zl = document.getElementById('a4EdZoomPct'); if(zl) zl.textContent = Math.round((a4Ed.zoom || 1) * 100) + '%';
   host.appendChild(stack);
   var pages = a4Paginate(stack, blocks, docTitle, a4Ed.kind === 'sales');   // Sales Statement: one A4 page
   pages.forEach(function(p){
@@ -9396,6 +9478,7 @@ async function a4EdExport(type){
     if(type === 'pdf'){
       st.textContent = 'Preparing PDF…';
       var doc = await a4MakePdf(blocks, docTitle, a4Ed.kind === 'sales');
+      doc._arsNoPrev = true;   // this screen is already the preview
       await shareGeneratedPDF(doc, a4Ed.fileBase + '.pdf', a4Ed.shareTitle);
     } else {
       st.textContent = 'Preparing Word file…';
@@ -9441,7 +9524,7 @@ function a4EdOpen(opts){
   var pv = !!opts.previewOnly;
   if(!pv && a4Ed.kind !== opts.kind){ a4Ed.title = ''; a4Ed.note = ''; a4Ed.noteOn = false; }
   if(!pv) a4Ed.order = [];
-  Object.assign(a4Ed, { kind: opts.kind, list: opts.list, f: opts.f || null, r: opts.r || null, scope: opts.scope || '', fileBase: opts.fileBase, shareTitle: opts.shareTitle, preview: pv });
+  Object.assign(a4Ed, { kind: opts.kind, list: opts.list, f: opts.f || null, r: opts.r || null, scope: opts.scope || '', fileBase: opts.fileBase, shareTitle: opts.shareTitle, preview: pv, zoom: 1 });
   a4EdMode(pv);
   document.getElementById('a4EdOverlay').classList.add('show');
   a4EdRefresh(true);
@@ -9465,6 +9548,7 @@ function a4EdMode(pv){
   if(vp) vp.setAttribute('content', pv ? 'width=device-width, initial-scale=1, maximum-scale=5, minimum-scale=1, user-scalable=yes, viewport-fit=cover'
                                         : 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover');
 }
+function a4EdZoomBy(d){ a4Ed.zoom = d === 0 ? 1 : Math.max(1, Math.min(4, Math.round((a4Ed.zoom || 1) * (d > 0 ? 1.25 : 0.8) * 100) / 100)); a4EdPreview(); }
 function a4EdClose(){
   clearTimeout(a4Ed.timer);
   var o = document.getElementById('a4EdOverlay'); if(o) o.classList.remove('show');
@@ -9704,6 +9788,7 @@ function saleLocalDate(timeVal){
   var ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
   return ist.toISOString().slice(0, 10);
 }
+function reportToday(){ reportFilters = { date: saleLocalDate(new Date()) }; renderAdmin(); }
 function clearReportFilters(){
   reportFilters = { date:'' };
   renderAdmin();
@@ -9949,6 +10034,7 @@ async function renderOffscreenToA4PDF(html, fitOne){
     const pdfH = doc.internal.pageSize.getHeight();
     const imgH = pdfW * (canvas.height / canvas.width);
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    doc._arsPrev = [imgData];   // for the full-view preview before saving / sharing
     if(fitOne && imgH > pdfH){ const w = pdfW * pdfH / imgH; doc.addImage(imgData, 'JPEG', (pdfW - w) / 2, 0, w, pdfH); return doc; }   // the whole report on one A4 page
     let y = 0, page = 0;
     while(y < imgH){
@@ -10098,7 +10184,7 @@ function renderAdmin(){
     const totalCash = confirmedSales.reduce((a,s)=>a+saleCashAmount(s),0), totalUpi = confirmedSales.reduce((a,s)=>a+saleUpiAmount(s),0);
     const _filtered = !!(salesFilters.seller || salesFilters.billNo || salesFilters.phone || _dates || salesFilters.yr !== salesDefaultYr());
     const _srchOn = slSearchOpen || !!(salesFilters.billNo || salesFilters.phone);
-    const _kpi = (v, l) => `<div class="sl-kpi"><b>${v}</b><span>${l}</span></div>`;
+    const _kpi = (v, l, c) => `<div class="sl-kpi ${c || ''}"><b>${v}</b><span>${l}</span></div>`;
     const _pchip = (v, l) => `<button type="button" class="pe-chip${!_dates && salesFilters.yr === v ? ' on' : ''}" onclick="slPeriod('${v}')"><span class="t">${l}</span></button>`;
     let html = branchChipsHtml(salesFilters.branch, 'setAdminBranch') +
       `<div class="pe-top"><div class="pe-title"><b>Sales</b><span>${salesPeriodLabel()} &middot; ${salesFilters.seller ? custEsc(sellerNames.get(salesFilters.seller) || salesFilters.seller) : 'All sellers'} &middot; ${scopeBr ? estEsc(scopeBr.short || scopeBr.name) : 'All branches'}</span></div>
@@ -10107,9 +10193,9 @@ function renderAdmin(){
           <button type="button" onclick="slMoreDo('print')">&#128424; Print 80 mm</button>
           ${_scope ? '' : `<button type="button" onclick="slMoreDo('bank')">&#128202; Bank format PDF</button>`}</div>` : ''}</div></div>
       <div class="sl-sum">
-        <div class="sl-sum-top"><div><div class="sl-big">${salesStatsOpen ? '&#8377;' + totalRevenue.toLocaleString('en-IN') : '&#8377; &bull;&bull;&bull;&bull;'}</div><div class="sl-cap">Total sales &middot; ${confirmedSales.length} bills &middot; ${totalItemsSold} items</div></div>
+        <div class="sl-sum-top"><div><div class="sl-big">${salesStatsOpen ? '&#8377;' + totalRevenue.toLocaleString('en-IN') : '&#8377; &bull;&bull;&bull;&bull;'}</div><div class="sl-cap">Total sales &middot; ${salesStatsOpen ? 'Today &#8377;' + todayRevenue.toLocaleString('en-IN') + ' &middot; ' : ''}${totalItemsSold} items</div></div>
           <button type="button" class="sl-eye" onclick="toggleSalesStats()" aria-label="${salesStatsOpen ? 'Hide totals' : 'Show totals'}">${salesStatsOpen ? '&#128584; Hide' : '&#128065; Show'}</button></div>
-        ${salesStatsOpen ? `<div class="sl-kpis">${_kpi('&#8377;' + todayRevenue.toLocaleString('en-IN'), 'Today')}${_kpi('&#8377;' + totalCash.toLocaleString('en-IN'), '&#128181; Cash')}${_kpi('&#8377;' + totalUpi.toLocaleString('en-IN'), '&#128241; UPI')}${_kpi('&#8377;' + totalDiscountGiven.toLocaleString('en-IN'), 'Discount ' + overallDiscountPct + '%')}</div>` : ''}
+        ${salesStatsOpen ? `<div class="sl-kpis">${_kpi(confirmedSales.length, '&#129534; Bills', 'k-bills')}${_kpi('&#8377;' + totalCash.toLocaleString('en-IN'), '&#128181; Cash', 'k-cash')}${_kpi('&#8377;' + totalDiscountGiven.toLocaleString('en-IN'), '&#127991; Discount ' + overallDiscountPct + '%', 'k-disc')}${_kpi('&#8377;' + totalUpi.toLocaleString('en-IN'), '&#128241; UPI', 'k-upi')}</div>` : ''}
       </div>
       <div class="sl-quick"><button type="button" onclick="openSalesHist('items')">&#128230; Item History</button><button type="button" onclick="openSalesHist('sellers')">&#128100; Seller History</button></div>
       <div class="pl-sticky-head">
@@ -10395,11 +10481,12 @@ function renderAdmin(){
           <label>Date</label>
           <input type="date" id="reportFilterDate" value="${reportFilters.date}" onchange="onReportFilterChange()">
         </div>
-        <div class="filter-clear">
-          <button onclick="clearReportFilters()">Overall</button>
+        <div class="filter-clear" style="display:flex; gap:6px;">
+          <button onclick="reportToday()" style="${reportFilters.date === saleLocalDate(new Date()) ? 'background:var(--maroon); color:#fff8e6; border:1.5px solid var(--maroon);' : 'background:#fff8ea; color:var(--maroon); border:1.5px solid var(--maroon);'}">Today</button>
+          <button onclick="clearReportFilters()" style="${!reportFilters.date ? 'background:var(--maroon); color:#fff8e6; border:1.5px solid var(--maroon);' : 'background:#fff8ea; color:var(--maroon); border:1.5px solid var(--maroon);'}">Overall</button>
         </div>
       </div>
-      <div class="section-title">Total Sales vs Total Discount${reportFilters.date ? ' — ' + new Date(reportFilters.date).toLocaleDateString('en-IN', {dateStyle:'medium'}) : ' (Overall)'}</div>
+      <div class="section-title">Total Sales vs Total Discount${reportFilters.date ? ' — ' + (reportFilters.date === saleLocalDate(new Date()) ? 'Today, ' : '') + new Date(reportFilters.date).toLocaleDateString('en-IN', {dateStyle:'medium'}) : ' (Overall)'}</div>
       <div class="chart-card">${buildSalesDonutChartSVG(totalPaid, totalDiscountGiven)}${cashUpiSplitHtml(totalCash, totalUpi)}</div>
       <button onclick="shareReportPDF()" style="width:100%; background:var(--maroon); color:#fff8e6; border:none; padding:11px; border-radius:8px; font-size:13px; font-weight:700; margin-top:4px;">${SHARE_ICON_SVG_SM}PDF</button>
 
@@ -10552,13 +10639,16 @@ function renderAdmin(){
             <button onclick="openBranchSales('${bid}')" style="flex:1; padding:11px; border-radius:10px; border:1.5px solid var(--maroon); background:#fff; color:var(--maroon); font-weight:800; font-size:12.5px; cursor:pointer;">&#128202; Sales<br><span style="font-weight:600; font-size:10.5px; color:#8a6a44;">${brAll.length} bills</span></button>
           </div>`;
         // people tied to this branch
-        const people = Object.keys(USERS).filter(u => (USERS[u].branch || (USERS[u].role === 'seller' && bid === 'main' ? 'main' : '')) === bid);
+        // Team: the branch's admins + only the people who made at least 1 bill here (no names without a bill)
+        const _billed = new Set(brSales.map(s => s.sellerId));
+        const people = Object.keys(USERS).filter(u => (USERS[u].role === 'admin' && (USERS[u].branch || '') === bid) || _billed.has(u))
+          .sort((a, b) => (USERS[a].role !== 'admin') - (USERS[b].role !== 'admin') || brSales.filter(s => s.sellerId === b).reduce((t, s) => t + s.total, 0) - brSales.filter(s => s.sellerId === a).reduce((t, s) => t + s.total, 0));
         html += `<div class="section-title" style="margin-top:6px;">Team</div>`;
-        if(!people.length) html += `<div class="empty-admin" style="text-align:left;">No sellers assigned yet. Assign one in Accounts.</div>`;
+        if(!people.length) html += `<div class="empty-admin" style="text-align:left;">No bills in this branch yet.</div>`;
         people.forEach(u => {
           const mine = brSales.filter(s => s.sellerId === u);
           html += `<div style="display:flex; justify-content:space-between; padding:7px 4px; border-bottom:1px solid var(--line); font-size:12.5px;">
-              <span><b>${estEsc(USERS[u].name)}</b> <span style="font-size:10px; font-weight:800; color:#8a6a44;">${USERS[u].role === 'admin' ? 'Branch admin' : 'Seller'}</span></span>
+              <span><b>${estEsc(USERS[u].name)}</b> <span style="font-size:10px; font-weight:800; color:#8a6a44;">${USERS[u].role === 'admin' ? ((USERS[u].branch || '') === bid ? 'Branch admin' : 'Admin') : 'Seller'}</span></span>
               <span style="color:var(--maroon); font-weight:800;">${mine.length} bills &bull; ${fmt(mine.reduce((a,s)=>a+s.total,0))}</span>
             </div>`;
         });
@@ -12071,7 +12161,7 @@ async function downloadSalesReportBankFormat(){
     </div>`;
 
   const doc = await renderOffscreenToA4PDF(html, true);
-  doc.save('ARS_Sales_Report_' + new Date().toISOString().slice(0, 10) + '.pdf');
+  await shareGeneratedPDF(doc, 'ARS_Sales_Report_' + new Date().toISOString().slice(0, 10) + '.pdf', SHOP.name_en + ' — Sales & Revenue Statement');
 }
 
 async function downloadPriceListProfessional(){
@@ -13508,7 +13598,7 @@ function openAddBranchModal(){
     if(_so && _so.style.display === 'flex'){ closeScanOrder(true); return; }
     if(_estPopping){ _estPopping = false; return; }
     if(_pubHist){ publicMenu(true); return; }
-    if(closeShareMenu() || closePromoQuick() || closeMySummary()){ stay(); return; }
+    if(pdfPreviewClose() || closeShareMenu() || closePromoQuick() || closeMySummary()){ stay(); return; }
     var appEl = document.getElementById('app'), adminEl = document.getElementById('adminScreen');
     var loggedIn = (typeof session !== 'undefined') && session;
     var _pr = document.getElementById('promoShareOverlay');
