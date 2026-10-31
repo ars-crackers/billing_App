@@ -788,6 +788,76 @@
     align-items:center; justify-content:center;
   }
   .admin-item-row .air-edit{background:#fbeed2; color:var(--maroon);}
+  /* ---- Price Edit (minimal): header, frozen search + category chips + sort/offer, simple rows ---- */
+  .pe-top{display:flex; align-items:center; gap:8px; margin:2px 0 10px;}
+  .pe-title{flex:1; min-width:0;}
+  .pe-title b{display:block; font-size:17px; color:var(--maroon); font-weight:900; line-height:1.2;}
+  .pe-title span{font-size:11.5px; color:#8a6a44; font-weight:700;}
+  .pe-more{position:relative;}
+  .pe-ibtn{height:38px; min-width:38px; padding:0 12px; border-radius:10px; border:1.5px solid var(--line); background:#fff; color:var(--maroon); font-weight:900; font-size:13px; cursor:pointer;}
+  .pe-new{height:38px; padding:0 14px; border-radius:10px; border:none; background:var(--maroon); color:#fff8e6; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap;}
+  .pe-menu{position:absolute; right:0; top:calc(100% + 6px); z-index:31; min-width:230px; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 24px rgba(0,0,0,.18); overflow:hidden;}
+  .pe-menu button{display:flex; gap:10px; align-items:center; width:100%; padding:12px 14px; border:none; border-bottom:1px solid #f1e6d2; background:#fff; color:var(--ink); font-size:13.5px; font-weight:700; text-align:left; cursor:pointer;}
+  .pe-menu button:last-child{border-bottom:none;}
+  .pe-menu button:active{background:#fff8ea;}
+  .pe-shade{position:fixed; inset:0; z-index:30;}
+  /* ---- Sales tab (minimal): totals card, quick buttons, bill rows ---- */
+  .sl-sum{background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin:0 0 10px;}
+  .sl-sum-top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .sl-big{font-size:22px; font-weight:900; color:var(--maroon); line-height:1.15;}
+  .sl-cap{font-size:11.5px; font-weight:700; color:#8a6a44; margin-top:2px;}
+  .sl-eye{flex:0 0 auto; height:34px; padding:0 12px; border-radius:10px; border:1.5px solid var(--line); background:#fff8ea; color:var(--maroon); font-weight:800; font-size:12.5px; cursor:pointer;}
+  .sl-kpis{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);}
+  .sl-kpi{background:#fffaf0; border-radius:10px; padding:8px 10px;}
+  .sl-kpi b{display:block; font-size:15px; font-weight:900; color:var(--ink);}
+  .sl-kpi span{font-size:11px; font-weight:700; color:#8a6a44;}
+  .sl-quick{display:flex; gap:8px; margin:0 0 10px;}
+  .sl-quick button{flex:1; height:40px; border-radius:12px; border:1.5px solid var(--line); background:#fff; color:var(--maroon); font-weight:800; font-size:13px; cursor:pointer;}
+  .sl-card{background:#fff; border-radius:12px; padding:10px 12px; margin-bottom:6px;}
+  .sl-card.sl-off{background:#fbf3ef; opacity:.85;}
+  .sl-top{display:flex; align-items:center; gap:10px; cursor:pointer;}
+  .sl-no{flex:0 0 auto; min-width:52px; padding:5px 7px; box-sizing:border-box; border-radius:9px; background:#fbeed2; color:var(--maroon); font-size:12px; font-weight:900; text-align:center; white-space:nowrap;}
+  .sl-off .sl-no{background:#f3d9d4; color:#b3261e; text-decoration:line-through;}
+  .sl-mid{flex:1; min-width:0;}
+  .sl-who{font-size:14px; font-weight:800; color:var(--ink); line-height:1.3;}
+  .sl-name{cursor:pointer;}
+  .sl-sub{font-size:11px; color:var(--ink-soft); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .sl-amt{flex:0 0 auto; text-align:right; font-size:16px; font-weight:900; color:var(--maroon); white-space:nowrap;}
+  .sl-amt small{display:block; font-size:10.5px; font-weight:700; color:#a08560; text-decoration:line-through;}
+  .pe-search{position:relative;}
+  .pe-search input{width:100%; height:44px; box-sizing:border-box; padding:0 42px 0 38px; border-radius:12px; border:1.5px solid var(--line); background:#fff; font-size:14px; color:var(--ink); outline:none; font-family:inherit;}
+  .pe-search input:focus{border-color:var(--maroon);}
+  .pe-search .ico{position:absolute; left:13px; top:50%; transform:translateY(-50%); opacity:.5; font-size:14px;}
+  .pe-search .clr{position:absolute; right:6px; top:50%; transform:translateY(-50%); width:32px; height:32px; border:none; border-radius:50%; background:#f1e6d2; color:var(--maroon); font-size:15px; font-weight:900; cursor:pointer;}
+  .pe-chips{display:flex; gap:6px; overflow-x:auto; margin:8px -12px 0; padding:0 12px 2px; scrollbar-width:none; -webkit-overflow-scrolling:touch;}
+  .pe-chips::-webkit-scrollbar{display:none;}
+  .pe-chip{flex:0 0 auto; max-width:180px; display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; border-radius:17px; border:1.5px solid var(--line); background:#fff; color:var(--ink); font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap; font-family:inherit;}
+  .pe-chip .t{overflow:hidden; text-overflow:ellipsis;}
+  .pe-chip i{font-style:normal; font-size:10.5px; color:#8a6a44; font-weight:800;}
+  .pe-chip.on{background:var(--maroon); border-color:var(--maroon); color:#fff8e6;}
+  .pe-chip.on i{color:#f5d9a8;}
+  .pe-schip{width:40px; padding:0; justify-content:center; font-size:15px;}
+  .pe-sort{height:34px; padding:0 8px; border-radius:10px; border:1.5px solid var(--line); background:#fff; color:var(--maroon); font-weight:800; font-size:12.5px; font-family:inherit; max-width:46%;}
+  .pe-count{display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; font-weight:700; color:#8a6a44; margin:0 2px 8px;}
+  .pe-count button{border:none; background:none; padding:4px 0; color:var(--maroon); font-weight:800; font-size:12px; text-decoration:underline; cursor:pointer;}
+  .pe-swipe{position:relative; overflow:hidden; border-radius:12px; margin-bottom:6px;}
+  .pe-act{position:absolute; right:0; top:0; bottom:0; width:96px; display:flex; justify-content:flex-end; border-radius:0 12px 12px 0; overflow:hidden; opacity:0; transition:opacity .15s;}
+  .pe-swipe.open .pe-act, .pe-swipe.drag .pe-act{opacity:1;}
+  .pe-act button{width:84px; flex:0 0 84px; border:none; background:var(--maroon); color:#fff8e6; font-size:20px; font-weight:800; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; line-height:1;}
+  .pe-act button span{font-size:11px; letter-spacing:.3px;}
+  .pe-row{position:relative; display:flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; touch-action:pan-y; user-select:none; -webkit-user-select:none; transition:transform .22s ease; will-change:transform;}
+  .pe-swipe.open .pe-row{transform:translateX(-84px);}
+  .pe-sn{flex:0 0 auto; min-width:30px; height:30px; padding:0 5px; box-sizing:border-box; border-radius:15px; background:#fbeed2; color:var(--maroon); font-size:11.5px; font-weight:900; display:flex; align-items:center; justify-content:center;}
+  .pe-info{flex:1; min-width:0;}
+  .pe-ta{font-size:14px; font-weight:800; color:var(--ink); line-height:1.3;}
+  .pe-en{font-size:11px; color:var(--ink-soft); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .pe-tags{margin-top:4px;}
+  .pe-price{flex:0 0 auto; text-align:right; min-width:62px; padding:4px 6px; margin:-4px -6px -4px 0; border-radius:8px;}
+  .pe-now{font-size:16px; font-weight:900; color:var(--maroon); line-height:1.2;}
+  .pe-was{font-size:11.5px; color:#8a6a44; text-decoration:line-through; font-weight:700; line-height:1.2;}
+  .pe-unit{font-size:10px; color:#8a6a44; font-weight:700;}
+  .pe-price.off .pe-now{color:#1e7a3c;}
+  .pe-price input{width:72px; padding:5px 6px; border:2px solid var(--maroon); border-radius:6px; font-weight:800; font-size:14px; text-align:right;}
   .admin-item-row .air-delete{background:#fde2df; color:var(--danger);}
   .item-edit-sheet{background:var(--paper); width:100%; max-width:420px; max-height:90vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:0;}
   .item-edit-sheet .bill-head{background:linear-gradient(110deg, var(--maroon-dark), var(--maroon)); color:#fff8e6; border-bottom:none;}
@@ -1101,6 +1171,7 @@ function __appNotLoaded(){
 <div class="modal-overlay" id="itemEditOverlay">
   <div class="item-edit-sheet">
     <div class="bill-head" style="position:sticky;">
+      <button type="button" onclick="closeItemEditModal()" title="Back" aria-label="Back" style="position:absolute; left:8px; top:50%; transform:translateY(-50%); height:38px; padding:0 10px; border:none; border-radius:10px; background:rgba(255,255,255,.18); color:#fff; font-size:13.5px; font-weight:800; cursor:pointer;">&#8592; Back</button>
       <button id="itemEditDeleteBtn" type="button" onclick="deleteFromItemEdit()" title="Delete this product" aria-label="Delete this product" style="display:none; position:absolute; right:12px; top:50%; transform:translateY(-50%); width:38px; height:38px; align-items:center; justify-content:center; border:none; border-radius:10px; background:rgba(255,255,255,.18); color:#fff; cursor:pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6,19c0,1.1,0.9,2,2,2h8c1.1,0,2-0.9,2-2V7H6V19z M19,4h-3.5l-1-1h-5l-1,1H5v2h14V4z"/></svg></button>
       <div class="bn" id="itemEditTitle">Edit Product</div>
     </div>
@@ -1362,16 +1433,16 @@ function __appNotLoaded(){
 </div>
 
 <div class="modal-overlay" id="priceListPreviewOverlay" style="z-index:9999;">
-  <div class="bill-sheet" style="max-width:500px; padding:0;">
+  <div class="bill-sheet" style="max-width:100vw; padding:0; display:flex; flex-direction:column; overflow:hidden; padding-top:env(safe-area-inset-top); box-sizing:border-box;">
     <div class="bill-head" style="display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; background:#fff8ea;">
       <button onclick="closePriceListPreview()" style="background:none; border:none; font-size:14px; font-weight:700; cursor:pointer; color:var(--maroon); padding:6px 10px; display:flex; align-items:center; gap:5px; border-radius:8px;">&#8592; Back</button>
       <div class="bn" style="font-size:14px;">Price List Preview</div>
       <div style="width:70px;"></div>
     </div>
-    <div id="priceListPreviewBody" style="overflow:auto; -webkit-overflow-scrolling:touch; touch-action:pinch-zoom; padding:10px; text-align:center; background:#f0f0f0; min-height:300px; max-height:70vh;">
+    <div id="priceListPreviewBody" style="flex:1; min-height:0; overflow:auto; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y pinch-zoom; overscroll-behavior:contain; padding:10px; text-align:center; background:#e8e2d6;">
       <div style="padding:40px; color:#888;">Loading preview...</div>
     </div>
-    <div class="bill-actions" style="position:sticky; bottom:0; background:#fff; border-top:1px solid #eee; display:flex; gap:8px; padding:10px;">
+    <div class="bill-actions" style="flex:0 0 auto; background:#fff; border-top:1px solid #eee; display:flex; gap:8px; padding:10px 10px calc(10px + env(safe-area-inset-bottom));">
       <button onclick="sharePriceListPDF(this)" style="flex:1; background:var(--maroon); color:#fff8e6; border:none; padding:12px; border-radius:8px; font-weight:700; cursor:pointer;">📤 Share</button>
       <button onclick="downloadPriceListProfessional()" style="flex:1; background:#1e7a3c; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:700; cursor:pointer;">⬇ Print / Download</button>
     </div>
@@ -5084,7 +5155,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v76';
+var APP_BUILD = 'v77';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6229,6 +6300,7 @@ async function openPriceListPDFPreview(){
   const overlay = document.getElementById('priceListPreviewOverlay');
   const body = document.getElementById('priceListPreviewBody');
   overlay.classList.add('show');
+  { const a2 = document.getElementById('a2hsBar'); if(a2) a2.style.visibility = 'hidden'; }   // full screen: keep the install bar off the Back button
   body.innerHTML = '<div style="padding:40px; color:#888;">Generating preview...</div>';
   try{
     // Enable pinch zoom on the whole page while this modal is open
@@ -6255,6 +6327,7 @@ async function openPriceListPDFPreview(){
 function closePriceListPreview(){
   _plBranch = '';
   document.getElementById('priceListPreviewOverlay').classList.remove('show');
+  { const a2 = document.getElementById('a2hsBar'); if(a2) a2.style.visibility = ''; }
   const vp = document.querySelector('meta[name="viewport"]');
   if(vp) vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover');
 }
@@ -6786,15 +6859,14 @@ function historySellerSelectHtml(){
     '</div>' + (dOn ? histAttendanceHtml() : '');
 }
 
-/* History tab Share menu: promotion poster (full screen), print and history PDF.
+/* History tab Share menu: promotion poster (full screen) and My summary (the logged-in person's own bills, as a picture).
    (Price list PDF, WhatsApp promotion and Customer QR are big buttons on the History panel itself.) */
 function closeShareMenu(){ var o = document.getElementById('shareMenuOv'); if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
 function openShareMenu(){
   closeShareMenu();
   var rows = [
     ['openPromoShare', '&#128227;', 'Promotion poster', 'Choose items & style, share to WhatsApp / Instagram / Facebook', '#1a5276'],
-    ['printFullHistory', '&#128424;', 'Print sales history', '80 mm printer', '#0b5fd8'],
-    ['shareFullHistoryPDF', '&#128196;', 'Sales history PDF', 'Share the sales list as a PDF', '#6b4e16']
+    ['openMySummary', '&#128202;', 'My summary', 'My bills today & total, cash / UPI received, present days \u2022 save as image', '#1e7a3c']
   ];
   var ov = document.createElement('div'); ov.id = 'shareMenuOv';
   ov.style.cssText = 'position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.45); display:flex; align-items:flex-end; justify-content:center;';
@@ -6814,6 +6886,102 @@ function openShareMenu(){
     if(fn && typeof window[fn] === 'function') window[fn]();
   });
   document.body.appendChild(ov);
+}
+
+/* ---- History -> Share -> My summary: bills made by the person logged in (seller or admin) - today and in total - with
+   the money received (cash / UPI; a split bill counts in both), discount, cancelled bills and present days (a day with at
+   least one bill, same as "My present days"). Shown as a card that can be saved or shared as a picture. ---- */
+function closeMySummary(){ var o = document.getElementById('mySumOv'); if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
+function mySummaryData(){
+  var me = session && session.id, today = saleLocalDate(new Date());
+  var mine = (loadJSON('ars_sales', []) || SALES || []).filter(function(s){ return s && s.sellerId === me; });
+  var agg = function(list){
+    var c = list.filter(function(s){ return isCountedSale(s); });
+    var sum = function(fn){ return c.reduce(function(a, s){ return a + (Number(fn(s)) || 0); }, 0); };
+    return { bills: c.length, cancelled: list.length - c.length, net: sum(function(s){ return s.total; }), disc: sum(function(s){ return s.discount; }),
+      cash: sum(saleCashAmount), upi: sum(saleUpiAmount), items: sum(function(s){ return (s.items || []).reduce(function(a, it){ return a + (Number(it.qty) || 0); }, 0); }) };
+  };
+  var days = {}; mine.forEach(function(s){ days[saleLocalDate(s.time)] = 1; });
+  var dl = Object.keys(days).sort();
+  var br = session.role === 'admin' ? (BRANCHES[(USERS[me] || {}).branch] || BRANCHES[activeBranchId]) : (sellerBranchOf(me) || BRANCHES[activeBranchId]);
+  return { today: agg(mine.filter(function(s){ return saleLocalDate(s.time) === today; })), total: agg(mine), days: dl.length, first: dl[0] || '', last: dl[dl.length - 1] || '',
+    presentToday: !!days[today], name: session.name || me, pid: pidOf(me), role: session.role === 'admin' ? 'Admin' : 'Seller', br: br || null };
+}
+function mySummaryCardHtml(d){
+  var inr = function(v){ return '&#8377;' + Math.round(Number(v) || 0).toLocaleString('en-IN'); };
+  var dt = function(k){ return k ? fullDateLabel(k) : ''; };
+  var logo = (document.querySelector('link[rel="apple-touch-icon"]') || {}).href || '';
+  var row = function(l, v, b){ return '<div style="display:flex; justify-content:space-between; gap:6px; font-size:12px; padding:3px 0; border-top:1px dashed #ead9b8;' + (b ? ' font-weight:800;' : '') + '"><span style="color:#6b4e2a;">' + l + '</span><span style="color:#3a2a14; font-weight:800;">' + v + '</span></div>'; };
+  var col = function(title, sub, a){
+    return '<div style="flex:1; min-width:0; background:#fff; border:1.5px solid #ead9b8; border-radius:12px; padding:10px;">' +
+      '<div style="font-size:10.5px; font-weight:900; letter-spacing:1.2px; color:#8a6a44;">' + title + '</div>' +
+      '<div style="font-size:10px; color:#a08560; min-height:13px;">' + sub + '</div>' +
+      '<div style="font-size:21px; font-weight:900; color:#7a1414; margin:4px 0 1px;">' + inr(a.net) + '</div>' +
+      '<div style="font-size:11px; color:#8a6a44; margin-bottom:5px;">' + a.bills + ' bill' + (a.bills === 1 ? '' : 's') + ' &middot; ' + a.items + ' items</div>' +
+      row('&#128181; Cash', inr(a.cash)) + row('&#128241; UPI', inr(a.upi)) + row('Discount', inr(a.disc)) + '</div>';
+  };
+  var br = d.br, title = (br && branchTitle(br)) || SHOP.name_ta;
+  var now = new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return '<div id="mySumCard" style="width:360px; box-sizing:border-box; background:#fffaf0; border-radius:16px; overflow:hidden; color:#3a2a14; font-family:\'Segoe UI\', Roboto, \'Noto Sans Tamil\', Arial, sans-serif;">' +
+    '<div style="background:linear-gradient(115deg, #3d0a0a, #7a1414 55%, #d3761f); color:#fff8e6; padding:14px 16px; display:flex; gap:12px; align-items:center;">' +
+      (logo ? '<img src="' + logo + '" alt="" style="flex:0 0 auto; width:46px; height:46px; border-radius:12px; background:#fff;">' : '') +
+      '<div style="min-width:0;"><div style="font-size:17px; font-weight:800; line-height:1.25;">' + estEsc(title) + '</div>' +
+      '<div style="font-size:10.5px; letter-spacing:1.5px; font-weight:700; opacity:.9;">' + estEsc(String(SHOP.name_en || '').toUpperCase()) + (br ? ' &bull; ' + estEsc(br.name || '') + (br.short ? ' (' + estEsc(br.short) + ')' : '') : '') + '</div></div></div>' +
+    '<div style="padding:12px 16px 2px;"><div style="font-size:16px; font-weight:900; color:#7a1414;">My Summary</div>' +
+      '<div style="font-size:12px; color:#8a6a44; margin-top:1px;"><b style="color:#3a2a14;">' + estEsc(d.name) + '</b>' + (d.pid ? ' &middot; ' + estEsc(d.pid) : '') + ' &middot; ' + d.role + ' &middot; ' + now + '</div></div>' +
+    '<div style="display:flex; gap:10px; padding:10px 16px;">' + col('TODAY', dt(saleLocalDate(new Date())), d.today) + col('TOTAL', d.first ? 'since ' + dt(d.first) : 'no bills yet', d.total) + '</div>' +
+    '<div style="margin:2px 16px 12px; padding:10px 12px; border-radius:12px; background:#fff3d6; border:1px solid #e9c77a; display:flex; gap:10px; align-items:center;">' +
+      '<div style="flex:0 0 auto; min-width:46px; height:46px; padding:0 6px; box-sizing:border-box; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:22px; font-weight:900; display:flex; align-items:center; justify-content:center;">' + d.days + '</div>' +
+      '<div style="min-width:0;"><div style="font-size:13px; font-weight:800; color:#7a1414;">&#128197; Present days / வருகை நாட்கள்</div>' +
+      '<div style="font-size:11px; color:#8a6a44; margin-top:2px;">' + (d.first ? dt(d.first) + (d.last && d.last !== d.first ? ' &ndash; ' + dt(d.last) : '') + ' &middot; ' : '') + 'Today: ' + (d.presentToday ? '<b style="color:#1e7a3c;">Present &#10003;</b>' : 'no bill yet') + '</div></div></div>' +
+    '<div style="text-align:center; font-size:9.5px; color:#a08560; padding:0 0 10px;">A.R.S Billing App &middot; days with at least 1 bill count as present</div>' +
+    '</div>';
+}
+function openMySummary(){
+  closeShareMenu(); closeMySummary();
+  if(!session){ return; }
+  var d = mySummaryData();
+  var ov = document.createElement('div'); ov.id = 'mySumOv';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.5); display:flex; align-items:flex-end; justify-content:center;';
+  var btn = 'flex:1; padding:12px 8px; border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;';
+  ov.innerHTML = '<div style="background:#f3e9d6; width:100%; max-width:480px; max-height:94vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:12px 12px calc(12px + env(safe-area-inset-bottom)); box-sizing:border-box;">' +
+    '<div style="width:42px; height:4px; border-radius:2px; background:#d9c7a6; margin:0 auto 10px;"></div>' +
+    '<div style="display:flex; justify-content:center;"><div style="max-width:100%; overflow:hidden;">' + mySummaryCardHtml(d) + '</div></div>' +
+    '<div style="display:flex; gap:8px; margin-top:12px;">' +
+      '<button id="mySumSave" type="button" onclick="mySummaryExport(\'save\')" style="' + btn + ' border:none; background:var(--maroon); color:#fff8e6;">&#128190; Save image</button>' +
+      '<button id="mySumShare" type="button" onclick="mySummaryExport(\'share\')" style="' + btn + ' border:1.5px solid var(--maroon); background:#fff; color:var(--maroon);">&#128228; Share</button></div>' +
+    '<button type="button" onclick="closeMySummary()" style="display:block; width:100%; padding:10px; margin-top:4px; border:none; background:none; color:#8a6a44; font-weight:800; font-size:13px; cursor:pointer;">Close</button></div>';
+  ov.addEventListener('click', function(e){ if(e.target === ov) closeMySummary(); });
+  document.body.appendChild(ov);
+  var card = document.getElementById('mySumCard');     // narrow phones: shrink the card to fit, the saved picture stays full size
+  if(card){ var w = ov.firstChild.clientWidth - 24; if(w < 360){ card.style.transform = 'scale(' + (w / 360) + ')'; card.style.transformOrigin = 'top left'; card.parentNode.style.width = w + 'px'; card.parentNode.style.height = Math.ceil(card.offsetHeight * w / 360) + 'px'; } }
+}
+async function mySummaryExport(mode){
+  var b1 = document.getElementById('mySumSave'), b2 = document.getElementById('mySumShare'), busy = mode === 'save' ? b1 : b2, txt = busy ? busy.innerHTML : '';
+  if(b1) b1.disabled = true; if(b2) b2.disabled = true; if(busy) busy.textContent = 'Making picture…';
+  var host = document.createElement('div'); host.className = 'pl-host';
+  try{
+    await ensureHtml2Canvas();
+    host.innerHTML = mySummaryCardHtml(mySummaryData());
+    document.body.appendChild(host);
+    var el = host.firstChild;
+    var canvas = await window.html2canvas(el, { scale: 3, backgroundColor: '#f3e9d6', useCORS: true, width: 360, windowWidth: 360 });
+    var blob = await new Promise(function(res){ canvas.toBlob(res, 'image/png'); });
+    if(!blob) throw new Error('Could not make the picture.');
+    var name = 'My_Summary_' + String(session.name || session.id || '').replace(/[^A-Za-z0-9]+/g, '_') + '_' + saleLocalDate(new Date()) + '.png';
+    if(mode === 'share') await shareGeneratedFile(blob, name, 'image/png', 'My summary — ' + (session.name || ''));
+    else {
+      var url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+      try{ scanToast('✓ Picture saved (' + name + ')', 'green'); }catch(e){}
+    }
+  }catch(e){
+    alert('Could not make the picture. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
+  }finally{
+    host.remove();
+    if(b1) b1.disabled = false; if(b2) b2.disabled = false; if(busy) busy.innerHTML = txt;
+  }
 }
 
 /* ---- WhatsApp promotion at once (History panel) ----
@@ -6930,7 +7098,7 @@ function renderHistoryList(){
   const phoneQ = '';
   let html = `<div class="history-head-row">
       <div class="section-title" style="margin:0;">${isAdmin ? (historySellerFilter ? custEsc(_hs.title.replace(' \u2014 Sales History', '')) + ' \u2014 History' : 'All Sales History') : (!historySellerFilter ? 'My Sales History' : historySellerFilter === 'all' ? 'All Sellers \u2014 My Branch' : custEsc(_hs.title.replace(' \u2014 Sales History', '')) + ' \u2014 History')}</div>
-      <button onclick="openShareMenu()" title="Share / Print" style="background:var(--maroon); color:#fff8e6; border:none; padding:9px 16px; border-radius:9px; font-size:13px; font-weight:800; cursor:pointer;">${SHARE_ICON_SVG_SM}Share</button>
+      <span style="display:flex; gap:6px; flex:0 0 auto;">${isAdmin ? `<button onclick="openSalesHist('items')" title="Item Tracker - price, qty sold and value of every item" style="background:#fff8e6; color:var(--maroon); border:1.5px solid var(--maroon); padding:8px 12px; border-radius:9px; font-size:13px; font-weight:800; cursor:pointer;">&#128230; Items</button>` : ''}<button onclick="openShareMenu()" title="Share / Print" style="background:var(--maroon); color:#fff8e6; border:none; padding:9px 16px; border-radius:9px; font-size:13px; font-weight:800; cursor:pointer;">${SHARE_ICON_SVG_SM}Share</button></span>
     </div>`;
   const _tile = (fn, bg, ico, label) => `<button onclick="${fn}" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:10px 4px; min-height:76px; background:${bg}; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:27px; line-height:1;">${ico}</span><span style="font-size:10.5px; font-weight:800; text-align:center; line-height:1.2;">${label}</span></button>`;
   html += `<div style="display:flex; gap:8px; margin:10px 0;">${_tile('openPriceListPDFPreview()', '#7a1414', '&#128269;', 'Price list<br>PDF')}${_tile('promoQuickOpen()', '#1faa59', '<span class="wa-logo" style="width:30px; height:30px;"></span>', 'WhatsApp<br>Promotion')}${_tile('openPriceQr()', '#1a5276', '&#128290;', 'Customer<br>QR')}</div>`;
@@ -7387,25 +7555,26 @@ function shareSaleWhatsAppImage(saleId){
 
 /* ---- Full sales-history report PDF (table of all visible sales) ---- */
 function buildHistoryReportHTML(salesList, title){
+  salesList = salesList.filter(s => isCountedSale(s));   // only the bills that count (no cancelled ones)
   let rows = salesList.map(s => {
     const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
     const status = saleStatus(s);
     return `<div class="br-hist-entry">
         <div class="br-hist-top"><span>${dt}</span><span class="num">&#8377;${s.total.toLocaleString('en-IN')}</span></div>
-        <div class="br-hist-sub">${estEsc(s.sellerName)}${status==='cancelled' ? ' <b>&middot; CANCELLED</b>' : status==='cancel_pending' ? ' <b>&middot; CANCEL REQUESTED</b>' : ''}</div>
+        <div class="br-hist-sub">${estEsc(s.sellerName)}</div>
       </div>`;
   }).join('');
   const totalConfirmed = salesList.filter(s => isCountedSale(s)).reduce((a,s)=>a+s.total,0);
   return `<div class="br-page" style="width:302px;">
       ${rptThermHead(estEsc(title), '', rptBidOfList(salesList, ''))}
       <div class="br-hist-list">${rows || '<div style="text-align:center;color:#777;padding:10px;">No records.</div>'}</div>
-      <div class="br-total-row"><span>TOTAL (Confirmed)</span><span>&#8377;${totalConfirmed.toLocaleString('en-IN')}</span></div>
+      <div class="br-total-row"><span>TOTAL (${salesList.length} bills)</span><span>&#8377;${totalConfirmed.toLocaleString('en-IN')}</span></div>
     </div>`;
 }
 
 /* ---- Seller summary report PDF (items sold, discount, sales total for one seller) ---- */
 function buildSellerSummaryReportHTML(summary){
-  let rows = summary.itemRows.map(([en, d], idx) => `<tr><td style="width:48%;">${idx+1}. ${estEsc(d.ta)}<br><span class="br-en">${estEsc(en)}</span></td>
+  let rows = summary.itemRows.map(([en, d], idx) => `<tr><td style="width:48%;">${d.sn || idx+1}. ${estEsc(d.ta)}<br><span class="br-en">${estEsc(en)}</span></td>
       <td class="num" style="width:16%;">${d.qty}</td><td class="num" style="width:36%;">&#8377;${d.revenue.toLocaleString('en-IN')}</td></tr>`).join('');
   if(!rows) rows = `<tr><td colspan="3" style="text-align:center; color:#777;">No items sold yet.</td></tr>`;
   return `<div class="br-page" style="width:302px;">
@@ -7434,7 +7603,7 @@ async function shareSellerSummaryPDF(){
 
 /* ---- Generic "items sold" report PDF (used for the Overall and Bill No breakdowns) ---- */
 function buildItemsSoldReportHTML(title, statRows, itemRows, bid){
-  let rows = itemRows.map(([en, d], idx) => `<tr><td style="width:48%;">${idx+1}. ${estEsc(d.ta)}<br><span class="br-en">${estEsc(en)}</span></td>
+  let rows = itemRows.map(([en, d], idx) => `<tr><td style="width:48%;">${d.sn || idx+1}. ${estEsc(d.ta)}<br><span class="br-en">${estEsc(en)}</span></td>
       <td class="num" style="width:16%;">${d.qty}</td><td class="num" style="width:36%;">&#8377;${d.revenue.toLocaleString('en-IN')}</td></tr>`).join('');
   if(!rows) rows = `<tr><td colspan="3" style="text-align:center; color:#777;">No items sold.</td></tr>`;
   const statHtml = statRows.map(s => `<div class="br-row"><span>${s.label}</span><span>${s.value}</span></div>`).join('');
@@ -8260,33 +8429,138 @@ function applyAdminTabAccess(){
 /* ---- Admin Sales: Item History and Seller History open as their own full screens. The phone's Back key steps back one level
    (seller detail -> seller list -> Sales tab); the on-screen Back button does the same. ---- */
 var _shStack = [];
-function _shSales(){ return SALES.filter(function(x){ return saleInBranch(x, salesFilters.branch) && isCountedSale(x); }); }
+function _shSales(){ return SALES.filter(function(x){ return saleInBranch(x, adminScope()) && saleInBranch(x, salesFilters.branch) && isCountedSale(x); }); }
+/* Item serial number (S.No) as in today's price list, found by the item's name; a bill's own S.No when the item is gone or renamed. */
+function _shSnMap(){
+  var m = {};
+  CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){ var n = getItemName(ci, ii), s = itemSerialNo(ci, ii); if(n.en) m['e:' + n.en] = s; if(it.en) m['e:' + it.en] = m['e:' + it.en] || s; }); });
+  return m;
+}
 function _shAgg(list){
-  var map = new Map(), qty = 0, disc = 0, tot = 0;
+  var map = new Map(), qty = 0, disc = 0, tot = 0, snm = _shSnMap();
   list.forEach(function(x){
     disc += (x.discount || 0); tot += (x.total || 0);
-    x.items.forEach(function(it){
+    var seen = {};
+    (x.items || []).forEach(function(it){
       qty += it.qty;
-      var cur = map.get(it.en) || { ta: it.ta, qty: 0, revenue: 0 };
-      cur.qty += it.qty; cur.revenue += it.qty * it.price; map.set(it.en, cur);
+      var cur = map.get(it.en) || { ta: it.ta, qty: 0, revenue: 0, bills: 0, sn: snm['e:' + it.en] || Number(it.sn) || 0 };
+      cur.qty += it.qty; cur.revenue += it.qty * it.price;
+      if(!seen[it.en]){ cur.bills++; seen[it.en] = 1; }
+      map.set(it.en, cur);
     });
   });
-  var rows = Array.from(map.entries()).sort(function(a, b){ return b[1].qty - a[1].qty; });
+  var rows = Array.from(map.entries()).sort(function(a, b){ return (a[1].sn || 1e9) - (b[1].sn || 1e9) || b[1].qty - a[1].qty; });
   var billed = tot + disc;
   return { qty: qty, disc: disc, tot: tot, pct: billed > 0 ? Math.round(disc / billed * 1000) / 10 : 0, rows: rows };
 }
-function _shRowsHtml(rows){
+function _shRowsHtml(rows, sid){
   if(!rows.length) return '<div class="empty-admin">No items sold yet.</div>';
-  return rows.map(function(r){ var en = r[0], d = r[1];
-    return '<div class="price-row"><div class="pr-name"><div class="pr-ta">' + estEsc(d.ta) + '</div><div class="pr-en">' + estEsc(en) + '</div></div>' +
-      '<div class="pr-right"><div class="pr-price">' + d.qty + ' sold</div><div style="font-size:9.5px;color:var(--ink-soft);">&#8377;' + d.revenue.toLocaleString('en-IN') + '</div></div></div>'; }).join('');
+  return '<div style="font-size:11px; font-weight:700; color:#8a6a44; margin:0 2px 6px;">In S.No order &middot; swipe an item left for its sale details</div>' +
+    rows.map(function(r){ var en = r[0], d = r[1];
+    return '<div class="pe-swipe"><div class="pe-act"><button type="button" data-en="' + estEsc(en) + '" data-sid="' + estEsc(sid || '') + '" onclick="shItemOpen(this)" aria-label="Details">&#128202;<span>Details</span></button></div>' +
+      '<div class="pe-row"><div class="pe-sn">' + (d.sn || '&ndash;') + '</div>' +
+      '<div class="pe-info"><div class="pe-ta">' + estEsc(d.ta) + '</div><div class="pe-en">' + estEsc(en) + '</div></div>' +
+      '<div style="flex:0 0 auto; text-align:right;"><div class="pe-now">' + d.qty + ' <span style="font-size:11px; font-weight:800;">sold</span></div><div class="pe-unit">&#8377;' + d.revenue.toLocaleString('en-IN') + ' &middot; ' + d.bills + ' bill' + (d.bills === 1 ? '' : 's') + '</div></div></div></div>'; }).join('');
+}
+/* ---- Item Tracker (Sales tab -> Item History, and the admin's History tab): every price-list item with its price, the qty
+   sold and value in the chosen period. Quick filters: period, price band (₹500+ / ₹1000+ / ₹2000+), sold only; sort by
+   price (default, high first), qty, value or S.No. Swipe an item left for its sale details. ---- */
+var shTrack = { period: 'all', band: 0, sort: 'price', sold: false };
+function shTrackSet(k, v){ shTrack[k] = (shTrack[k] === v && k === 'sold') ? !v : v; shPaint(); var b = document.getElementById('salesHistBody'); if(b) b.scrollTop = 0; }
+function shTrackDay(back){ return saleLocalDate(Date.now() - back * 86400000); }
+function shTrackInPeriod(s){ var p = shTrack.period; if(p === 'all') return true; return saleLocalDate(s.time) === shTrackDay(p === 'yday' ? 1 : 0); }
+function shTrackPeriodLabel(){ var p = shTrack.period; return p === 'today' ? 'Today (' + fullDateLabel(shTrackDay(0)) + ')' : p === 'yday' ? 'Yesterday (' + fullDateLabel(shTrackDay(1)) + ')' : 'All days'; }
+function shTrackRows(soldRows){
+  var bid = salesFilters.branch && BRANCHES[salesFilters.branch] ? salesFilters.branch : '', byEn = {}, list = [];
+  soldRows.forEach(function(r){ byEn[r[0]] = r[1]; });
+  CATEGORIES.forEach(function(cat, ci){ cat.items.forEach(function(it, ii){
+    var n = getItemName(ci, ii), d = byEn[n.en] || byEn[it.en];
+    if(bid && !isItemInBranch(ci, ii, bid) && !d) return;
+    list.push({ en: n.en, ta: n.ta, sn: itemSerialNo(ci, ii), price: Number(bid ? getBranchPrice(ci, ii, bid) : getInvItem(ci, ii).price) || 0,
+      qty: d ? d.qty : 0, value: d ? d.revenue : 0, bills: d ? d.bills : 0 });
+    if(d){ d._used = 1; }
+  }); });
+  soldRows.forEach(function(r){ var d = r[1]; if(d._used){ delete d._used; return; }   // sold, but no longer in the price list
+    list.push({ en: r[0], ta: d.ta, sn: d.sn || 0, price: d.qty ? Math.round(d.revenue / d.qty) : 0, qty: d.qty, value: d.revenue, bills: d.bills, gone: true }); });
+  var band = Number(shTrack.band) || 0;
+  list = list.filter(function(r){ return r.price >= band && (!shTrack.sold || r.qty > 0); });
+  var s = shTrack.sort, bySn = function(a, b){ return (a.sn || 1e9) - (b.sn || 1e9); };
+  list.sort(s === 'qty' ? function(a, b){ return b.qty - a.qty || b.price - a.price; } : s === 'value' ? function(a, b){ return b.value - a.value || b.price - a.price; } : s === 'sn' ? bySn : function(a, b){ return b.price - a.price || bySn(a, b); });
+  var q = 0, v = 0, sold = 0, maxQ = 0;
+  list.forEach(function(r){ q += r.qty; v += r.value; if(r.qty > 0) sold++; if(r.qty > maxQ) maxQ = r.qty; });
+  return { list: list, maxQ: maxQ, sum: list.length + ' items &middot; ' + sold + ' sold &middot; ' + q + ' qty &middot; &#8377;' + Math.round(v).toLocaleString('en-IN') };
+}
+function shTrackBarHtml(){
+  var chip = function(k, v, label){ var on = String(shTrack[k]) === String(v); return '<button type="button" class="pe-chip' + (on ? ' on' : '') + '" style="height:32px;" onclick="shTrackSet(\'' + k + '\', ' + (typeof v === 'number' ? v : '\'' + v + '\'') + ')"><span class="t">' + label + '</span></button>'; };
+  var sel = '<select class="pe-sort" style="max-width:none; flex:1;" aria-label="Sort" onchange="shTrackSet(\'sort\', this.value)">' +
+    [['price', 'Price: high → low'], ['qty', 'Qty sold: most first'], ['value', 'Value: most first'], ['sn', 'S.No order']].map(function(o){ return '<option value="' + o[0] + '"' + (shTrack.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+  return '<div style="position:sticky; top:-12px; z-index:5; background:var(--paper); margin:-12px -12px 10px; padding:10px 12px 8px; box-shadow:0 3px 8px rgba(0,0,0,.07); border-bottom:1px solid var(--line);">' +
+    '<div class="pe-chips" style="margin:0 -12px;">' + chip('period', 'today', 'Today') + chip('period', 'yday', 'Yesterday') + chip('period', 'all', 'All days') + '</div>' +
+    '<div class="pe-chips" style="margin:6px -12px 0;">' + chip('band', 0, 'All prices') + chip('band', 500, '&#8377;500+') + chip('band', 1000, '&#8377;1000+') + chip('band', 2000, '&#8377;2000+') + '</div>' +
+    '<div style="display:flex; gap:6px; align-items:center; margin-top:6px;">' + sel +
+      '<button type="button" class="pe-chip' + (shTrack.sold ? ' on' : '') + '" style="height:34px;" onclick="shTrackSet(\'sold\', true)"><span class="t">Sold only</span></button></div></div>';
+}
+function shTrackRowsHtml(tr){
+  if(!tr.list.length) return '<div class="empty-admin">No items for this filter.</div>';
+  return '<div style="display:flex; gap:8px; font-size:10.5px; font-weight:800; color:#8a6a44; letter-spacing:.3px; margin:0 12px 4px 52px;"><span style="flex:1;">ITEM</span><span style="width:58px; text-align:right;">PRICE</span><span style="width:56px; text-align:right;">SOLD</span></div>' +
+    tr.list.map(function(r){
+      var pct = tr.maxQ > 0 ? Math.round(r.qty / tr.maxQ * 100) : 0, hi = r.price >= 1000;
+      return '<div class="pe-swipe"' + (r.qty ? '' : ' style="opacity:.6;"') + '><div class="pe-act">' + (r.qty ? '<button type="button" data-en="' + estEsc(r.en) + '" data-sid="" onclick="shItemOpen(this)" aria-label="Details">&#128202;<span>Details</span></button>' : '<button type="button" disabled style="opacity:.7;">&#8212;<span>Not sold</span></button>') + '</div>' +
+        '<div class="pe-row" style="padding:9px 12px;"><div class="pe-sn">' + (r.sn || '&ndash;') + '</div>' +
+        '<div class="pe-info"><div class="pe-ta">' + estEsc(r.ta) + '</div><div class="pe-en">' + estEsc(r.en) + (r.bills ? ' &middot; ' + r.bills + ' bill' + (r.bills === 1 ? '' : 's') : '') + (r.gone ? ' &middot; not in price list' : '') + '</div>' +
+          '<div style="height:4px; border-radius:2px; background:#f1e6d2; margin-top:5px; overflow:hidden;"><i style="display:block; height:100%; width:' + pct + '%; background:' + (hi ? '#b3261e' : '#d3761f') + ';"></i></div></div>' +
+        '<div style="flex:0 0 58px; text-align:right; font-size:13px; font-weight:800; color:' + (hi ? '#b3261e' : '#5b4630') + ';">&#8377;' + r.price.toLocaleString('en-IN') + '</div>' +
+        '<div style="flex:0 0 56px; text-align:right;"><div style="font-size:18px; font-weight:900; color:' + (r.qty ? 'var(--maroon)' : '#a08560') + '; line-height:1.1;">' + r.qty + '</div><div style="font-size:9.5px; font-weight:700; color:#8a6a44;">&#8377;' + Math.round(r.value).toLocaleString('en-IN') + '</div></div>' +
+        '</div></div>';
+    }).join('');
+}
+function shItemOpen(btn){ peSwipeCloseAll(); openSalesHist('item', btn.getAttribute('data-sid') || '', btn.getAttribute('data-en') || ''); }
+/* One item's sale details: qty, bills and value - by seller, by day, by price (when the price changed) and its bills. */
+function _shItemDetail(list, en){
+  var d = { qty: 0, value: 0, bills: 0, ta: '', sn: _shSnMap()['e:' + en] || 0, sellers: new Map(), days: new Map(), prices: new Map(), recent: [] };
+  list.forEach(function(x){
+    var q = 0, v = 0;
+    (x.items || []).forEach(function(it){ if(it.en !== en) return; q += it.qty; v += it.qty * it.price; d.ta = d.ta || it.ta; if(!d.sn) d.sn = Number(it.sn) || 0;
+      var pr = d.prices.get(it.price) || 0; d.prices.set(it.price, pr + it.qty); });
+    if(!q) return;
+    d.qty += q; d.value += v; d.bills++;
+    var sk = sellerKeyOf(x), se = d.sellers.get(sk) || { name: x.sellerName || x.sellerId, qty: 0, bills: 0, value: 0 }; se.qty += q; se.bills++; se.value += v; d.sellers.set(sk, se);
+    var dk = saleLocalDate(x.time), de = d.days.get(dk) || { qty: 0, bills: 0 }; de.qty += q; de.bills++; d.days.set(dk, de);
+    d.recent.push({ s: x, qty: q, value: v });
+  });
+  return d;
+}
+function _shItemDetailHtml(d, sid){
+  var inr = function(v){ return '&#8377;' + Math.round(v).toLocaleString('en-IN'); };
+  var c = function(v, l){ return '<div class="stat-card"><div class="sv">' + v + '</div><div class="sl">' + l + '</div></div>'; };
+  var line = function(l, sub, r, rs){ return '<div class="price-row"><div class="pr-name"><div class="pr-ta" style="font-size:14px;">' + l + '</div>' + (sub ? '<div class="pr-en">' + sub + '</div>' : '') + '</div><div class="pr-right"><div class="pr-price">' + r + '</div>' + (rs ? '<div style="font-size:9.5px; color:var(--ink-soft);">' + rs + '</div>' : '') + '</div></div>'; };
+  var sec = function(t){ return '<div class="section-title" style="margin:14px 0 6px;">' + t + '</div>'; };
+  if(!d.qty) return '<div class="empty-admin">No sales of this item.</div>';
+  var h = '<div class="stat-grid" style="margin-bottom:6px;">' + c(d.qty, 'Qty sold') + c(d.bills, 'Bills') + c(inr(d.value), 'Value (price &times; qty)') + '</div>' +
+    '<div style="font-size:11.5px; color:#8a6a44; font-weight:700; margin:0 2px;">Average ' + (Math.round(d.qty / d.bills * 10) / 10) + ' per bill' + (d.days.size ? ' &middot; sold on ' + d.days.size + ' day' + (d.days.size === 1 ? '' : 's') : '') + '</div>';
+  if(!sid && d.sellers.size){
+    h += sec('By seller');
+    Array.from(d.sellers.entries()).sort(function(a, b){ return b[1].qty - a[1].qty; }).forEach(function(e){ var s = e[1];
+      h += line(estEsc(s.name) + (sellerNoLabel(e[0]) ? ' <span style="font-size:10px; color:#8a6a44;">' + estEsc(sellerNoLabel(e[0])) + '</span>' : ''), s.bills + ' bill' + (s.bills === 1 ? '' : 's'), s.qty + ' qty', inr(s.value)); });
+  }
+  h += sec('By day');
+  Array.from(d.days.entries()).sort(function(a, b){ return a[0] < b[0] ? 1 : -1; }).forEach(function(e){ h += line(fullDateLabel(e[0]), e[1].bills + ' bill' + (e[1].bills === 1 ? '' : 's'), e[1].qty + ' qty'); });
+  if(d.prices.size > 1){
+    h += sec('By price');
+    Array.from(d.prices.entries()).sort(function(a, b){ return b[0] - a[0]; }).forEach(function(e){ h += line('&#8377;' + e[0], '', e[1] + ' qty', inr(e[0] * e[1])); });
+  }
+  h += sec('Bills (latest first)');
+  d.recent.sort(function(a, b){ return String(b.s.time).localeCompare(String(a.s.time)); }).slice(0, 50).forEach(function(r){
+    h += line(estEsc(billNoRef(r.s)) + ' &middot; ' + estEsc(r.s.sellerName || ''), new Date(r.s.time).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }), r.qty + ' qty', inr(r.value)); });
+  if(d.recent.length > 50) h += '<div style="text-align:center; font-size:11px; color:#8a6a44; padding:6px;">Latest 50 of ' + d.recent.length + ' bills shown</div>';
+  return h;
 }
 function _shStats(a){
   var c = function(v, l){ return '<div class="stat-card"><div class="sv">' + v + '</div><div class="sl">' + l + '</div></div>'; };
   return '<div class="stat-grid" style="margin-bottom:10px;">' + c(a.qty, 'Items Sold (Qty)') + c('&#8377;' + a.disc.toLocaleString('en-IN'), 'Discount Given (' + a.pct + '%)') + c('&#8377;' + a.tot.toLocaleString('en-IN'), 'Total Sales Amount') + '</div>';
 }
-function openSalesHist(view, sid){
-  _shStack.push({ v: view, sid: sid || '' });
+function openSalesHist(view, sid, en){
+  _shStack.push({ v: view, sid: sid || '', en: en || '' });
   document.getElementById('salesHistOverlay').style.display = 'flex';
   try{ history.pushState({ salesHist: true }, ''); }catch(e){}
   shPaint();
@@ -8301,13 +8575,21 @@ function shPaint(){
   var top = _shStack[_shStack.length - 1]; if(!top) return;
   var body = document.getElementById('salesHistBody'), title = document.getElementById('salesHistTitle'), keep = body.scrollTop;
   var sales = _shSales(), h = '';
+  if(top.v === 'items' || (top.v === 'item' && !top.sid)) sales = sales.filter(shTrackInPeriod);
   var btns = function(pr, pdf){ return '<span style="display:flex; gap:6px;"><button onclick="' + pr + '" title="Print 80mm" style="background:#0b5fd8; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">&#128424; Print</button><button onclick="' + pdf + '" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">' + SHARE_ICON_SVG_SM + 'PDF</button></span>'; };
   var br = salesFilters.branch && BRANCHES[salesFilters.branch] ? ' • ' + BRANCHES[salesFilters.branch].short : '';
-  if(top.v === 'items'){
-    var a = _shAgg(sales);
+  if(top.v === 'item'){
+    var _src = top.sid ? sales.filter(function(x){ return x.sellerId === top.sid; }) : sales, _d = _shItemDetail(_src, top.en);
+    var _who = top.sid ? ((SALES.filter(function(x){ return x.sellerId === top.sid; })[0] || {}).sellerName || top.sid) : '';
+    title.textContent = '📦 ' + (_d.sn ? '#' + _d.sn + ' · ' : '') + (_d.ta || top.en) + br;
+    h = '<div style="margin:0 2px 10px;"><div style="font-size:16px; font-weight:800; color:var(--maroon);">' + (_d.sn ? '<span class="pe-sn" style="display:inline-flex; vertical-align:middle; margin-right:6px;">' + _d.sn + '</span>' : '') + estEsc(_d.ta || top.en) + '</div>' +
+      '<div style="font-size:12px; color:#8a6a44; margin-top:2px;">' + estEsc(top.en) + (_who ? ' &middot; sold by <b>' + estEsc(_who) + '</b>' : ' &middot; all sellers') + '</div></div>' + _shItemDetailHtml(_d, top.sid);
+  } else if(top.v === 'items'){
+    var a = _shAgg(sales), tr = shTrackRows(a.rows);
     title.textContent = '📦 Item History' + br;
-    lastOverallItemsSummary = { statRows: [ { label: 'Total Items Sold (Qty)', value: String(a.qty) }, { label: 'Total Discount Given', value: '₹' + a.disc.toLocaleString('en-IN') }, { label: 'Total Sales Amount', value: '₹' + a.tot.toLocaleString('en-IN') } ], itemRows: a.rows, bid: salesFilters.branch };
-    h = _shStats(a) + '<div class="history-head-row"><div class="section-title" style="margin:0;">Items Sold (All Sellers)</div>' + btns('printOverallItemsSold()', 'shareOverallItemsSoldPDF()') + '</div>' + _shRowsHtml(a.rows);
+    lastOverallItemsSummary = { statRows: [ { label: 'Period', value: shTrackPeriodLabel() }, { label: 'Total Items Sold (Qty)', value: String(a.qty) }, { label: 'Total Discount Given', value: '₹' + a.disc.toLocaleString('en-IN') }, { label: 'Total Sales Amount', value: '₹' + a.tot.toLocaleString('en-IN') } ],
+      itemRows: tr.list.filter(function(r){ return r.qty > 0; }).map(function(r){ return [r.en, { ta: r.ta, qty: r.qty, revenue: r.value, sn: r.sn }]; }), bid: salesFilters.branch };
+    h = shTrackBarHtml() + _shStats(a) + '<div class="history-head-row"><div class="section-title" style="margin:0; font-size:13px;">' + tr.sum + '</div>' + btns('printOverallItemsSold()', 'shareOverallItemsSoldPDF()') + '</div>' + shTrackRowsHtml(tr);
   } else if(top.v === 'sellers'){
     title.textContent = '👤 Seller History' + br;
     var by = new Map();
@@ -8325,7 +8607,7 @@ function shPaint(){
     var a2 = _shAgg(mine);
     title.textContent = '👤 ' + nm + br;
     lastSellerSummary = { sellerName: nm + br, qty: a2.qty, discount: a2.disc, discPct: a2.pct, totalSales: a2.tot, itemRows: a2.rows, bid: rptBidOfList(mine, salesFilters.branch) };
-    h = _shStats(a2) + '<div class="history-head-row"><div class="section-title" style="margin:0;">Items Sold by ' + estEsc(nm) + '</div>' + btns('printSellerSummary()', 'shareSellerSummaryPDF()') + '</div>' + _shRowsHtml(a2.rows);
+    h = _shStats(a2) + '<div class="history-head-row"><div class="section-title" style="margin:0;">Items Sold by ' + estEsc(nm) + '</div>' + btns('printSellerSummary()', 'shareSellerSummaryPDF()') + '</div>' + _shRowsHtml(a2.rows, top.sid);
   }
   body.innerHTML = h; body.scrollTop = keep;
 }
@@ -8666,8 +8948,40 @@ function rptBidOfList(list, bid){
 }
 function rptBranches(bid){
   var id = rptBid(bid); if(id) return [BRANCHES[id]];
-  var rank = function(b){ return b.id === 'main' ? 0 : b.enabled === false ? 3 : branchSoon(b) ? 2 : 1; };
-  return Object.values(BRANCHES || {}).filter(Boolean).sort(function(a, b){ return rank(a) - rank(b); });
+  var all = Object.values(BRANCHES || {}).filter(Boolean), live = all.filter(function(b){ return b.enabled !== false; });   // a branch on hold is left out
+  var rank = function(b){ return b.id === 'main' ? 0 : branchSoon(b) ? 2 : 1; };
+  return (live.length ? live : all).sort(function(a, b){ return rank(a) - rank(b); });
+}
+/* One branch on the report: a branch was chosen, or only one branch is running (the others are on hold). */
+function rptOne(bid){ return !!rptBid(bid) || rptBranches(bid).length === 1; }
+/* Exporting a report while two or more branches are running: ask "All branches" or one branch; the bills and the branch
+   details in the report follow the choice (it also becomes the branch shown on the screen). Resolves '' / branch id / null. */
+function rptPickBranch(){
+  return new Promise(function(resolve){
+    var sc = adminScope(); if(sc){ resolve(sc); return; }
+    var live = liveBranches(); if(live.length < 2){ resolve(''); return; }
+    var cur = salesFilters.branch || '';
+    var ov = document.createElement('div'); ov.id = 'rptPickOv';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:100000; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; padding:20px;';
+    var btn = function(v, label, sub){ var on = v === cur; return '<button type="button" data-b="' + v + '" style="display:block; width:100%; text-align:left; margin-bottom:8px; padding:11px 12px; border-radius:10px; border:1.5px solid var(--maroon); background:' + (on ? 'var(--maroon)' : '#fff') + '; color:' + (on ? '#fff8e6' : 'var(--maroon)') + '; font-weight:800; font-size:14px; cursor:pointer;">' + label + (sub ? '<span style="display:block; font-size:11px; font-weight:600; opacity:.8; margin-top:2px;">' + sub + '</span>' : '') + '</button>'; };
+    ov.innerHTML = '<div style="background:#fffaf0; border-radius:14px; padding:18px; width:100%; max-width:340px;">' +
+      '<div style="font-weight:800; font-size:15px; color:var(--maroon); margin-bottom:4px;">Report for which branch?</div>' +
+      '<div style="font-size:12px; color:#8a6a44; margin-bottom:12px;">The bills and branch details in the report follow your choice.</div>' +
+      btn('', 'All branches', live.map(function(b){ return estEsc(b.short || b.name); }).join(' + ')) +
+      live.map(function(b){ return btn(b.id, estEsc(b.name) + (b.short ? ' (' + estEsc(b.short) + ')' : ''), estEsc(branchAddr(b))); }).join('') +
+      '<button type="button" data-x="1" style="display:block; width:100%; padding:10px; border:none; background:none; color:#8a6a44; font-weight:700; font-size:13px; cursor:pointer;">Cancel</button></div>';
+    ov.addEventListener('click', function(e){
+      if(e.target === ov){ ov.remove(); resolve(null); return; }
+      var t = e.target.closest('button'); if(!t) return;
+      ov.remove(); resolve(t.hasAttribute('data-x') ? null : (t.getAttribute('data-b') || ''));
+    });
+    document.body.appendChild(ov);
+  });
+}
+async function rptChooseBranch(){
+  var b = await rptPickBranch(); if(b === null) return false;
+  if(!adminScope() && (salesFilters.branch || '') !== b) setAdminBranch(b);
+  return true;
 }
 function rptInfo(b){
   b = b || {};
@@ -8678,13 +8992,13 @@ function rptInfo(b){
 function rptNameCode(i){ return i.name + (i.code ? ' (' + i.code + ')' : ''); }
 function rptMain(bid){ return rptInfo(rptBranches(bid)[0] || BRANCHES.main); }
 /* Certificate wording: "Thanneerpandhal branch (TPL)" or "all branches - Thanneerpandhal (TPL), Thennalakudi Bypass (TBP)". */
-function rptCertBranches(bid){ var id = rptBid(bid); return id ? rptInfo(BRANCHES[id]).name + ' branch' + (BRANCHES[id].short ? ' (' + BRANCHES[id].short + ')' : '') : 'all branches \u2014 ' + rptBranches('').map(function(b){ return rptNameCode(rptInfo(b)); }).join(', '); }
-function rptScopeName(bid){ var id = rptBid(bid); return id ? rptNameCode(rptInfo(BRANCHES[id])) : 'All branches'; }
+function rptCertBranches(bid){ var l = rptBranches(bid); if(rptOne(bid)){ var b = l[0]; return rptInfo(b).name + ' branch' + (b.short ? ' (' + b.short + ')' : ''); } return 'all branches \u2014 ' + l.map(function(b){ return rptNameCode(rptInfo(b)); }).join(', '); }
+function rptScopeName(bid){ var id = rptBid(bid), l = rptBranches(bid); return id ? rptNameCode(rptInfo(BRANCHES[id])) : (l.length === 1 ? rptNameCode(rptInfo(l[0])) : 'All branches'); }
 /* Owner's name under the signature line, above "Proprietor / Authorised Signatory" (the branch's owner; the main shop's for all branches). */
 function rptOwnerLine(bid){ var o = rptMain(bid).owner; return o ? '<b>' + estEsc(o) + '</b><br>' : ''; }
 var RPT_DASH = '&mdash;';
 function a4BranchTable(bid){
-  var one = !!rptBid(bid), v = function(t){ return t ? estEsc(t) : RPT_DASH; };
+  var one = rptOne(bid), v = function(t){ return t ? estEsc(t) : RPT_DASH; };
   if(one){
     var i = rptMain(bid), th = function(t){ return '<th style="width:17%;">' + t + '</th>'; };
     return '<div class="bkr-bd" style="margin-bottom:16px;"><div class="bkr-sec">Branch details</div><table style="margin:0;"><tbody>' +
@@ -8701,7 +9015,7 @@ function a4BranchTable(bid){
     }).join('') + '</tbody></table></div>';
 }
 function a4Head(title, scopeHtml, bid){
-  var one = !!rptBid(bid), m = rptMain(bid);
+  var one = rptOne(bid), m = rptMain(bid);
   a4FootName = SHOP.name_en + (one ? ' • ' + rptNameCode(m) : '');
   return '<div class="bkr-head"><div class="bkr-shop-ta">' + estEsc(m.title) + '</div><div class="bkr-shop-en">' + estEsc(SHOP.name_en) + '</div>' +
     (m.addr ? '<div class="bkr-addr">' + estEsc(m.addr) + '</div>' : '') +
@@ -8711,7 +9025,7 @@ function a4Head(title, scopeHtml, bid){
 }
 /* 80mm reports: the same details, kept short to save paper. */
 function rptThermHead(titleHtml, subHtml, bid){
-  var one = !!rptBid(bid), list = rptBranches(bid), m = rptInfo(list[0] || BRANCHES.main), s = 'font-size:9px; color:#000; line-height:1.35;';
+  var one = rptOne(bid), list = rptBranches(bid), m = rptInfo(list[0] || BRANCHES.main), s = 'font-size:9px; color:#000; line-height:1.35;';
   var h = '<div class="br-head"><div class="br-ta">' + estEsc(m.title) + '</div><div style="font-size:8.5px; letter-spacing:1.5px; color:#000; font-weight:700;">' + estEsc(SHOP.name_en) + '</div>';
   h += (one ? [m] : list.map(rptInfo)).map(function(i){
     return '<div style="' + s + ' margin-top:3px;"><b>' + (one ? 'Branch: ' : '') + estEsc(rptNameCode(i)) + '</b>' + (i.status !== 'Active' ? ' (' + i.status + ')' : '') +
@@ -8722,26 +9036,23 @@ function rptThermHead(titleHtml, subHtml, bid){
 }
 function a4SummaryTable(d){
   return '<div class="bkr-sec">1. Summary</div><table><thead><tr><th>Particulars</th><th class="num">Amount</th></tr></thead><tbody>' +
-    '<tr><td>Bills made (all)</td><td class="num">' + d.all + '</td></tr>' +
-    '<tr><td>Confirmed bills</td><td class="num">' + d.bills + '</td></tr>' +
-    '<tr><td>Cancelled bills</td><td class="num">' + d.cancelled + '</td></tr>' +
+    '<tr><td>Total bills</td><td class="num">' + d.bills + '</td></tr>' +
     '<tr><td>Items sold (quantity)</td><td class="num">' + d.items + '</td></tr>' +
     '<tr><td>Gross sales value</td><td class="num">' + a4Inr(d.gross) + '</td></tr>' +
     '<tr><td>Less: discounts given (' + d.pct + '%)</td><td class="num">(' + a4Inr(d.disc) + ')</td></tr>' +
-    '<tr class="bkr-total-row"><td>Net sales (confirmed)</td><td class="num">' + a4Inr(d.net) + '</td></tr>' +
+    '<tr class="bkr-total-row"><td>Net sales</td><td class="num">' + a4Inr(d.net) + '</td></tr>' +
     '<tr><td>Received in cash</td><td class="num">' + a4Inr(d.cash) + '</td></tr>' +
     '<tr><td>Received by UPI / digital</td><td class="num">' + a4Inr(d.upi) + '</td></tr></tbody></table>';
 }
-var A4_BILL_HEAD = '<th class="num" style="width:44px;">S.No</th><th>Bill No</th><th>Date &amp; time</th><th>Seller</th><th>Status</th><th class="num">Amount</th>';
+var A4_BILL_HEAD = '<th class="num" style="width:44px;">S.No</th><th>Bill No</th><th>Date &amp; time</th><th>Seller</th><th class="num">Amount</th>';
 function a4SellerBlock(num, sellers){
   return { id: 'sellers', sec: num + '. Seller-wise',
     head: '<th class="num" style="width:44px;">S.No</th><th style="width:76px;">ID</th><th>Seller</th><th class="num">Bills</th><th class="num">Items</th><th class="num">Net</th><th class="num">Discount</th>',
     units: sellers.map(function(r, i){ return '<tr><td class="num">' + (i + 1) + '</td><td>' + (sellerNoLabel(r.key) || '-') + '</td><td>' + estEsc(a4SellerName(r)) + '</td><td class="num">' + r.bills + '</td><td class="num">' + r.items + '</td><td class="num">' + a4Inr(r.net) + '</td><td class="num">' + a4Inr(r.disc) + '</td></tr>'; }) };
 }
 function a4BillRow(s, no){
-  var st = saleStatus(s), status = st === 'cancelled' ? 'Cancelled' : st === 'cancel_pending' ? 'Cancel requested' : 'Confirmed';
   var when = new Date(s.time).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  return '<tr><td class="num">' + no + '</td><td>' + estEsc(billNoRef(s)) + '</td><td>' + when + '</td><td>' + estEsc(s.sellerName || '') + '</td><td>' + status + '</td><td class="num">' + (isCountedSale(s) ? a4Inr(s.total || 0) : '-') + '</td></tr>';
+  return '<tr><td class="num">' + no + '</td><td>' + estEsc(billNoRef(s)) + '</td><td>' + when + '</td><td>' + estEsc(s.sellerName || '') + '</td><td class="num">' + a4Inr(s.total || 0) + '</td></tr>';
 }
 /* A4 sheets: each page is a fixed 794 x 1123 sheet. Blocks are placed one after another and every sheet is measured, so a page is filled down to its footer, a table only breaks between two rows, and its header repeats on the next sheet. */
 function a4Css(){
@@ -8757,12 +9068,47 @@ function a4Css(){
     '.bank-report.a4s .bkr-sign{margin-top:36px;}' +
     '.bank-report.a4s .sig-name{font-weight:bold; font-size:12px; margin-bottom:2px;}' +
     '.bank-report.a4s .a4s-mini{display:flex; justify-content:space-between; font-size:11px; border-bottom:1px solid #000; padding-bottom:5px; margin-bottom:14px;}' +
-    '.bank-report.a4s .a4s-foot{position:absolute; left:52px; right:52px; bottom:22px; display:flex; justify-content:space-between; font-size:11px; color:#333; border-top:1px solid #000; padding-top:6px;}';
+    '.bank-report.a4s .a4s-foot{position:absolute; left:52px; right:52px; bottom:22px; display:flex; justify-content:space-between; font-size:11px; color:#333; border-top:1px solid #000; padding-top:6px;}' +
+    '.bank-report.a4one .a4s-blk{padding-bottom:10px;}' +
+    '.bank-report.a4one th, .bank-report.a4one td{padding:4px 8px 5px; font-size:11.5px;}' +
+    '.bank-report.a4one .bkr-head{padding-bottom:8px;}' +
+    '.bank-report.a4one .bkr-title{margin:14px 0 4px;}' +
+    '.bank-report.a4one .bkr-period{margin-bottom:10px;}' +
+    '.bank-report.a4one .bkr-cert{margin-bottom:6px; line-height:1.5;}' +
+    '.bank-report.a4one .bkr-sign{margin-top:20px;}' +
+    '.bank-report.a4one .bkr-sign .sig-line{margin-top:34px;}';
   document.head.appendChild(st);
 }
-function a4Paginate(host, blocks, docTitle){
+/* One-page reports (monthly / summary statements): every block on a single A4 sheet - compact spacing, long day lists in
+   two columns, and if it is still taller the whole sheet content is scaled down to fit. */
+function a4OneTableHtml(t){
+  var tot = [], body = t.units.join('').replace(/<tr class="bkr-total-row">[\s\S]*?<\/tr>/g, function(m){ tot.push(m); return ''; });
+  var tmp = document.createElement('tbody'); tmp.innerHTML = body;
+  var rows = Array.prototype.map.call(tmp.children, function(r){ return r.outerHTML; }), nCols = (t.head.match(/<th/g) || []).length;
+  var tbl = function(rs, extra){ return '<table style="margin:0;"><thead><tr>' + t.head + '</tr></thead><tbody>' + rs.join('') + (extra || '') + '</tbody></table>'; };
+  var hh = '<div class="bkr-sec">' + t.sec + '</div>';
+  if(rows.length > 12 && nCols <= 5){
+    var half = Math.ceil(rows.length / 2);
+    hh += '<div style="display:flex; gap:10px; align-items:flex-start;"><div style="flex:1; min-width:0;">' + tbl(rows.slice(0, half)) + '</div><div style="flex:1; min-width:0;">' + tbl(rows.slice(half)) + '</div></div>' +
+      (tot.length ? '<table style="margin:6px 0 0;"><tbody>' + tot.join('') + '</tbody></table>' : '');
+  } else hh += tbl(rows, tot.join(''));
+  return hh;
+}
+function a4OnePage(host, blocks, docTitle, today){
+  var el = document.createElement('div'); el.className = 'bank-report a4s a4one';
+  el.innerHTML = '<div class="a4s-body"><div class="a4one-in"></div></div><div class="a4s-foot"><span>Generated on: ' + today + '</span><span class="a4s-pg"></span></div>';
+  host.appendChild(el);
+  var inner = el.querySelector('.a4one-in'), body = el.querySelector('.a4s-body');
+  blocks.forEach(function(b){ var d = document.createElement('div'); d.className = 'a4s-blk'; d.innerHTML = b.html != null ? b.html : a4OneTableHtml(b); inner.appendChild(d); });
+  var H = inner.scrollHeight, A = body.clientHeight;
+  if(H > A){ var z = A / H; inner.style.transform = 'scale(' + z + ')'; inner.style.transformOrigin = '0 0'; inner.style.width = (100 / z) + '%'; }
+  el.querySelector('.a4s-pg').textContent = (a4FootName || SHOP.name_en) + ' — Page 1 of 1';
+  return [el];
+}
+function a4Paginate(host, blocks, docTitle, onePage){
   var pages = [], cur = null, tb = null, w = null;
   var today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  if(onePage) return a4OnePage(host, blocks, docTitle, today);
   function newPage(){
     var el = document.createElement('div'); el.className = 'bank-report a4s';
     el.innerHTML = '<div class="a4s-body"></div><div class="a4s-foot"><span>Generated on: ' + today + '</span><span class="a4s-pg"></span></div>';
@@ -8799,7 +9145,7 @@ function a4Paginate(host, blocks, docTitle){
   pages.forEach(function(el, i){ el.querySelector('.a4s-pg').textContent = (a4FootName || SHOP.name_en) + ' — Page ' + (i + 1) + ' of ' + pages.length; });
   return pages;
 }
-async function a4MakePdf(blocks, docTitle){
+async function a4MakePdf(blocks, docTitle, onePage){
   await Promise.all([ensureJsPDF(), ensureHtml2Canvas()]);
   a4Css();
   const { jsPDF } = window.jspdf;
@@ -8807,7 +9153,7 @@ async function a4MakePdf(blocks, docTitle){
   const pdfW = doc.internal.pageSize.getWidth(), pdfH = doc.internal.pageSize.getHeight();
   const host = document.createElement('div'); host.className = 'pl-host'; document.body.appendChild(host);
   try{
-    const pages = a4Paginate(host, blocks, docTitle);
+    const pages = a4Paginate(host, blocks, docTitle, onePage);
     for(let i = 0; i < pages.length; i++){
       const canvas = await window.html2canvas(pages[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true, width: 794, height: 1123, windowWidth: 794, windowHeight: 1123 });
       if(i > 0) doc.addPage();
@@ -8825,33 +9171,36 @@ function dashScopeLine(){
 function buildDashboardThermalHTML(list, title, scope){
   var d = dashSummary(list), sellers = dashSellerRows(list);
   var stat = function(l, v, cls){ return '<div class="br-row' + (cls ? ' ' + cls : '') + '"><span>' + l + '</span><span>' + v + '</span></div>'; };
+  list = list.filter(function(s){ return isCountedSale(s); });   // only the bills that count
   var bills = list.slice(0, 300).map(function(s){
-    var st = saleStatus(s), tag = st === 'cancelled' ? ' <b>&middot; CANCELLED</b>' : st === 'cancel_pending' ? ' <b>&middot; CANCEL REQUESTED</b>' : '';
+    var tag = '';
     return '<div class="br-hist-entry"><div class="br-hist-top"><span>' + estEsc(billNoRef(s)) + ' &middot; ' + new Date(s.time).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + '</span><span class="num">' + (isCountedSale(s) ? a4Inr(s.total || 0) : '-') + '</span></div><div class="br-hist-sub">' + estEsc(s.sellerName || '') + tag + '</div></div>';
   }).join('');
   return '<div class="br-page" style="width:302px;">' +
     rptThermHead(estEsc(title), estEsc(scope), salesFilters.branch) +
-    '<div class="br-summary">' + stat('Total sales (confirmed)', a4Inr(d.net)) + stat('Bills (all)', d.all) + stat('Confirmed bills', d.bills) + stat('Items sold (qty)', d.items) + stat('Discount given', '-' + a4Inr(d.disc), 'br-disc') + stat('Discount %', d.pct + '%') + stat('Cash', a4Inr(d.cash)) + stat('UPI / digital', a4Inr(d.upi)) + stat('Cancelled', d.cancelled) + '</div>' +
+    '<div class="br-summary">' + stat('Total sales', a4Inr(d.net)) + stat('Total bills', d.bills) + stat('Items sold (qty)', d.items) + stat('Discount given', '-' + a4Inr(d.disc), 'br-disc') + stat('Discount %', d.pct + '%') + stat('Cash', a4Inr(d.cash)) + stat('UPI / digital', a4Inr(d.upi)) + '</div>' +
     (sellers.length > 1 ? '<table class="br-table" style="margin-top:6px;"><thead><tr><th style="width:50%;">Seller</th><th class="num" style="width:16%;">Bills</th><th class="num" style="width:34%;">Net</th></tr></thead><tbody>' + sellers.map(function(r){ return '<tr><td>' + estEsc(r.name) + (sellerNoLabel(r.key) ? ' <span style="font-size:8.5px;">' + sellerNoLabel(r.key) + '</span>' : '') + '</td><td class="num">' + r.bills + '</td><td class="num">' + a4Inr(r.net) + '</td></tr>'; }).join('') + '</tbody></table>' : '') +
     '<div class="br-hist-list" style="margin-top:6px;">' + (bills || '<div style="text-align:center;color:#777;padding:10px;">No bills.</div>') + '</div>' +
     (list.length > 300 ? '<div style="text-align:center; font-size:9px; padding:4px;">First 300 bills shown. The A4 PDF has all of them.</div>' : '') +
-    '<div class="br-total-row"><span>TOTAL (confirmed)</span><span>' + a4Inr(d.net) + '</span></div>' +
+    '<div class="br-total-row"><span>TOTAL</span><span>' + a4Inr(d.net) + '</span></div>' +
     '</div>';
 }
 function buildDashboardA4Blocks(list, title, scope){
   var d = dashSummary(list), sellers = dashSellerRows(list), blocks = [], n = 2;
   blocks.push({ id: 'head', fixedTop: true, html: a4Head(a4TitleOr(title), estEsc(scope), salesFilters.branch) + a4SummaryTable(d) });
-  if(!list.length) blocks.push({ html: '<div class="bkr-decl">No bills for this filter.</div>' });
+  var counted = list.filter(function(s){ return isCountedSale(s); });   // only the bills that count (no cancelled ones)
+  if(!counted.length) blocks.push({ html: '<div class="bkr-decl">No bills for this filter.</div>' });
   if(sellers.length > 1) blocks.push(a4SellerBlock(n++, sellers));
-  if(list.length){
-    var units = list.map(function(s, j){ return a4BillRow(s, j + 1); });
-    units[units.length - 1] += '<tr class="bkr-total-row"><td colspan="5">TOTAL (confirmed bills)</td><td class="num">' + a4Inr(d.net) + '</td></tr>';
-    blocks.push({ id: 'bills', sec: (n++) + '. Bill-wise (' + list.length + ' bills)', head: A4_BILL_HEAD, units: units });
+  if(counted.length){
+    var units = counted.map(function(s, j){ return a4BillRow(s, j + 1); });
+    units[units.length - 1] += '<tr class="bkr-total-row"><td colspan="4">TOTAL</td><td class="num">' + a4Inr(d.net) + '</td></tr>';
+    blocks.push({ id: 'bills', sec: (n++) + '. Bill-wise (' + counted.length + ' bills)', head: A4_BILL_HEAD, units: units });
   }
   blocks.push({ id: 'sign', fixedEnd: true, html: '<div class="bkr-sign"><div class="sig-block">' + a4SigName() + '<div class="sig-line">Prepared by (name &amp; signature)</div></div></div>' });
   return blocks;
 }
-function printDashboardThermal(){
+async function printDashboardThermal(){
+  if(!(await rptChooseBranch())) return;
   var sc = salesRecordsScope();
   if(!sc.list.length){ alert('No bills for this filter.'); return; }
   printThermalHtml(buildDashboardThermalHTML([...sc.list].reverse(), 'Sales Dashboard', dashScopeLine()));
@@ -8926,7 +9275,7 @@ async function a4EdPreview(){
   var s = Math.min(1, Math.max(0.2, (host.clientWidth - 28) / 794));
   stack.style.width = (794 * s) + 'px';
   host.appendChild(stack);
-  var pages = a4Paginate(stack, blocks, docTitle);
+  var pages = a4Paginate(stack, blocks, docTitle, a4Ed.kind === 'sales');   // Sales Statement: one A4 page
   pages.forEach(function(p){
     p.style.transform = 'scale(' + s + ')'; p.style.transformOrigin = '0 0';
     p.style.marginBottom = (-1123 * (1 - s)) + 'px'; p.style.marginRight = (-794 * (1 - s)) + 'px';
@@ -8966,7 +9315,7 @@ async function a4EdExport(type){
   try{
     if(type === 'pdf'){
       st.textContent = 'Preparing PDF…';
-      var doc = await a4MakePdf(blocks, docTitle);
+      var doc = await a4MakePdf(blocks, docTitle, a4Ed.kind === 'sales');
       await shareGeneratedPDF(doc, a4Ed.fileBase + '.pdf', a4Ed.shareTitle);
     } else {
       st.textContent = 'Preparing Word file…';
@@ -9042,6 +9391,7 @@ function a4EdClose(){
   if(a4Ed.preview){ a4Ed.preview = false; a4EdMode(false); }
 }
 async function shareDashboardA4(){
+  if(!(await rptChooseBranch())) return;
   var sc = salesRecordsScope();
   if(!sc.list.length){ alert('No bills for this filter.'); return; }
   var scope = dashScopeLine();
@@ -9072,7 +9422,7 @@ function buildSalesStatementBlocks(f, r, list){
   var d = dashSummary(list), sellers = dashSellerRows(list), blocks = [], n = 2;
   var scope = 'Period: <b>' + estEsc(r.label) + '</b> &nbsp;&bull;&nbsp; Seller: <b>' + estEsc(f.seller ? sellerNameOf(f.seller) : 'All sellers') + '</b> &nbsp;&bull;&nbsp; Branch: <b>' + estEsc(rptScopeName(salesFilters.branch)) + '</b>';
   blocks.push({ id: 'head', fixedTop: true, html: a4Head(a4TitleOr('SALES STATEMENT'), scope, salesFilters.branch) + a4SummaryTable(d) });
-  if(!list.length) blocks.push({ html: '<div class="bkr-decl">No sales in this period.</div>' });
+  if(!d.bills) blocks.push({ html: '<div class="bkr-decl">No sales in this period.</div>' });
   if(!f.seller && sellers.length) blocks.push(a4SellerBlock(n++, sellers));
   if(f.detail === 'daily' && list.length){
     var days = dashDayRows(list);
@@ -9085,11 +9435,12 @@ function buildSalesStatementBlocks(f, r, list){
   return blocks;
 }
 async function shareSalesA4(){
+  if(!(await rptChooseBranch())) return;
   var f = a4RepVals(), r = a4RepRange(f);
   if(!r){ alert('Choose a period first.'); return; }
   var list = a4StatementList(f, r);
   if(!list.length){ alert('No sales in ' + r.label + '.'); return; }
-  a4EdOpen({ kind: 'sales', list: list, f: f, r: r, fileBase: 'Sales_Statement_' + r.from + '_to_' + r.to, shareTitle: 'Sales Statement — ' + r.label });
+  a4EdOpen({ kind: 'sales', previewOnly: true, list: list, f: f, r: r, fileBase: 'Sales_Statement_' + r.from + '_to_' + r.to, shareTitle: 'Sales Statement — ' + r.label });
 }
 
 function a4SellerOptions(cur){
@@ -9159,9 +9510,17 @@ function customerSummaryHtml(list){
 function clearSalesFilters(){
   listReset('sales');
   salesFilters = { seller:'', billNo:'', phone:'', branch: salesFilters.branch || '', from:'', to:'', yr: salesDefaultYr() };   // the branch chip stays
+  slSearchOpen = false;
   renderAdmin();
 }
 function toggleSalesStats(){ salesStatsOpen = !salesStatsOpen; renderAdmin(); }
+/* Sales tab: More menu (PDF A4 / Print 80 mm / Bank format), search behind the 🔍 chip, period chips */
+var slMoreOpen = false, slSearchOpen = false;
+function slMore(on){ slMoreOpen = (on == null) ? !slMoreOpen : !!on; renderAdmin(); }
+function slMoreDo(a){ slMoreOpen = false; renderAdmin(); if(a === 'pdf') shareDashboardA4(); else if(a === 'print') printDashboardThermal(); else if(a === 'bank') downloadSalesReportBankFormat(); }
+function slSearchShow(){ slSearchOpen = true; renderAdmin(); var el = document.getElementById('salesSearch'); if(el) el.focus(); }
+function slSearchClose(){ slSearchOpen = false; listReset('sales'); salesFilters.billNo = ''; salesFilters.phone = ''; renderAdmin(); }
+function slPeriod(v){ listReset('sales'); salesFilters.yr = v; salesFilters.from = ''; salesFilters.to = ''; renderAdmin(); }
 /* 📅 next to the search: on = From / To dates (first bill day .. today to start with), off = all dates. */
 function toggleSalesDates(){
   listReset('sales');
@@ -9289,6 +9648,7 @@ function buildReportPDFHTML(totalPaid, totalDiscount, label, cash, upi, bid){
 }
 
 async function shareReportPDF(){
+  if(!(await rptChooseBranch())) return;
   SALES = loadJSON('ars_sales', []);
   const bid = rptBid(salesFilters.branch);   // same branch as the Reports tab shows
   const dateFilteredSales = SALES.filter(s => saleInBranch(s, bid) && (!reportFilters.date || saleLocalDate(s.time) === reportFilters.date));
@@ -9489,7 +9849,7 @@ function bankReportA4Blocks(type, periodKey){
 
 /* Renders arbitrary 794px-wide HTML onto A4 pages, slicing onto additional pages if taller
    than one page — the report stays fully readable at true A4 scale no matter how long. */
-async function renderOffscreenToA4PDF(html){
+async function renderOffscreenToA4PDF(html, fitOne){
   await Promise.all([ensureJsPDF(), ensureHtml2Canvas()]);
   const host = document.createElement('div');
   host.className = 'pl-host';
@@ -9510,6 +9870,7 @@ async function renderOffscreenToA4PDF(html){
     const pdfH = doc.internal.pageSize.getHeight();
     const imgH = pdfW * (canvas.height / canvas.width);
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    if(fitOne && imgH > pdfH){ const w = pdfW * pdfH / imgH; doc.addImage(imgData, 'JPEG', (pdfW - w) / 2, 0, w, pdfH); return doc; }   // the whole report on one A4 page
     let y = 0, page = 0;
     while(y < imgH){
       if(page > 0) doc.addPage();
@@ -9525,11 +9886,12 @@ async function renderOffscreenToA4PDF(html){
 }
 
 async function shareBankReportPDF(){
+  if(!(await rptChooseBranch())) return;
   const type = bankReport.type;
   const period = document.getElementById('bankReportPeriod') ? document.getElementById('bankReportPeriod').value : bankReport.period;
   if(!period){ alert('Select a period first.'); return; }
   try{
-    const doc = await a4MakePdf(bankReportA4Blocks(type, period), 'BUSINESS INCOME STATEMENT');
+    const doc = await a4MakePdf(bankReportA4Blocks(type, period), 'BUSINESS INCOME STATEMENT', true);   // one A4 page
     await shareGeneratedPDF(doc, 'Income_Statement_' + period + '.pdf', SHOP.name_en + ' — Income Statement ' + period);
   } catch(e){
     alert('Could not generate/share the PDF. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
@@ -9654,58 +10016,47 @@ function renderAdmin(){
     const filteredSales = applySalesFilters(SALES);
 
     const scopeBr = salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch] : null;
+    const totalCash = confirmedSales.reduce((a,s)=>a+saleCashAmount(s),0), totalUpi = confirmedSales.reduce((a,s)=>a+saleUpiAmount(s),0);
+    const _filtered = !!(salesFilters.seller || salesFilters.billNo || salesFilters.phone || _dates || salesFilters.yr !== salesDefaultYr());
+    const _srchOn = slSearchOpen || !!(salesFilters.billNo || salesFilters.phone);
+    const _kpi = (v, l) => `<div class="sl-kpi"><b>${v}</b><span>${l}</span></div>`;
+    const _pchip = (v, l) => `<button type="button" class="pe-chip${!_dates && salesFilters.yr === v ? ' on' : ''}" onclick="slPeriod('${v}')"><span class="t">${l}</span></button>`;
     let html = branchChipsHtml(salesFilters.branch, 'setAdminBranch') +
-      `<div style="display:flex; align-items:center; gap:8px; margin:0 2px ${salesStatsOpen ? '6px' : '12px'};">
-        <div style="flex:1; min-width:0; font-size:12px; font-weight:800; color:var(--maroon);">Showing: ${salesFilters.seller ? custEsc(sellerNames.get(salesFilters.seller) || salesFilters.seller) : 'All sellers'} &bull; ${scopeBr ? estEsc(scopeBr.name) + ' (' + estEsc(scopeBr.short) + ') only' : 'All branches'}${' &bull; ' + salesPeriodLabel()}</div>
-        <button onclick="toggleSalesStats()" title="${salesStatsOpen ? 'Hide totals' : 'Show totals'}" aria-label="${salesStatsOpen ? 'Hide totals' : 'Show totals'}" style="flex:0 0 auto; display:flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px; border:1.5px solid var(--maroon); background:${salesStatsOpen ? 'var(--maroon)' : '#fff8e6'}; color:${salesStatsOpen ? '#fff8e6' : 'var(--maroon)'}; font-weight:800; font-size:12px; cursor:pointer;"><span style="font-size:16px; line-height:1;">${salesStatsOpen ? '&#128584;' : '&#128065;&#65039;'}</span>${salesStatsOpen ? 'Hide' : 'Show'}</button>
-      </div>` +
-      `<div class="stat-grid" style="${salesStatsOpen ? '' : 'display:none;'}">
-        <div class="stat-card"><div class="sv">₹${totalRevenue.toLocaleString('en-IN')}</div><div class="sl">Total Sales (Confirmed)</div></div>
-        <div class="stat-card"><div class="sv">${scopedSales.length}</div><div class="sl">Total Orders</div></div>
-        <div class="stat-card"><div class="sv">${totalItemsSold}</div><div class="sl">Total Items Sold (Qty)</div></div>
-        <div class="stat-card"><div class="sv">₹${totalDiscountGiven.toLocaleString('en-IN')}</div><div class="sl">Total Discount Given</div></div>
-        <div class="stat-card"><div class="sv">${overallDiscountPct}%</div><div class="sl">Total Discount %</div></div>
-        <div class="stat-card"><div class="sv">₹${todayRevenue.toLocaleString('en-IN')}</div><div class="sl">Today</div></div>
-        <div class="stat-card"><div class="sv">${cancelledCount}</div><div class="sl">Cancelled</div></div>
+      `<div class="pe-top"><div class="pe-title"><b>Sales</b><span>${salesPeriodLabel()} &middot; ${salesFilters.seller ? custEsc(sellerNames.get(salesFilters.seller) || salesFilters.seller) : 'All sellers'} &middot; ${scopeBr ? estEsc(scopeBr.short || scopeBr.name) : 'All branches'}</span></div>
+        <div class="pe-more"><button type="button" class="pe-ibtn" onclick="slMore()" aria-label="More">&#8943; More</button>${slMoreOpen ? `<div class="pe-shade" onclick="slMore(false)"></div><div class="pe-menu" role="menu">
+          <button type="button" onclick="slMoreDo('pdf')">&#128196; PDF (A4) report</button>
+          <button type="button" onclick="slMoreDo('print')">&#128424; Print 80 mm</button>
+          ${_scope ? '' : `<button type="button" onclick="slMoreDo('bank')">&#128202; Bank format PDF</button>`}</div>` : ''}</div></div>
+      <div class="sl-sum">
+        <div class="sl-sum-top"><div><div class="sl-big">${salesStatsOpen ? '&#8377;' + totalRevenue.toLocaleString('en-IN') : '&#8377; &bull;&bull;&bull;&bull;'}</div><div class="sl-cap">Total sales &middot; ${confirmedSales.length} bills &middot; ${totalItemsSold} items</div></div>
+          <button type="button" class="sl-eye" onclick="toggleSalesStats()" aria-label="${salesStatsOpen ? 'Hide totals' : 'Show totals'}">${salesStatsOpen ? '&#128584; Hide' : '&#128065; Show'}</button></div>
+        ${salesStatsOpen ? `<div class="sl-kpis">${_kpi('&#8377;' + todayRevenue.toLocaleString('en-IN'), 'Today')}${_kpi('&#8377;' + totalCash.toLocaleString('en-IN'), '&#128181; Cash')}${_kpi('&#8377;' + totalUpi.toLocaleString('en-IN'), '&#128241; UPI')}${_kpi('&#8377;' + totalDiscountGiven.toLocaleString('en-IN'), 'Discount ' + overallDiscountPct + '%')}</div>` : ''}
       </div>
-
-      <div style="margin-bottom:16px; ${_scope ? 'display:none;' : ''}">
-        <button onclick="downloadSalesReportBankFormat()" style="width:100%; padding:12px; background:#1e7a3c; color:#fff; border:none; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer;">📊 Export Sales Report (Bank Format PDF)</button>
-      </div>
-
-      <div style="display:flex; gap:8px; margin:0 0 14px;">
-        <button onclick="openSalesHist('items')" style="flex:1; padding:12px 6px; background:#fff8e6; color:var(--maroon); border:1.5px solid var(--maroon); border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;">&#128230; Item History</button>
-        <button onclick="openSalesHist('sellers')" style="flex:1; padding:12px 6px; background:#fff8e6; color:var(--maroon); border:1.5px solid var(--maroon); border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;">&#128100; Seller History</button>
-      </div>
-      <div style="margin:4px 0 12px;">
-        <div style="display:flex; gap:8px; align-items:stretch; margin:0 0 8px;">
-          <div class="admin-search-wrap" style="margin:0; flex:1; min-width:0;">
-            <span class="ico">&#128269;</span>
-            <input id="salesSearch" type="text" inputmode="numeric" autocomplete="off" placeholder="Bill no or customer mobile" value="${salesFilters.billNo || salesFilters.phone || ''}" oninput="onSalesSearchInput()">
-          </div>
-          <button onclick="toggleSalesDates()" title="${_dates ? 'Show all dates' : 'Filter by dates'}" aria-label="Date filter" style="flex:0 0 auto; width:48px; border-radius:10px; border:1.5px solid var(--maroon); background:${_dates ? 'var(--maroon)' : '#fff8e6'}; color:${_dates ? '#fff8e6' : 'var(--maroon)'}; font-size:20px; cursor:pointer;">&#128197;</button>
+      <div class="sl-quick"><button type="button" onclick="openSalesHist('items')">&#128230; Item History</button><button type="button" onclick="openSalesHist('sellers')">&#128100; Seller History</button></div>
+      <div class="pl-sticky-head">
+        ${_srchOn ? `<div class="pe-search" style="margin-bottom:8px;"><span class="ico">&#128269;</span><input id="salesSearch" type="text" inputmode="numeric" autocomplete="off" placeholder="Bill no or customer mobile" value="${salesFilters.billNo || salesFilters.phone || ''}" oninput="onSalesSearchInput()"><button type="button" class="clr" aria-label="Close search" onclick="slSearchClose()">&#10005;</button></div>` : ''}
+        <div class="pe-chips" style="margin-top:0;">
+          <button type="button" class="pe-chip pe-schip${_srchOn ? ' on' : ''}" aria-label="Search bill no or mobile" onclick="${_srchOn ? 'slSearchClose()' : 'slSearchShow()'}">&#128269;</button>
+          ${_pchip('today', 'Today')}${_pchip('yday', 'Yesterday')}${_pchip(salesDefaultYr(), 'This year')}${_pchip('all', 'All')}
+          <button type="button" class="pe-chip${_dates ? ' on' : ''}" onclick="toggleSalesDates()" aria-label="Choose dates"><span class="t">&#128197; Dates</span></button>
         </div>
-        ${_dates ? `<div style="display:flex; gap:6px; align-items:center; margin:0 0 8px; font-size:12px; font-weight:800; color:#5b4630;">
+        <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
+          <select id="filterSeller" class="pe-sort" style="max-width:none; flex:1;" onchange="onSalesFilterChange()">
+            <option value="">&#128100; All sellers</option>
+            ${sellerOptions.map(([id,name]) => `<option value="${id}" ${salesFilters.seller===id?'selected':''}>${custEsc(name)}${sellerNoLabel(id) ? ' · ' + sellerNoLabel(id) : ''} (${sellerCounts.get(id)})</option>`).join('')}
+          </select>
+          <select id="filterYear" class="pe-sort" style="max-width:40%;" onchange="onSalesYearChange()" aria-label="More periods">${salesYearOptionsHtml()}</select>
+        </div>
+      </div>
+      ` + `${_dates ? `<div style="display:flex; gap:6px; align-items:center; margin:0 0 8px; font-size:12px; font-weight:800; color:#5b4630;">
           <span>From</span><input id="salesFrom" type="date" value="${salesFilters.from}" onchange="onSalesDateChange()" style="flex:1; min-width:0; padding:8px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:700; color:var(--maroon);">
           <span>To</span><input id="salesTo" type="date" value="${salesFilters.to}" onchange="onSalesDateChange()" style="flex:1; min-width:0; padding:8px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:700; color:var(--maroon);">
         </div>
         <div style="margin:0 0 10px; padding:8px 10px; border-radius:10px; background:#fff3d6; border:1px solid #e9c77a;">
           <div style="font-size:11px; font-weight:800; color:#8a6a44; margin-bottom:5px;">&#128100; Present days (at least 1 bill)</div>
           <div style="display:flex; flex-wrap:wrap; gap:6px;">${salesAttendance().map(a => `<button onclick="salesPickSeller('${String(a.id).replace(/'/g, '')}')" style="display:flex; align-items:center; gap:6px; padding:5px 6px 5px 10px; border-radius:999px; border:1.5px solid var(--maroon); background:${salesFilters.seller === a.id ? 'var(--maroon)' : '#fff'}; color:${salesFilters.seller === a.id ? '#fff8e6' : 'var(--maroon)'}; font-weight:800; font-size:12.5px; cursor:pointer;">${custEsc(a.name)} <span style="min-width:22px; padding:1px 6px; border-radius:999px; background:${salesFilters.seller === a.id ? '#fff8e6' : 'var(--maroon)'}; color:${salesFilters.seller === a.id ? 'var(--maroon)' : '#fff8e6'}; font-size:12px; text-align:center;">${a.n}</span></button>`).join('') || '<span style="font-size:12px; color:#8a6a44;">No bills in these dates.</span>'}</div>
-        </div>` : ''}
-        <div style="display:flex; gap:8px; align-items:center; margin:0 0 8px;">
-          <span style="font-size:12px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128197; Period</span>
-          <select id="filterYear" onchange="onSalesYearChange()" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">${salesYearOptionsHtml()}</select>
-        </div>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <span style="font-size:12px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>
-          <select id="filterSeller" onchange="onSalesFilterChange()" style="flex:1; min-width:0; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:700; color:var(--maroon);">
-            <option value="">All sellers</option>
-            ${sellerOptions.map(([id,name]) => `<option value="${id}" ${salesFilters.seller===id?'selected':''}>${custEsc(name)}${sellerNoLabel(id) ? ' · ' + sellerNoLabel(id) : ''} (${sellerCounts.get(id)})</option>`).join('')}
-          </select>
-          ${(salesFilters.seller || salesFilters.billNo || salesFilters.phone || _dates || salesFilters.yr !== salesDefaultYr()) ? `<button onclick="clearSalesFilters()" title="Clear filters" aria-label="Clear filters" style="flex:0 0 auto; width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>` : ''}
-        </div>
-      </div>`;
+        </div>` : ''}` + `
+      <div class="pe-count"><span>${filteredSales.length} bill${filteredSales.length === 1 ? '' : 's'} &middot; latest first</span>${_filtered ? '<button type="button" onclick="clearSalesFilters()">Clear filters</button>' : ''}</div>`;
 
     if(salesFilters.phone){
       html += `<div style="font-size:11.5px; color:#8a6a44; margin:0 2px;">Customer ${salesFilters.phone}</div>` + customerSummaryHtml(filteredSales);
@@ -9770,11 +10121,7 @@ function renderAdmin(){
     lastOverallItemsSummary = null;
 
     html += highDiscNotice(filteredSales);
-    html += `<div class="history-head-row">
-        <div class="section-title" style="margin:0;">Sales Records (latest first)${filteredSales.length!==SALES.length ? ' — '+filteredSales.length+' of '+SALES.length+' shown' : ''}</div>
-        <span style="display:flex; gap:6px; flex:0 0 auto;"><button onclick="printDashboardThermal()" title="Print 80mm for this filter" style="background:#0b5fd8; color:#fff; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700; margin-right:6px;">&#128424; Print</button>
-            <button onclick="shareDashboardA4()" title="A4 PDF for this filter" style="background:var(--maroon); color:#fff8e6; border:none; padding:8px 12px; border-radius:8px; font-size:11.5px; font-weight:700;">${SHARE_ICON_SVG_SM}PDF (A4)</button></span>
-      </div>`;
+
     if(filteredSales.length===0){
       html += `<div class="empty-admin">${SALES.length===0 ? 'No sales recorded yet.' : 'No sales match the selected filters.'}</div>`;
     } else {
@@ -9794,11 +10141,17 @@ function renderAdmin(){
         if(s.paidAmount) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
         itemsHtml += saleEditNote(s);
         const isNew = new Date(s.time).getTime() > lastSeen;
-        html += `<div class="sale-card">
-            <div class="sale-card-top" onclick="toggleSaleDetail('${s.id}')">
-              <div><div class="sc-seller">${billNoRef(s)}${billNoTag(s)}${highDiscTag(s)} &middot; ${isNew ? '<span class="new-tag">NEW</span> ' : ''}<span style="text-decoration:underline dotted; cursor:pointer;" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${estEsc(s.sellerName)}</span> ${statusBadge}${saleEditTag(s)}</div>
-              <div class="sc-time">${dt}</div></div>
-              <div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div>
+        const _qty = (s.items || []).reduce((a, it) => a + (Number(it.qty) || 0), 0);
+        const _d = new Date(s.time), _dt = _d.toLocaleString('en-IN', _d.getFullYear() === new Date().getFullYear() ? { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+        const _pay = s.paymentMethod === 'split' ? '&#128181;+&#128241; Split' : s.paymentMethod === 'upi' ? '&#128241; UPI' : '&#128181; Cash';
+        html += `<div class="sale-card sl-card${status === 'confirmed' ? '' : ' sl-off'}">
+            <div class="sl-top" onclick="toggleSaleDetail('${s.id}')">
+              <div class="sl-no">${billNoRef(s)}</div>
+              <div class="sl-mid">
+                <div class="sl-who"><span class="sl-name" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${estEsc(s.sellerName)}</span>${isNew ? ' <span class="new-tag">NEW</span>' : ''}${status === 'confirmed' ? '' : ' ' + statusBadge}${billNoTag(s)}${highDiscTag(s)}${saleEditTag(s)}</div>
+                <div class="sl-sub">${_dt} &middot; ${_pay} &middot; ${_qty} item${_qty === 1 ? '' : 's'}</div>
+              </div>
+              <div class="sl-amt">&#8377;${(Number(s.total) || 0).toLocaleString('en-IN')}${(Number(s.subtotal) || 0) > (Number(s.total) || 0) ? `<small>&#8377;${Number(s.subtotal).toLocaleString('en-IN')}</small>` : ''}</div>
             </div>
             <div class="sale-detail" id="detail-${s.id}">${itemsHtml}
               <div class="sale-card-actions">
@@ -9823,36 +10176,7 @@ function renderAdmin(){
     if(adminItemsBranch && !liveBranches().some(function(b){ return b.id === adminItemsBranch; })) adminItemsBranch = '';
     let totalItems = 0;
     CATEGORIES.forEach(cat => totalItems += cat.items.length);
-    let html = `<div class="stat-grid">
-        <div class="stat-card"><div class="sv">${totalItems}</div><div class="sl">Total Items</div></div>
-        <div class="stat-card"><div class="sv">${CATEGORIES.length}</div><div class="sl">Categories</div></div>
-      </div>
-
-      <div class="pl-sticky-head">
-      <div class="history-head-row">
-        <div class="section-title" style="margin:0;">Price Edit <span style="font-size:11px; font-weight:700; color:#8a6a44;">(list)</span></div>
-        <span style="display:flex; gap:6px; flex-wrap:wrap;">
-          <button onclick="adminPriceViewSet('edit')" title="Price list format (optional)" class="icon-btn-sm" style="background:#fff8e6; border:1.5px solid var(--maroon);">&#9638;</button>
-          <button onclick="sharePriceListPDF(this)" title="Share Price List PDF" class="icon-btn-sm" style="background:#7a1414; color:#fff;">&#128228;</button>
-          <button onclick="exportPriceListExcel()" title="Export Price List as Excel" class="icon-btn-sm">&#128202;</button>
-          <button onclick="toggleCatEdit()" title="Edit categories" class="icon-btn-sm" style="${catEditOpen ? 'background:var(--maroon); color:#fff8e6;' : ''}">&#9998;&#65039;</button>
-          <button onclick="openNewItemModal()" class="btn-new-item">&plus; New</button>
-        </span>
-      </div>
-      ${offerBarHtml(adminOfferLoc())}
-      </div>
-
-      ${(function(){ var c = branchChipsHtml(adminItemsBranch, 'setAdminItemsBranch').replace('>All<', '>Normal price<'); return c ? '<div style="font-size:11.5px; font-weight:800; color:#8a6a44; margin:10px 2px 0;">View prices &amp; stock for:</div>' + c : ''; })()}
-      <div style="display:flex; gap:7px; align-items:center; margin:0 0 12px;">
-        ${itemCatBtnHtml()}
-        <div class="admin-search-wrap" style="margin:0; flex:1; min-width:0;">
-          <span class="ico">&#128269;</span>
-          <input id="adminItemSearch" type="text" placeholder="Search item... / பொருள் தேடு..." value="${adminItemSearchQuery}" oninput="onAdminItemSearch()" style="padding-right:46px; height:42px;">
-          ${itemFilterToggleHtml()}
-        </div>
-      </div>
-      ${itemFilterBarHtml()}
-      <div class="admin-item-list">`;
+    let html = peHeadHtml(totalItems) + `<div class="admin-item-list">`;
     const _rows = [];
     const _offLoc = adminOfferLoc();
 
@@ -9884,23 +10208,18 @@ function renderAdmin(){
             ? `<span style="font-size:10px; font-weight:800; background:#fde8e6; color:#b3261e; border-radius:6px; padding:2px 6px; margin-right:4px;">${estEsc(b.short)} &#10005; not sold</span>`
             : (r.price != null ? `<span style="font-size:10px; font-weight:800; background:#fff3d6; color:#8a5a00; border-radius:6px; padding:2px 6px; margin-right:4px;">${estEsc(b.short)} &#8377;${r.price}</span>` : '');
         }).join('');
-        _rows.push({ serial: serial, price: Number(_shownPrice) || 0, t: itemLastChange(serial), h: `<div class="admin-item-row" style="${_soldHere ? '' : 'opacity:0.5;'}">
-            <div class="air-info">
-              <div class="air-ta">#${serial} &middot; ${estEsc(name.ta)}</div>
-              <div class="air-en">${estEsc(name.en)}</div>
-              <div class="air-meta" style="cursor:pointer;" onclick="${_vb ? `openItemEditModal('${k}')` : `editPriceInline(event, '${k}')`}">
-                Cat ${ci + 1} &middot; ${estEsc(cn.en)} &bull; ${listPriceHtml(_shownPrice, _offLoc)} / ${inv.unit || 'box'}${_soldHere ? '' : ' &bull; <b style="color:#b3261e;">not sold here</b>'}
-              </div>
-              ${_tags ? `<div style="margin-top:4px;">${_tags}</div>` : ''}
+        _rows.push({ serial: serial, price: Number(_shownPrice) || 0, t: itemLastChange(serial), h: `<div class="pe-swipe"><div class="pe-act"><button type="button" onclick="peEdit('${k}')" aria-label="Edit">&#9998;<span>Edit</span></button></div><div class="pe-row" style="${_soldHere ? '' : 'opacity:0.5;'}">
+            <div class="pe-sn">${serial}</div>
+            <div class="pe-info">
+              <div class="pe-ta">${estEsc(name.ta)}</div>
+              <div class="pe-en">${estEsc(name.en)} &middot; ${estEsc(cn.en)}${_soldHere ? '' : ' &middot; <b style="color:#b3261e;">not sold here</b>'}</div>
+              ${_tags ? `<div class="pe-tags">${_tags}</div>` : ''}
             </div>
-            <div class="air-actions">
-              <button class="air-edit" onclick="openItemEditModal('${k}')" title="Edit">&#9998;</button>
-              <button class="air-delete" onclick="deleteItem('${k}')" title="Delete">&#128465;</button>
-            </div>
-          </div>` });
+            ${pePriceHtml(_shownPrice, _offLoc, inv.unit || 'box', k, !!_vb)}
+          </div></div>` });
       });
     });
-    html = html.replace('%%ITEMCOUNT%%', shown + ' items');
+    html = html.replace('%%ITEMCOUNT%%', shown === totalItems ? totalItems + ' items' : 'Showing ' + shown + ' of ' + totalItems + ' items');
     html += itemSortRows(_rows);
     if(shown === 0) html += `<div class="empty-admin">${adminItemsBranch ? 'No items with a different price or stock in this branch. All other items are the same as Normal price.' : 'No items found.'}</div>`;
     html += `</div>
@@ -9908,6 +10227,7 @@ function renderAdmin(){
       <div id="catEditPanel" style="display:${catEditOpen ? 'block' : 'none'};">${catEditInnerHtml()}
       </div>`;
     main.innerHTML = html;
+    peChipsIntoView();
 
   } else if(adminTab === 'changes'){
     const log = (loadJSON('ars_price_changes', []) || []).slice().reverse();
@@ -10153,16 +10473,6 @@ function renderAdmin(){
           html += `<div style="display:flex; justify-content:space-between; padding:7px 4px; border-bottom:1px solid var(--line); font-size:12.5px;">
               <span><b>${estEsc(USERS[u].name)}</b> <span style="font-size:10px; font-weight:800; color:#8a6a44;">${USERS[u].role === 'admin' ? 'Branch admin' : 'Seller'}</span></span>
               <span style="color:var(--maroon); font-weight:800;">${mine.length} bills &bull; ${fmt(mine.reduce((a,s)=>a+s.total,0))}</span>
-            </div>`;
-        });
-        html += `<div class="section-title" style="margin-top:14px;">Latest bills</div>`;
-        const latest = [...brAll].reverse().slice(0, 8);
-        if(!latest.length) html += `<div class="empty-admin">No bills yet.</div>`;
-        latest.forEach(s => {
-          const dt = new Date(s.time).toLocaleString('en-IN', {dateStyle:'short', timeStyle:'short'});
-          html += `<div class="price-row">
-              <div class="pr-name"><div class="pr-ta">${billNoRef(s)} ${estEsc(s.sellerName)}${isCountedSale(s) ? '' : ' <span class="status-badge cancelled">Cancelled</span>'}${saleEditTag(s)}</div><div class="pr-en">${dt}</div></div>
-              <div class="pr-right"><div class="pr-price">${fmt(s.total)}</div></div>
             </div>`;
         });
       }
@@ -10785,6 +11095,7 @@ async function resetAllSales(){
   // Also reset Bill Number counter to 0 (so next bill will be 1)
   BILL_COUNTER = 0;
   saveJSON('ars_bill_counter', 0);
+  BILL_COUNTERS = {}; _rawSaveJSON('ars_bill_counters', BILL_COUNTERS);   // every branch starts again at /1 (TPL/1, TBP/1)
   fbResetCollection('sales', resetTs);   // clear them on the Firebase server and every other phone too (kept in salesArchive/<time>)
   
   refreshNotifBadges();
@@ -10962,7 +11273,7 @@ function itemFilterToggleHtml(){
   return '<button type="button" title="Filters" onclick="toggleItemFilters()" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:34px; height:32px; border:none; border-radius:8px; background:' + (itemFilterOpen || on ? 'var(--maroon)' : 'transparent') + '; color:' + (itemFilterOpen || on ? '#fff8e6' : 'var(--maroon)') + '; font-size:15px; font-weight:800; cursor:pointer;">' + (itemFilterOpen ? '&#9650;' : '&#9660;') + '</button>';
 }
 function setItemFilter(k, v){ itemFilters[k] = v; renderAdmin(); }
-function resetItemFilters(){ itemFilters = { cat:'', min:'', max:'', recent:'', sort:'' }; itemCatOpen = false; adminItemSearchQuery = ''; renderAdmin(); }
+function resetItemFilters(){ itemFilters = { cat:'', min:'', max:'', recent:'', sort:'' }; itemCatOpen = false; adminItemSearchQuery = ''; peSearchOpen = false; renderAdmin(); }
 /* Same simple filter row as Bill 1 / Bill 2: Category, S.No order, price low / high, recently changed, item count, reset. */
 var itemCatOpen = false;
 function toggleItemCat(){ itemCatOpen = !itemCatOpen; renderAdmin(); }
@@ -10990,6 +11301,92 @@ function itemFilterBarHtml(){
       CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci); return row(String(ci), (ci + 1) + '. ' + estEsc(n.ta || n.en) + ' (' + estEsc(n.en) + ')', c.items.length); }).join('') + '</div>';
   }
   return h + '</div>';
+}
+/* ---- Price Edit header: title + counts, More menu (labelled actions), + New; frozen: search, category chips, sort + offer ---- */
+var peMoreOpen = false, peSearchOpen = false;
+function peMore(on){ peMoreOpen = (on == null) ? !peMoreOpen : !!on; renderAdmin(); }
+function peMoreDo(a){
+  peMoreOpen = false;
+  if(a === 'pdf'){ renderAdmin(); sharePriceListPDF(null); }
+  else if(a === 'excel'){ renderAdmin(); exportPriceListExcel(); }
+  else if(a === 'print'){ adminPriceViewSet('edit'); }
+  else if(a === 'cats'){ if(catEditOpen){ catEditOpen = false; renderAdmin(); } else toggleCatEdit(); }
+}
+function peSearchClear(){ adminItemSearchQuery = ''; peSearchOpen = false; renderAdmin(); }
+function peSearchShow(){ peSearchOpen = true; renderAdmin(); var el = document.getElementById('adminItemSearch'); if(el){ el.focus(); var v = el.value; try{ el.setSelectionRange(v.length, v.length); }catch(e){} } }
+function peChipsIntoView(){
+  var cr = document.getElementById('peChips'), a = cr && cr.querySelector('.pe-chip.on');
+  if(cr && a && a.offsetLeft + a.offsetWidth > cr.clientWidth - 12) cr.scrollLeft = a.offsetLeft - 48;
+}
+function peHeadHtml(totalItems){
+  var f = itemFilters, filtered = f.cat !== '' || !!f.sort || !!adminItemSearchQuery.trim() || f.min !== '' || f.max !== '' || !!f.recent;
+  var srchOn = peSearchOpen || !!adminItemSearchQuery;
+  var chip = function(val, label, cnt, tip){ var on = String(f.cat) === String(val); return '<button type="button" class="pe-chip' + (on ? ' on' : '') + '" title="' + estEsc(tip || label) + '" onclick="pickItemCat(\'' + val + '\')"><span class="t">' + estEsc(label) + '</span><i>' + cnt + '</i></button>'; };
+  var menu = !peMoreOpen ? '' : '<div class="pe-shade" onclick="peMore(false)"></div><div class="pe-menu" role="menu">' +
+    '<button type="button" onclick="peMoreDo(\'pdf\')">&#128196; Share price list PDF</button>' +
+    '<button type="button" onclick="peMoreDo(\'excel\')">&#128202; Export Excel</button>' +
+    '<button type="button" onclick="peMoreDo(\'print\')">&#9638; Price list format (print view)</button>' +
+    '<button type="button" onclick="peMoreDo(\'cats\')">&#9998;&#65039; ' + (catEditOpen ? 'Close category editor' : 'Edit categories') + '</button></div>';
+  var sortSel = '<select class="pe-sort" aria-label="Sort" onchange="setItemFilter(\'sort\', this.value)">' +
+    [['', 'Sort: S.No'], ['low', 'Price: low → high'], ['high', 'Price: high → low'], ['recent', 'Recently changed']].map(function(o){ return '<option value="' + o[0] + '"' + ((f.sort || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+  var brChips = (function(){ var c = branchChipsHtml(adminItemsBranch, 'setAdminItemsBranch').replace('>All<', '>Normal price<'); return c ? '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 2px 4px;"><span style="font-size:11.5px; font-weight:800; color:#8a6a44;">Prices for</span>' + c.replace('margin:8px 0;', 'margin:0;') + '</div>' : ''; })();
+  return '<div class="pe-top"><div class="pe-title"><b>Price Edit</b><span>' + totalItems + ' items &middot; ' + CATEGORIES.length + ' categories</span></div>' +
+      '<div class="pe-more"><button type="button" class="pe-ibtn" title="More: PDF, Excel, print view, categories" aria-label="More" onclick="peMore()">&#8943; More</button>' + menu + '</div>' +
+      '<button type="button" class="pe-new" onclick="openNewItemModal()">&plus; New</button></div>' +
+    '<div class="pl-sticky-head">' +
+      (srchOn ? '<div class="pe-search" style="margin-bottom:8px;"><span class="ico">&#128269;</span><input id="adminItemSearch" type="text" placeholder="Search name, S.No or price / பொருள் தேடு" value="' + estEsc(adminItemSearchQuery) + '" oninput="onAdminItemSearch()" autocomplete="off">' +
+        '<button type="button" class="clr" aria-label="Close search" title="Close search" onclick="peSearchClear()">&#10005;</button></div>' : '') +
+      '<div class="pe-chips" id="peChips" style="margin-top:0;">' +
+        '<button type="button" class="pe-chip pe-schip' + (srchOn ? ' on' : '') + '" title="Search" aria-label="Search" onclick="' + (srchOn ? 'peSearchClear()' : 'peSearchShow()') + '">&#128269;</button>' +
+        chip('', 'All', totalItems) +
+        CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci); return chip(String(ci), n.ta || n.en, c.items.length, (ci + 1) + '. ' + (n.en || n.ta)); }).join('') + '</div>' +
+      offerBarHtml(adminOfferLoc()).replace('<div class="ofbar">', '<div class="ofbar">' + sortSel) +
+    '</div>' + brChips +
+    (filtered ? '<div class="pe-count"><span>%%ITEMCOUNT%%</span><button type="button" onclick="resetItemFilters()">Clear filters</button></div>' : '');
+}
+/* Price on a Price Edit row (right side). Tap it to change the normal price right there; with an offer on, the normal
+   price is shown struck out over the offer price. In a branch view a tap opens the item instead. */
+function pePriceHtml(price, loc, unit, k, branchView){
+  var p = Number(price) || 0, pct = offerPctFor(loc), u = estEsc(unit || 'box');
+  var tap = '';   // no tap-to-edit: swipe the row left and tap Edit
+  if(pct > 0 && p > 0){
+    var off = Math.round(p * (100 - pct) / 100);
+    return '<div class="air-meta pe-price off"' + tap + '><div class="pe-was"><span class="price-display">&#8377;' + p + '</span></div><div class="pe-now">&#8377;' + off + '</div><div class="pe-unit">' + pct + '% off &middot; / ' + u + '</div></div>';
+  }
+  return '<div class="air-meta pe-price"' + tap + '><div class="pe-now"><span class="price-display">&#8377;' + estEsc(price) + '</span></div><div class="pe-unit">/ ' + u + '</div></div>';
+}
+function peEdit(k){ peSwipeCloseAll(); openItemEditModal(k); }
+function peSwipeCloseAll(except){ document.querySelectorAll('.pe-swipe.open').forEach(function(s){ if(s !== except) s.classList.remove('open'); }); }
+(function peSwipeInit(){
+  var row = null, sw = null, x0 = 0, y0 = 0, base = 0, dx = 0, mode = '', W = 84;
+  function end(){
+    if(!row) return;
+    row.style.transition = ''; row.style.transform = ''; sw.classList.remove('drag');
+    if(mode === 'h'){ var open = (base + dx) < -W / 2; sw.classList.toggle('open', open); if(open) peSwipeCloseAll(sw); }
+    row = null; sw = null; mode = '';
+  }
+  document.addEventListener('pointerdown', function(e){
+    var r = e.target.closest && e.target.closest('.pe-row');
+    if(!r){ if(!(e.target.closest && e.target.closest('.pe-act'))) peSwipeCloseAll(); return; }
+    row = r; sw = r.parentNode; x0 = e.clientX; y0 = e.clientY; dx = 0; mode = ''; base = sw.classList.contains('open') ? -W : 0;
+  }, true);
+  document.addEventListener('pointermove', function(e){
+    if(!row) return;
+    var ddx = e.clientX - x0, ddy = e.clientY - y0;
+    if(!mode){ if(Math.abs(ddx) > 8 && Math.abs(ddx) > Math.abs(ddy)) mode = 'h'; else if(Math.abs(ddy) > 8){ row = null; return; } else return; }
+    dx = ddx; sw.classList.add('drag'); row.style.transition = 'none'; row.style.transform = 'translateX(' + Math.max(-W - 16, Math.min(0, base + dx)) + 'px)';
+  }, true);
+  document.addEventListener('pointerup', function(e){
+    if(row && !mode && sw.classList.contains('open')){ sw.classList.remove('open'); row = null; return; }   // a tap on an open row closes it
+    end();
+  }, true);
+  document.addEventListener('pointercancel', end, true);
+})();
+function pePriceTap(event, k){
+  event.stopPropagation();
+  if(event.target && event.target.tagName === 'INPUT') return;           // already editing
+  if(!event.currentTarget.querySelector('.price-display')) return;
+  editPriceInline(event, k);
 }
 function onAdminItemSearch(){
   adminItemSearchQuery = document.getElementById('adminItemSearch').value;
@@ -11051,7 +11448,12 @@ function openItemEditModal(k){
   document.getElementById('itemEditUnit').value = inv.unit || 'box';
   renderItemEditBranches(inv);
   document.getElementById('itemEditOverlay').classList.add('show');
+  itemEditHistPush();
 }
+/* The phone's Back closes this sheet only (not the whole Price Edit page): opening it adds one history step from the tap
+   itself (Android Chrome skips steps added without a tap), and closing it with Back / Cancel / Save takes that step away. */
+var _ieHist = false, _iePopping = false;
+function itemEditHistPush(){ if(_ieHist) return; try{ history.pushState({ itemEdit: true }, ''); _ieHist = true; }catch(e){} }
 
 function openNewItemModal(){
   itemEditingKey = null;
@@ -11064,6 +11466,7 @@ function openNewItemModal(){
   document.getElementById('itemEditUnit').value = 'box';
   renderItemEditBranches(null);
   document.getElementById('itemEditOverlay').classList.add('show');
+  itemEditHistPush();
 }
 
 async function deleteFromItemEdit(){
@@ -11081,8 +11484,10 @@ async function deleteFromItemEdit(){
   try{ _pleSn = null; plePaint(); }catch(e){}
   try{ scanToast('Item deleted', 'blue'); }catch(e){}
 }
-function closeItemEditModal(){
+function closeItemEditModal(fromBack){
   document.getElementById('itemEditOverlay').classList.remove('show');
+  if(_ieHist && !fromBack){ _ieHist = false; _iePopping = true; try{ history.back(); }catch(e){ _iePopping = false; } }
+  else _ieHist = false;
 }
 
 function saveItemEditModal(){
@@ -11500,6 +11905,7 @@ function addNewCategory(){
 /* ========== PROFESSIONAL A4 REPORT FORMAT PDF EXPORTS - ENGLISH ONLY ========== */
 
 async function downloadSalesReportBankFormat(){
+  if(!(await rptChooseBranch())) return;
   const bid = rptBid(salesFilters.branch);   // the branch chosen on the Sales tab (all branches when none)
   const valid = SALES.filter(s => isCountedSale(s) && saleInBranch(s, bid));
   const inr = v => '&#8377;' + v.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -11584,7 +11990,7 @@ async function downloadSalesReportBankFormat(){
       <div class="bkr-meta"><span>Generated on: ${today}</span><span>${estEsc(a4FootName || SHOP.name_en)} — Billing System</span></div>
     </div>`;
 
-  const doc = await renderOffscreenToA4PDF(html);
+  const doc = await renderOffscreenToA4PDF(html, true);
   doc.save('ARS_Sales_Report_' + new Date().toISOString().slice(0, 10) + '.pdf');
 }
 
@@ -12970,7 +13376,7 @@ function openAddBranchModal(){
           'splitPaymentOverlay':   closeSplitPayment,
           'upiQrOverlay':          closeUpiQr,
           'confirmOverlay':        function(){ closeConfirm(false); },
-          'itemEditOverlay':       closeItemEditModal,
+          'itemEditOverlay':       function(){ closeItemEditModal(true); },
           'saleEditOverlay':       closeSaleEdit,
           'newSellerOverlay':      closeNewSellerModal
         };
@@ -12989,10 +13395,12 @@ function openAddBranchModal(){
     return false;
   }
 
-  // Push an initial dummy state so there is always something to "go back" to
-  try {
-    history.pushState({ arsApp: true }, '');
-  } catch(e){}
+  /* The Back step the phone's Back key uses is added from a TAP, never by itself: Android Chrome skips history steps a page
+     adds without a tap, and once it skips the first step it skips all of them and leaves the app ("Back goes fully back").
+     So: no step at start-up and none after a Back - the next tap anywhere adds one when the app has none in hand. */
+  document.addEventListener('click', function(){
+    try{ if(!history.state) history.pushState({ arsApp: true }, ''); }catch(e){}
+  }, true);
 
   /* Android-style Back: overlay -> admin panel -> other tab -> Bill 1 (home) -> "press again to exit". */
   var lastExitTap = 0;
@@ -13006,9 +13414,12 @@ function openAddBranchModal(){
     t.textContent = msg; t.style.opacity = '1';
     clearTimeout(t._h); t._h = setTimeout(function(){ t.style.opacity = '0'; }, 1800);
   }
-  function stay(){ try { history.pushState({ arsApp: true }, ''); } catch(e){} }
+  function stay(){ /* the next tap adds the Back step again (see above) */ }
 
   window.addEventListener('popstate', function(e){
+    if(_iePopping){ _iePopping = false; return; }               // the item sheet closed itself (Cancel / Save / Back button)
+    var _ie = document.getElementById('itemEditOverlay');
+    if(_ie && _ie.classList.contains('show')){ closeItemEditModal(true); return; }   // phone Back: close only the item sheet
     // customer estimate voucher: Back closes it (and stays on the price list)
     if(_shStack.length){ shPop(); return; }   // admin Sales: Item / Seller History screens step back one level
     var _ev = document.getElementById('estVoucherOverlay');
@@ -13017,7 +13428,7 @@ function openAddBranchModal(){
     if(_so && _so.style.display === 'flex'){ closeScanOrder(true); return; }
     if(_estPopping){ _estPopping = false; return; }
     if(_pubHist){ publicMenu(true); return; }
-    if(closeShareMenu() || closePromoQuick()){ stay(); return; }
+    if(closeShareMenu() || closePromoQuick() || closeMySummary()){ stay(); return; }
     var appEl = document.getElementById('app'), adminEl = document.getElementById('adminScreen');
     var loggedIn = (typeof session !== 'undefined') && session;
     var _pr = document.getElementById('promoShareOverlay');
