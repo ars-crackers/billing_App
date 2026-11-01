@@ -5248,7 +5248,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v82';
+var APP_BUILD = 'v83';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -10098,14 +10098,18 @@ async function shareBankReportPDF(){
 
 /* Builds a circular (donut) chart: Total Sales (Net Paid) vs Total Discount Given */
 /* Cash and UPI parts of Total Sales (split bills counted in both), shown under the Total Sales chart. */
+/* Reports tab money tile (Total Sales / Total Discount / Cash / UPI): label, big amount, share line */
+function rptTile(ico, label, amt, sub, col){
+  return `<div style="flex:1; min-width:0; border:1.5px solid ${col}; border-radius:10px; padding:8px 6px; text-align:center;">
+      <div style="font-size:11.5px; font-weight:700; color:#5b4630;">${ico} ${label}</div>
+      <div style="font-size:17px; font-weight:800; color:${col}; margin-top:2px;">&#8377;${Math.round(amt).toLocaleString('en-IN')}</div>
+      <div style="font-size:10.5px; color:#8a6a44;">${sub}</div></div>`;
+}
 function cashUpiSplitHtml(cash, upi){
   const tot = cash + upi;
   if(tot <= 0) return '';
   const cp = Math.round(cash / tot * 1000) / 10, up = Math.round((100 - cp) * 10) / 10;
-  const tile = (ico, label, amt, pct, col) => `<div style="flex:1; min-width:0; border:1.5px solid ${col}; border-radius:10px; padding:8px 6px; text-align:center;">
-      <div style="font-size:11.5px; font-weight:700; color:#5b4630;">${ico} ${label}</div>
-      <div style="font-size:17px; font-weight:800; color:${col}; margin-top:2px;">&#8377;${Math.round(amt).toLocaleString('en-IN')}</div>
-      <div style="font-size:10.5px; color:#8a6a44;">${pct}% of Total Sales</div></div>`;
+  const tile = (ico, label, amt, pct, col) => rptTile(ico, label, amt, pct + '% of Total Sales', col);
   return `<div style="margin-top:12px;">
       <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#eadcc0;"><div style="width:${cp}%; background:#b45309;"></div><div style="width:${up}%; background:#0b5fd8;"></div></div>
       <div style="display:flex; gap:8px; margin-top:8px;">${tile('&#128181;', 'Cash', cash, cp, '#b45309')}${tile('&#128241;', 'UPI', upi, up, '#0b5fd8')}</div>
@@ -10137,10 +10141,7 @@ function buildSalesDonutChartSVG(totalPaid, totalDiscount){
       <text x="${cx}" y="${cy-6}" text-anchor="middle" style="font-size:18px; font-weight:800; fill:var(--maroon-dark);">₹${total.toLocaleString('en-IN')}</text>
       <text x="${cx}" y="${cy+13}" text-anchor="middle" style="font-size:9.5px; fill:var(--ink-soft); font-weight:700;">Total Billed Value</text>
     </svg>
-    <div style="display:flex; justify-content:center; gap:18px; margin-top:10px; font-size:11.5px;">
-      <div style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:var(--maroon); display:inline-block;"></span>Total Sales — ₹${totalPaid.toLocaleString('en-IN')} (${paidPct}%)</div>
-      <div style="display:flex; align-items:center; gap:5px;"><span style="width:11px; height:11px; border-radius:3px; background:var(--green); display:inline-block;"></span>Total Discount — ₹${totalDiscount.toLocaleString('en-IN')} (${discPct}%)</div>
-    </div>`;
+    <div style="display:flex; gap:8px; margin-top:10px;">${rptTile('&#129534;', 'Total Sales', totalPaid, paidPct + '% of Billed Value', '#7a1414')}${rptTile('&#127991;&#65039;', 'Total Discount', totalDiscount, discPct + '% of Billed Value', '#1e7a3c')}</div>`;
 }
 
 /* Price List for a branch admin: only that branch's stock and price can be changed. */
