@@ -195,6 +195,9 @@
   .bill-sbox .sb-x{position:absolute; right:5px; top:50%; transform:translateY(-50%); width:28px; height:28px; padding:0; border:none; border-radius:50%; background:#f1e6d2; color:var(--maroon); font-size:13px; font-weight:900; cursor:pointer; display:none;}
   .bill-sbox.has .sb-x{display:block;}
   @media (max-width:374px){ .frow .bf-btn{width:39px;} }
+  /* inside a narrow box (promotion item picker): the search box drops to its own full-width line when it would be too short to type in */
+  .frow.fwrap{flex-wrap:wrap; row-gap:6px;}
+  .frow.fwrap .bill-sbox{min-width:140px;}
   .search-wrap.sw-flex .ico{left:11px;}
   /* category filter button at the start of the item search (Bill 1 / Bill 2 / Self Estimation) */
   .cat-pick-btn{flex:0 0 auto; width:66px; height:42px; padding:2px 3px; box-sizing:border-box; border-radius:10px; border:1.5px solid var(--maroon); background:#fff8ea; color:var(--maroon);
@@ -1380,10 +1383,16 @@ function __appNotLoaded(){
     <div id="pubHint" style="display:inline-block; margin-top:5px; padding:2px 8px; border-radius:8px; transition:background .6s;"><div style="font-size:13.5px; font-weight:800; color:#fff8e6; line-height:1.3;">Welcome to Self Estimation!</div><div style="font-size:11px; font-weight:700; color:#ffe7a8; line-height:1.35; margin-top:1px;">&#10133; Add qty &rarr; &#129534; Check voucher &rarr; &#9638; Show QR</div></div>
   </div>
   <div style="position:sticky; top:0; z-index:5; background:var(--paper); padding:8px 10px; border-bottom:1px solid var(--line);">
-    <div style="display:flex; gap:7px; align-items:center;">
+    <div class="frow">
       <button id="estCatBtn" type="button" class="cat-pick-btn" title="Category filter" aria-label="Category filter" onclick="estToggleCat()"><span class="cpb-ico">&#128193;</span><span class="cpb-txt" id="estCatLbl">Category</span></button>
-      <input type="search" id="estSearch" placeholder="Search item / பொருள் தேடு…" oninput="estSearchInput(this.value)" style="flex:1; min-width:0; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); font-size:14px; background:#fff;">
-      <button id="estFilterBtn" type="button" onclick="estToggleFilters()" aria-label="Filters" style="flex:0 0 auto; width:42px; height:42px; border-radius:10px; border:1.5px solid var(--maroon); background:#fff; color:var(--maroon); font-size:15px; font-weight:800; cursor:pointer;">&#9660;</button>
+      <button id="estFIncart" type="button" class="bf-btn" title="Only the items I added" aria-label="Added items" onclick="estSetFilter('incart')">&#128722;</button>
+      <button id="estFLow" type="button" class="bf-btn sm" title="Price low to high (tap again for S.No order)" aria-label="Price low to high" onclick="estSetFilter('sort', _estF.sort === 'low' ? '' : 'low')">&#8377;&#9650;</button>
+      <button id="estFHigh" type="button" class="bf-btn sm" title="Price high to low (tap again for S.No order)" aria-label="Price high to low" onclick="estSetFilter('sort', _estF.sort === 'high' ? '' : 'high')">&#8377;&#9660;</button>
+      <div id="estSearchBox" class="bill-sbox">
+        <span class="sb-ico">&#128269;</span>
+        <input id="estSearch" type="text" placeholder="Search item…" aria-label="Search item / பொருள் தேடு" autocomplete="off" oninput="estSearchInput(this.value)" onkeydown="if(event.key === 'Enter') this.blur();">
+        <button type="button" class="sb-x" title="Clear search" aria-label="Clear search" onclick="estSearchClear()">&#10005;</button>
+      </div>
     </div>
     <div id="estFilterBar" style="display:none; margin-top:7px;"></div>
   </div>
@@ -5239,7 +5248,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v81';
+var APP_BUILD = 'v82';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -5288,31 +5297,26 @@ function estSetFilter(k, v){ if(k === 'incart') _estF.incart = !_estF.incart; el
 function estToggleCat(){ _estCatOpen = !_estCatOpen; paintPublicPrices(); }
 function estResetFilters(){ _estF = { incart:false, sort:'', cat:'ALL' }; _estCatOpen = false; _estSearchText = ''; var el = document.getElementById('estSearch'); if(el) el.value = ''; paintPublicPrices(); }
 function estPaintFilterBar(shown){
-  var bar = document.getElementById('estFilterBar'), btn = document.getElementById('estFilterBtn'); if(!bar || !btn) return;
-  var on = _estF.incart || _estF.sort || _estF.cat !== 'ALL';
-  btn.innerHTML = _estFOpen ? '&#9650;' : '&#9660;';
-  btn.style.background = (_estFOpen || on) ? 'var(--maroon)' : '#fff'; btn.style.color = (_estFOpen || on) ? '#fff8e6' : 'var(--maroon)';
+  var bar = document.getElementById('estFilterBar'); if(!bar) return;
+  _estFOpen = false;   // the filter buttons are always in the row now (same as Bill 1 / Bill 2)
+  var _st = function(id, v){ var b = document.getElementById(id); if(b) b.classList.toggle('on', !!v); };
+  _st('estFIncart', _estF.incart); _st('estFLow', _estF.sort === 'low'); _st('estFHigh', _estF.sort === 'high');
+  var sbx = document.getElementById('estSearchBox'); if(sbx) sbx.classList.toggle('has', !!_estSearchText);
   var cb = document.getElementById('estCatBtn'), cl = document.getElementById('estCatLbl'), catOn0 = _estF.cat !== 'ALL';
   if(cb){
     cb.classList.toggle('on', catOn0 || _estCatOpen);
     var _c0 = catOn0 ? _estList.find(function(it){ return String(it.cno) === String(_estF.cat); }) : null;
+    cb.classList.toggle('sel', !!_c0);
     if(cl) cl.textContent = _c0 ? _c0.cno + '. ' + (_c0.catTa || _c0.catEn) : 'Category';
     cb.title = _c0 ? 'Category: ' + (_c0.catEn || _c0.catTa) : 'Category filter';
   }
-  if(!_estFOpen && !_estCatOpen){ bar.style.display = 'none'; bar.innerHTML = ''; return; }
-  var ib = function(ico, tip, act, js, small){ return '<button type="button" title="' + tip + '" aria-label="' + tip + '" onclick="' + js + '" style="min-width:46px; height:42px; padding:0 6px; border-radius:12px; border:1.5px solid var(--maroon); font-weight:800; font-size:' + (small ? '13px' : '20px') + '; line-height:1; cursor:pointer; background:' + (act ? 'var(--maroon)' : '#fff8ea') + '; color:' + (act ? '#fff8e6' : 'var(--maroon)') + ';">' + ico + '</button>'; };
-  var h = !_estFOpen ? '' : '<div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center;">' +
-    ib('&#128722;', 'Added items', _estF.incart, "estSetFilter('incart')") +
-    ib('&#8645;', 'S.No / category order', !_estF.sort, "estSetFilter('sort','')") +
-    ib('&#8377;&#9650;', 'Price low to high', _estF.sort === 'low', "estSetFilter('sort','low')", 1) +
-    ib('&#8377;&#9660;', 'Price high to low', _estF.sort === 'high', "estSetFilter('sort','high')", 1) +
-    '<span style="font-size:11.5px; font-weight:800; color:#7a1414; white-space:nowrap;">' + shown + ' items</span>' +
-    ((on || _estSearchText) ? '<button type="button" title="Reset" aria-label="Reset" onclick="estResetFilters()" style="width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>' : '') + '</div>';
+  if(!_estCatOpen){ bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  var h = '';
   if(_estCatOpen){
     var cats = [], seen = {};
     _estList.forEach(function(it){ if(!seen[it.cno]){ seen[it.cno] = { no: it.cno, ta: it.catTa, en: it.catEn, n: 0 }; cats.push(seen[it.cno]); } seen[it.cno].n++; });
     var row = function(val, label, cnt){ var sel = String(_estF.cat) === String(val); return '<button type="button" onclick="estSetFilter(\'cat\',\'' + val + '\')" style="display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; padding:9px 11px; border:none; border-bottom:1px solid var(--line); background:' + (sel ? 'var(--maroon)' : '#fff') + '; color:' + (sel ? '#fff8e6' : 'var(--maroon)') + '; font-weight:700; font-size:12.5px; cursor:pointer;"><span>' + label + '</span><span>' + cnt + '</span></button>'; };
-    h += '<div style="margin-top:' + (_estFOpen ? '8px' : '0') + '; max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('ALL', 'All categories', _estList.length) +
+    h += '<div style="margin-top:' + '0' + '; max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('ALL', 'All categories', _estList.length) +
       cats.map(function(c){ return row(c.no, c.no + '. ' + estEsc(c.ta) + ' (' + estEsc(c.en) + ')', c.n); }).join('') + '</div>';
   }
   bar.innerHTML = h; bar.style.display = 'block';
@@ -5356,6 +5360,7 @@ function paintPublicPrices(){
   if(screen) screen.scrollTop = keep;
 }
 function estSearchInput(v){ _estSearchText = v || ''; paintPublicPrices(); }
+function estSearchClear(){ _estSearchText = ''; var el = document.getElementById('estSearch'); if(el){ el.value = ''; el.blur(); } paintPublicPrices(); }
 function estSet(i, v){
   var it = _estList[i]; if(!it) return;
   var n = Math.max(0, Math.min(999, parseInt(v, 10) || 0));
@@ -10144,9 +10149,7 @@ function renderScopedItems(main, bid){
   const q2 = adminItemSearchQuery.trim().toLowerCase();
   let html = `<div class="section-title" style="margin-top:0;">${estEsc(br.name)} (${estEsc(br.short)}) &mdash; price list &amp; stock</div>
     <div style="font-size:11.5px; color:#8a6a44; margin-bottom:8px;">Change only this branch's stock and price. Tap &#9998; on an item.</div>
-    <div class="admin-search-wrap"><span class="ico">&#128269;</span>
-      <input id="adminItemSearch" type="text" placeholder="Search..." value="${adminItemSearchQuery}" oninput="onAdminItemSearch()" style="padding-right:46px;">${itemFilterToggleHtml()}</div>
-    ${itemFilterBarHtml()}
+    <div style="margin:0 0 10px;">${peFilterRowHtml()}</div>
     <div class="admin-item-list">`;
   const _rows = [];
   let shown = 0;
@@ -11521,6 +11524,19 @@ function peChipsIntoView(){
   var cr = document.getElementById('peChips'), a = cr && cr.querySelector('.pe-chip.on');
   if(cr && a && a.offsetLeft + a.offsetWidth > cr.clientWidth - 12) cr.scrollLeft = a.offsetLeft - 48;
 }
+/* Price Edit filter row (also the branch admin's price list): Category, price low / high, recently changed, search box */
+function peFilterRowHtml(){
+  var f = itemFilters;
+  return '<div class="frow">' + itemCatBtnHtml() +
+        '<button type="button" class="bf-btn sm' + (f.sort === 'low' ? ' on' : '') + '" title="Price low to high (tap again for S.No order)" aria-label="Price low to high" onclick="peSort(\'low\')">&#8377;&#9650;</button>' +
+        '<button type="button" class="bf-btn sm' + (f.sort === 'high' ? ' on' : '') + '" title="Price high to low (tap again for S.No order)" aria-label="Price high to low" onclick="peSort(\'high\')">&#8377;&#9660;</button>' +
+        '<button type="button" class="bf-btn' + (f.sort === 'recent' ? ' on' : '') + '" title="Recently changed price first" aria-label="Recently changed" onclick="peSort(\'recent\')">&#128338;</button>' +
+        '<div class="bill-sbox' + (adminItemSearchQuery ? ' has' : '') + '"><span class="sb-ico">&#128269;</span>' +
+          '<input id="adminItemSearch" type="text" placeholder="Search item…" aria-label="Search name, S.No or price" value="' + estEsc(adminItemSearchQuery) + '" oninput="onAdminItemSearch()" onkeydown="if(event.key === \'Enter\') this.blur();" autocomplete="off">' +
+          '<button type="button" class="sb-x" title="Clear search" aria-label="Clear search" onclick="peSearchClear()">&#10005;</button></div>' +
+      '</div>' +
+      (itemCatOpen ? itemCatListHtml('8px') : '');
+}
 function peHeadHtml(totalItems){
   var f = itemFilters, filtered = f.cat !== '' || !!f.sort || !!adminItemSearchQuery.trim() || f.min !== '' || f.max !== '' || !!f.recent;
   var menu = !peMoreOpen ? '' : '<div class="pe-shade" onclick="peMore(false)"></div><div class="pe-menu" role="menu">' +
@@ -11533,15 +11549,7 @@ function peHeadHtml(totalItems){
       '<div class="pe-more"><button type="button" class="pe-ibtn" title="More: PDF, Excel, print view, categories" aria-label="More" onclick="peMore()">&#8943; More</button>' + menu + '</div>' +
       '<button type="button" class="pe-new" onclick="openNewItemModal()">&plus; New</button></div>' +
     '<div class="pl-sticky-head">' +
-      '<div class="frow">' + itemCatBtnHtml() +
-        '<button type="button" class="bf-btn sm' + (f.sort === 'low' ? ' on' : '') + '" title="Price low to high (tap again for S.No order)" aria-label="Price low to high" onclick="peSort(\'low\')">&#8377;&#9650;</button>' +
-        '<button type="button" class="bf-btn sm' + (f.sort === 'high' ? ' on' : '') + '" title="Price high to low (tap again for S.No order)" aria-label="Price high to low" onclick="peSort(\'high\')">&#8377;&#9660;</button>' +
-        '<button type="button" class="bf-btn' + (f.sort === 'recent' ? ' on' : '') + '" title="Recently changed price first" aria-label="Recently changed" onclick="peSort(\'recent\')">&#128338;</button>' +
-        '<div class="bill-sbox' + (adminItemSearchQuery ? ' has' : '') + '"><span class="sb-ico">&#128269;</span>' +
-          '<input id="adminItemSearch" type="text" placeholder="Search item…" aria-label="Search name, S.No or price" value="' + estEsc(adminItemSearchQuery) + '" oninput="onAdminItemSearch()" onkeydown="if(event.key === \'Enter\') this.blur();" autocomplete="off">' +
-          '<button type="button" class="sb-x" title="Clear search" aria-label="Clear search" onclick="peSearchClear()">&#10005;</button></div>' +
-      '</div>' +
-      (itemCatOpen ? itemCatListHtml('8px') : '') +
+      peFilterRowHtml() +
       offerBarHtml(adminOfferLoc()) +
     '</div>' + brChips +
     (filtered ? '<div class="pe-count"><span>%%ITEMCOUNT%%</span><button type="button" onclick="resetItemFilters()">Clear filters</button></div>' : '');
@@ -12364,20 +12372,47 @@ var _promoPick = { q: '', cat: '', sort: '', sel: false };
 function promoPickOpen(){
   var box = document.getElementById('promoPick'); if(!box) return;
   if(box.innerHTML){ box.innerHTML = ''; return; }
-  _promoPick = { q: '', cat: '', sort: '', sel: false };
-  var cats = '<option value="">All categories</option>' + CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci); return '<option value="' + ci + '">' + (ci + 1) + '. ' + estEsc(n.en) + '</option>'; }).join('');
-  var fs = 'padding:7px; border-radius:8px; border:1px solid var(--line); font-size:12px; background:#fff;';
+  _promoPick = { q: '', cat: '', sort: '', sel: false, catOpen: false };
   box.innerHTML = '<div style="background:#fff; border:1px solid #7a1414; border-radius:10px; padding:8px; margin-bottom:8px;">' +
-    '<input type="search" placeholder="Search item…" oninput="_promoPick.q=this.value; promoPickList()" style="width:100%; box-sizing:border-box; padding:8px; border-radius:8px; border:1px solid var(--line); font-size:13px; margin-bottom:6px;">' +
-    '<div style="display:flex; gap:6px; margin-bottom:6px;"><select onchange="_promoPick.cat=this.value; promoPickList()" style="flex:1.3; min-width:0; ' + fs + '">' + cats + '</select>' +
-      '<select onchange="_promoPick.sort=this.value; promoPickList()" style="flex:1; min-width:0; ' + fs + '"><option value="">List order</option><option value="sold">Best sellers</option><option value="lo">Price: low → high</option><option value="hi">Price: high → low</option></select></div>' +
+    '<div id="promoPickRow" style="margin-bottom:6px;"></div>' +
     '<div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;"><label style="flex:1; display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700;"><input type="checkbox" onchange="_promoPick.sel=this.checked; promoPickList()" style="width:17px; height:17px;"> Selected only</label>' +
       '<button onclick="promoAutoPick()" style="padding:6px 9px; border-radius:8px; border:1px solid #1e7a3c; background:#eef7ee; color:#1e7a3c; font-size:11.5px; font-weight:800; cursor:pointer;">⭐ Auto: top 6 sellers</button></div>' +
     '<div id="promoPickInfo" style="font-size:10.5px; color:#8a6a44; margin-bottom:4px;"></div>' +
     '<div id="promoPickList" style="max-height:280px; overflow-y:auto;"></div>' +
     '<div style="display:flex; gap:6px; margin-top:6px;"><button onclick="PROMO.items=[]; promoSave(); _promoImgs={}; promoPaintScreen();" style="flex:1; padding:8px; border-radius:8px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:12px; cursor:pointer;">Clear all</button>' +
     '<button onclick="document.getElementById(\'promoPick\').innerHTML=\'\'; promoPaintScreen();" style="flex:1; padding:8px; border:none; border-radius:8px; background:#1e7a3c; color:#fff; font-weight:800; font-size:12px; cursor:pointer;">Done</button></div></div>';
-  promoPickList();
+  promoPickRowPaint(); promoPickList();
+}
+/* Promotion item picker filter row - same format as Bill 1 / Bill 2: Category, best sellers, price low / high, search box */
+function promoPickRowPaint(){
+  var row = document.getElementById('promoPickRow'); if(!row) return;
+  var f = _promoPick, n = f.cat !== '' ? getCategoryName(Number(f.cat)) : null;
+  var lbl = n ? (Number(f.cat) + 1) + '. ' + (n.ta || n.en) : 'Category';
+  var bt = function(cls, on, tip, js, ico){ return '<button type="button" class="bf-btn' + cls + (on ? ' on' : '') + '" title="' + tip + '" aria-label="' + tip + '" onclick="' + js + '">' + ico + '</button>'; };
+  var h = '<div class="frow fwrap">' +
+    '<button type="button" class="cat-pick-btn' + (n || f.catOpen ? ' on' : '') + (n ? ' sel' : '') + '" title="' + (n ? 'Category: ' + estEsc(n.en || n.ta) : 'Category filter') + '" aria-label="Category filter" onclick="promoPickSet(\'catOpen\')"><span class="cpb-ico">&#128193;</span><span class="cpb-txt">' + estEsc(lbl) + '</span></button>' +
+    bt('', f.sort === 'sold', 'Best sellers first', "promoPickSet('sort','sold')", '&#128293;') +
+    bt(' sm', f.sort === 'lo', 'Price low to high', "promoPickSet('sort','lo')", '&#8377;&#9650;') +
+    bt(' sm', f.sort === 'hi', 'Price high to low', "promoPickSet('sort','hi')", '&#8377;&#9660;') +
+    '<div class="bill-sbox' + (f.q ? ' has' : '') + '"><span class="sb-ico">&#128269;</span>' +
+      '<input type="text" placeholder="Search item…" aria-label="Search item" autocomplete="off" value="' + estEsc(f.q) + '" oninput="_promoPick.q = this.value; this.parentNode.classList.toggle(\'has\', !!this.value); promoPickList();" onkeydown="if(event.key === \'Enter\') this.blur();">' +
+      '<button type="button" class="sb-x" title="Clear search" aria-label="Clear search" onclick="promoPickSet(\'q\')">&#10005;</button></div>' +
+    '</div>';
+  if(f.catOpen){
+    var all = promoAllItems(), cnt = {}; all.forEach(function(x){ cnt[x.ci] = (cnt[x.ci] || 0) + 1; });
+    var r = function(val, label, c){ var sel = String(f.cat) === String(val); return '<button type="button" onclick="promoPickSet(\'cat\',\'' + val + '\')" style="display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; padding:9px 11px; border:none; border-bottom:1px solid var(--line); background:' + (sel ? 'var(--maroon)' : '#fff') + '; color:' + (sel ? '#fff8e6' : 'var(--maroon)') + '; font-weight:700; font-size:12.5px; cursor:pointer;"><span>' + label + '</span><span>' + c + '</span></button>'; };
+    h += '<div style="margin-top:6px; max-height:260px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + r('', 'All categories', all.length) +
+      CATEGORIES.map(function(c, ci){ if(!cnt[ci]) return ''; var nm = getCategoryName(ci); return r(String(ci), (ci + 1) + '. ' + estEsc(nm.ta || nm.en) + ' (' + estEsc(nm.en) + ')', cnt[ci]); }).join('') + '</div>';
+  }
+  row.innerHTML = h;
+}
+function promoPickSet(k, v){
+  var f = _promoPick;
+  if(k === 'sort') f.sort = (f.sort === v) ? '' : v;   // tap again: back to list order
+  else if(k === 'cat'){ f.cat = v; f.catOpen = false; }
+  else if(k === 'catOpen') f.catOpen = !f.catOpen;
+  else if(k === 'q') f.q = '';
+  promoPickRowPaint(); promoPickList();
 }
 function promoAutoPick(){
   PROMO.items = promoAllItems().filter(function(x){ return x.sold > 0; }).sort(function(a, b){ return b.sold - a.sold; }).slice(0, 6).map(function(x){ return x.code; });
