@@ -181,8 +181,20 @@
     font-size:14px; background:#fff; color:var(--ink); box-sizing:border-box;
   }
   .search-wrap .ico{position:absolute; left:25px; top:50%; transform:translateY(-50%); opacity:0.55; font-size:14px;}
-  .search-wrap.sw-flex{display:flex; gap:6px; align-items:center; padding:9px 0;}
-  @media (max-width:374px){ .search-wrap.sw-flex .bf-btn{width:39px; height:40px;} .search-wrap.sw-flex .cat-pick-btn{width:60px; height:40px;} }
+  .search-wrap.sw-flex{display:flex; gap:6px; align-items:center; padding:9px 10px;}
+  /* Filter row (Bill 1 / Bill 2 and Price Edit): wider Category (selected name in 2 lines), filter buttons, then a search box that fills the rest of the row */
+  .frow{display:flex; gap:6px; align-items:center;}
+  .frow .cat-pick-btn{width:92px; padding:2px 4px;}
+  .cat-pick-btn.sel .cpb-ico{display:none;}
+  .cat-pick-btn.sel .cpb-txt{white-space:normal; font-size:10px; line-height:1.2; text-align:center; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word;}
+  .bill-sbox{position:relative; flex:1 1 auto; min-width:0; height:42px;}
+  .bill-sbox input[type=text]{width:100%; height:42px; box-sizing:border-box; padding:0 6px 0 29px; border-radius:10px; border:1.5px solid var(--maroon); background:#fff; font-size:14px; color:var(--ink); outline:none; text-overflow:ellipsis;}
+  .bill-sbox input[type=text]:focus{box-shadow:0 0 0 3px rgba(122,20,20,0.14);}
+  .bill-sbox.has input[type=text]{padding-right:34px;}
+  .bill-sbox .sb-ico{position:absolute; left:8px; top:50%; transform:translateY(-50%); font-size:14px; opacity:0.6; pointer-events:none;}
+  .bill-sbox .sb-x{position:absolute; right:5px; top:50%; transform:translateY(-50%); width:28px; height:28px; padding:0; border:none; border-radius:50%; background:#f1e6d2; color:var(--maroon); font-size:13px; font-weight:900; cursor:pointer; display:none;}
+  .bill-sbox.has .sb-x{display:block;}
+  @media (max-width:374px){ .frow .bf-btn{width:39px;} }
   .search-wrap.sw-flex .ico{left:11px;}
   /* category filter button at the start of the item search (Bill 1 / Bill 2 / Self Estimation) */
   .cat-pick-btn{flex:0 0 auto; width:66px; height:42px; padding:2px 3px; box-sizing:border-box; border-radius:10px; border:1.5px solid var(--maroon); background:#fff8ea; color:var(--maroon);
@@ -1033,23 +1045,18 @@ function __appNotLoaded(){
         <button id="tabHistoryBtn" onclick="setTab('history')">&#129534; History</button>
         <button id="adminPanelBtn" class="hidden" onclick="showAdmin()"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px; margin-right:3px;"><path d="M19.14,12.94a7.43,7.43,0,0,0,0-1.88l2.03-1.58a.5.5,0,0,0,.12-.64l-1.92-3.32a.5.5,0,0,0-.6-.22l-2.39,.96a7.34,7.34,0,0,0-1.62-.94L14.4,2.18A.5.5,0,0,0,13.9,1.8H10.1a.5.5,0,0,0-.5,.38L9.24,4.92a7.34,7.34,0,0,0-1.62,.94l-2.39-.96a.5.5,0,0,0-.6,.22L2.71,8.44a.5.5,0,0,0,.12,.64L4.86,10.66a7.43,7.43,0,0,0,0,1.88L2.83,14.12a.5.5,0,0,0-.12,.64l1.92,3.32a.5.5,0,0,0,.6,.22l2.39-.96a7.34,7.34,0,0,0,1.62,.94l.36,2.74a.5.5,0,0,0,.5,.38h3.8a.5.5,0,0,0,.5-.38l.36-2.74a7.34,7.34,0,0,0,1.62-.94l2.39,.96a.5.5,0,0,0,.6-.22l1.92-3.32a.5.5,0,0,0-.12-.64ZM12,15.5A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/></svg>Admin<span class="notif-badge hidden" id="adminPanelBadge">0</span></button>
       </div>
-      <div class="search-wrap sw-flex">
+      <div class="search-wrap sw-flex frow">
         <button id="billCatBtn" type="button" class="cat-pick-btn" title="Category filter" aria-label="Category filter" onclick="toggleBillCat()"><span class="cpb-ico">&#128193;</span><span class="cpb-txt" id="billCatLbl">Category</span></button>
-        <span style="flex:0 1 26px; min-width:6px;"></span>
         <span id="billFilterBtns" style="display:flex; gap:6px; flex:0 0 auto;">
           <button id="bfIncart" type="button" class="bf-btn" title="Only items in the cart" aria-label="In cart" onclick="setBillFilter('incart')">&#128722;</button>
           <button id="bfLow" type="button" class="bf-btn sm" title="Price low to high (tap again for S.No order)" aria-label="Price low to high" onclick="setBillFilter('sort', billFilters.sort === 'low' ? '' : 'low')">&#8377;&#9650;</button>
           <button id="bfHigh" type="button" class="bf-btn sm" title="Price high to low (tap again for S.No order)" aria-label="Price high to low" onclick="setBillFilter('sort', billFilters.sort === 'high' ? '' : 'high')">&#8377;&#9660;</button>
           <button id="bfRecent" type="button" class="bf-btn" title="Recently sold items (most sold first)" aria-label="Recently sold items" onclick="setBillFilter('recent')">&#128293;</button>
         </span>
-        <span style="flex:1; min-width:0;"></span>
-        <button id="billSearchBtn" type="button" class="bf-btn" title="Search item" aria-label="Search item" onclick="toggleBillSearch()">&#128269;</button>
-      </div>
-      <div id="billSearchRow" class="hidden" style="padding:0 14px 8px;">
-        <div class="search-wrap" style="padding:0;">
-          <span class="ico" style="left:11px;">&#128269;</span>
-          <input id="search" type="text" placeholder="Search item... / பொருள் தேடு..." oninput="render()" style="padding-right:42px;">
-          <button type="button" title="Close search" aria-label="Close search" onclick="closeBillSearch()" style="position:absolute; right:5px; top:50%; transform:translateY(-50%); width:32px; height:32px; border:none; border-radius:50%; background:#f1e6d2; color:var(--maroon); font-size:15px; font-weight:900; cursor:pointer;">&#10005;</button>
+        <div id="billSearchBox" class="bill-sbox">
+          <span class="sb-ico">&#128269;</span>
+          <input id="search" type="text" placeholder="Search item…" aria-label="Search item" autocomplete="off" oninput="render()" onkeydown="if(event.key === 'Enter') this.blur();">
+          <button type="button" class="sb-x" title="Clear search" aria-label="Clear search" onclick="closeBillSearch()">&#10005;</button>
         </div>
       </div>
       <div id="billFilterBar" class="hidden" style="padding:0 14px 8px;"></div>
@@ -4730,8 +4737,8 @@ function recentBilledMap(){
 function toggleBillFilters(){ billFilterOpen = !billFilterOpen; render(); }
 /* Bill 1 / Bill 2 item search: a 🔍 button; the search bar opens under the Category / Filter / Search row */
 var billSearchOpen = false;
-function toggleBillSearch(){ if(billSearchOpen){ closeBillSearch(); return; } billSearchOpen = true; render(); var el = document.getElementById('search'); if(el) el.focus(); }
-function closeBillSearch(){ billSearchOpen = false; var el = document.getElementById('search'); if(el) el.value = ''; render(); }
+function toggleBillSearch(){ var el = document.getElementById('search'); if(el) el.focus(); }   // the search box is always in the row now
+function closeBillSearch(){ billSearchOpen = false; var el = document.getElementById('search'); if(el){ el.value = ''; el.blur(); } render(); }
 function setBillFilter(k, v){ billFilters[k] = (k === 'incart' || k === 'recent') ? !billFilters[k] : v; render(); }
 function resetBillFilters(){ billFilters = { incart:false, recent:false, sort:'' }; billSearchOpen = false; var el = document.getElementById('search'); if(el) el.value = ''; activeCat = 'ALL'; try{ buildCatNav(); }catch(e){} render(); }
 function billFilterPass(price, qty, rk){
@@ -4749,11 +4756,11 @@ function renderBillFilterBar(shown){
   var on = billFilterActive();
   var _st = function(id, v){ var b = document.getElementById(id); if(b) b.classList.toggle('on', !!v); };
   _st('bfIncart', billFilters.incart); _st('bfLow', billFilters.sort === 'low'); _st('bfHigh', billFilters.sort === 'high'); _st('bfRecent', billFilters.recent);
-  var sb = document.getElementById('billSearchBtn'), sv = (document.getElementById('search') || {}).value || '';
-  if(sb) sb.classList.toggle('on', billSearchOpen || !!sv);
+  var sbx = document.getElementById('billSearchBox'), sv = (document.getElementById('search') || {}).value || '';
+  if(sbx) sbx.classList.toggle('has', !!sv);
   var cb = document.getElementById('billCatBtn'), cl = document.getElementById('billCatLbl'), catOn0 = activeCat !== 'ALL';
   if(cb){
-    cb.classList.toggle('on', catOn0 || billCatOpen);
+    cb.classList.toggle('on', catOn0 || billCatOpen); cb.classList.toggle('sel', catOn0);
     var _cn = catOn0 ? getCategoryName(Number(activeCat)) : null;
     if(cl) cl.textContent = _cn ? (Number(activeCat) + 1) + '. ' + (_cn.ta || _cn.en) : 'Category';
     cb.title = _cn ? 'Category: ' + (_cn.en || _cn.ta) : 'Category filter';
@@ -4843,8 +4850,6 @@ function billSheetPaint(){
 function _billChrome(){
   var billing = (activeTab === 'billing1' || activeTab === 'billing2'), tbl = billing && billLayout === 'table';
   var sw = document.querySelector('.search-wrap'); if(sw) sw.classList.toggle('hidden', tbl || activeTab === 'history');   // History: no item search
-  var sr = document.getElementById('billSearchRow'), sv = (document.getElementById('search') || {}).value || '';
-  if(sr) sr.classList.toggle('hidden', !(billing && !tbl && (billSearchOpen || !!sv)));
   var lb = document.getElementById('billLayoutBtn');
   if(lb){
     lb.classList.toggle('hidden', !billing);
@@ -5234,7 +5239,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v80';
+var APP_BUILD = 'v81';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6921,21 +6926,18 @@ function historySellerSelectHtml(){
       '<button type="button" onclick="toggleHistDates()" title="' + (dOn0 ? 'Show all dates' : 'My present days (dates)') + '" aria-label="Date filter" style="flex:0 0 auto; width:48px; height:42px; border-radius:10px; border:1.5px solid var(--maroon); background:' + (dOn0 ? 'var(--maroon)' : '#fff8e6') + '; color:' + (dOn0 ? '#fff8e6' : 'var(--maroon)') + '; font-size:20px; cursor:pointer;">&#128197;</button></div>' +
       (dOn0 ? histAttendanceHtml() : '');
   }
-  var myBr = isAdmin ? '' : ((sellerBranchOf(session.id) || {}).id || activeBranchId || 'main');
+  // Admin list: the admin who is logged in + only the people who made at least 1 bill here (no empty names)
   (SALES || []).forEach(function(x){
-    if(isAdmin){ if(!saleInBranch(x, adminScope()) || !saleInBranch(x, historyBranchFilter)) return; }
-    else { var u = USERS[x.sellerId]; if(x.sellerId === session.id || !saleInBranch(x, myBr) || (u && u.role === 'admin')) return; }
-    if(x.sellerId && !names[x.sellerId]) names[x.sellerId] = x.sellerName || (USERS[x.sellerId] && USERS[x.sellerId].name) || x.sellerId;
+    if(!x || !x.sellerId || !isCountedSale(x) || !saleInBranch(x, adminScope()) || !saleInBranch(x, historyBranchFilter)) return;
+    names[x.sellerId] = (USERS[x.sellerId] && USERS[x.sellerId].name) || x.sellerName || names[x.sellerId] || x.sellerId;
   });
-  Object.keys(USERS || {}).forEach(function(id){
-    var u = USERS[id]; if(!u || names[id]) return;
-    if(isAdmin){ if(!adminScope() || (u.branch || '') === adminScope()) names[id] = u.name || id; }
-    else if(u.role === 'seller' && id !== session.id && ((sellerBranchOf(id) || {}).id === myBr)) names[id] = u.name || id;
-  });
-  var ids = Object.keys(names).sort(function(a, b){ return String(names[a]).localeCompare(String(names[b])); });
+  var me = session && session.id;
+  if(me) delete names[me];
   var f = historySellerFilter || '';
+  if(f && f !== me && !names[f]) names[f] = (USERS[f] && USERS[f].name) || f;   // keep the one picked before
+  var ids = Object.keys(names).sort(function(a, b){ return String(names[a]).localeCompare(String(names[b])); });
   var o = function(v, label){ return '<option value="' + custEsc(v) + '"' + (f === v ? ' selected' : '') + '>' + custEsc(label) + '</option>'; };
-  opts = isAdmin ? o('', 'All sellers') : o('', 'My bills') + (ids.length ? o('all', 'All sellers (my branch)') : '');
+  opts = o('', 'All sellers') + (me ? o(me, ((USERS[me] && USERS[me].name) || session.name || me) + ' (me)') : '');
   opts += ids.map(function(id){ return o(id, names[id]); }).join('');
   var dOn = !isAdmin && !!(histDates.from || histDates.to);
   return '<div style="display:flex; align-items:center; gap:8px; margin:8px 0;"><span style="font-size:12px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>' +
@@ -11476,7 +11478,7 @@ function pickItemCat(v){ itemCatOpen = false; itemFilters.cat = v; renderAdmin()
 /* Category button at the start of the item search - same as Bill 1 / Bill 2: tap it and the category list opens. */
 function itemCatBtnHtml(){
   var c = itemFilters.cat, n = c !== '' ? getCategoryName(Number(c)) : null, lbl = n ? (Number(c) + 1) + '. ' + (n.ta || n.en) : 'Category';
-  return '<button id="itemCatBtn" type="button" class="cat-pick-btn' + (n || itemCatOpen ? ' on' : '') + '" title="' + (n ? 'Category: ' + estEsc(n.en || n.ta) : 'Category filter') + '" aria-label="Category filter" onclick="toggleItemCat()"><span class="cpb-ico">&#128193;</span><span class="cpb-txt">' + estEsc(lbl) + '</span></button>';
+  return '<button id="itemCatBtn" type="button" class="cat-pick-btn' + (n || itemCatOpen ? ' on' : '') + (n ? ' sel' : '') + '" title="' + (n ? 'Category: ' + estEsc(n.en || n.ta) : 'Category filter') + '" aria-label="Category filter" onclick="toggleItemCat()"><span class="cpb-ico">&#128193;</span><span class="cpb-txt">' + estEsc(lbl) + '</span></button>';
 }
 function itemFilterBarHtml(){
   if(!itemFilterOpen && !itemCatOpen) return '';
@@ -11489,13 +11491,18 @@ function itemFilterBarHtml(){
     ib('&#128338;', 'Recently changed first', f.sort === 'recent', "setItemFilter('sort','recent')") +
     '<span style="font-size:11.5px; font-weight:800; color:#7a1414; white-space:nowrap;">%%ITEMCOUNT%%</span>' +
     (on ? '<button type="button" title="Reset" aria-label="Reset" onclick="resetItemFilters()" style="width:42px; height:42px; border:none; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:20px; cursor:pointer;">&#8635;</button>' : '') + '</div>');
-  if(itemCatOpen){
+  if(itemCatOpen) h += itemCatListHtml(itemFilterOpen ? '8px' : '0');
+  return h + '</div>';
+}
+function itemCatListHtml(mt){
+  var f = itemFilters, h = '';
+  {
     var row = function(val, label, cnt){ var sel = String(f.cat) === String(val); return '<button type="button" onclick="pickItemCat(\'' + val + '\')" style="display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; padding:9px 11px; border:none; border-bottom:1px solid var(--line); background:' + (sel ? 'var(--maroon)' : '#fff') + '; color:' + (sel ? '#fff8e6' : 'var(--maroon)') + '; font-weight:700; font-size:12.5px; cursor:pointer;"><span>' + label + '</span><span>' + cnt + '</span></button>'; };
     var total = 0; CATEGORIES.forEach(function(c){ total += c.items.length; });
-    h += '<div style="margin-top:' + (itemFilterOpen ? '8px' : '0') + '; max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('', 'All categories', total) +
+    h += '<div style="margin-top:' + (mt || '0') + '; max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fff;">' + row('', 'All categories', total) +
       CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci); return row(String(ci), (ci + 1) + '. ' + estEsc(n.ta || n.en) + ' (' + estEsc(n.en) + ')', c.items.length); }).join('') + '</div>';
   }
-  return h + '</div>';
+  return h;
 }
 /* ---- Price Edit header: title + counts, More menu (labelled actions), + New; frozen: search, category chips, sort + offer ---- */
 var peMoreOpen = false, peSearchOpen = false;
@@ -11507,7 +11514,8 @@ function peMoreDo(a){
   else if(a === 'print'){ adminPriceViewSet('edit'); }
   else if(a === 'cats'){ if(catEditOpen){ catEditOpen = false; renderAdmin(); } else toggleCatEdit(); }
 }
-function peSearchClear(){ adminItemSearchQuery = ''; peSearchOpen = false; renderAdmin(); }
+function peSearchClear(){ adminItemSearchQuery = ''; peSearchOpen = false; renderAdmin(); var el = document.getElementById('adminItemSearch'); if(el) el.blur(); }
+function peSort(v){ itemFilters.sort = (itemFilters.sort === v) ? '' : v; renderAdmin(); }   // tap again: back to S.No order
 function peSearchShow(){ peSearchOpen = true; renderAdmin(); var el = document.getElementById('adminItemSearch'); if(el){ el.focus(); var v = el.value; try{ el.setSelectionRange(v.length, v.length); }catch(e){} } }
 function peChipsIntoView(){
   var cr = document.getElementById('peChips'), a = cr && cr.querySelector('.pe-chip.on');
@@ -11515,27 +11523,26 @@ function peChipsIntoView(){
 }
 function peHeadHtml(totalItems){
   var f = itemFilters, filtered = f.cat !== '' || !!f.sort || !!adminItemSearchQuery.trim() || f.min !== '' || f.max !== '' || !!f.recent;
-  var srchOn = peSearchOpen || !!adminItemSearchQuery;
-  var chip = function(val, label, cnt, tip){ var on = String(f.cat) === String(val); return '<button type="button" class="pe-chip' + (on ? ' on' : '') + '" title="' + estEsc(tip || label) + '" onclick="pickItemCat(\'' + val + '\')"><span class="t">' + estEsc(label) + '</span><i>' + cnt + '</i></button>'; };
   var menu = !peMoreOpen ? '' : '<div class="pe-shade" onclick="peMore(false)"></div><div class="pe-menu" role="menu">' +
     '<button type="button" onclick="peMoreDo(\'pdf\')">&#128196; Share price list PDF</button>' +
     '<button type="button" onclick="peMoreDo(\'excel\')">&#128202; Export Excel</button>' +
     '<button type="button" onclick="peMoreDo(\'print\')">&#9638; Price list format (print view)</button>' +
     '<button type="button" onclick="peMoreDo(\'cats\')">&#9998;&#65039; ' + (catEditOpen ? 'Close category editor' : 'Edit categories') + '</button></div>';
-  var sortSel = '<select class="pe-sort" aria-label="Sort" onchange="setItemFilter(\'sort\', this.value)">' +
-    [['', 'Sort: S.No'], ['low', 'Price: low → high'], ['high', 'Price: high → low'], ['recent', 'Recently changed']].map(function(o){ return '<option value="' + o[0] + '"' + ((f.sort || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
   var brChips = (function(){ var c = branchChipsHtml(adminItemsBranch, 'setAdminItemsBranch').replace('>All<', '>Normal price<'); return c ? '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 2px 4px;"><span style="font-size:11.5px; font-weight:800; color:#8a6a44;">Prices for</span>' + c.replace('margin:8px 0;', 'margin:0;') + '</div>' : ''; })();
   return '<div class="pe-top"><div class="pe-title"><b>Price Edit</b><span>' + totalItems + ' items &middot; ' + CATEGORIES.length + ' categories</span></div>' +
       '<div class="pe-more"><button type="button" class="pe-ibtn" title="More: PDF, Excel, print view, categories" aria-label="More" onclick="peMore()">&#8943; More</button>' + menu + '</div>' +
       '<button type="button" class="pe-new" onclick="openNewItemModal()">&plus; New</button></div>' +
     '<div class="pl-sticky-head">' +
-      (srchOn ? '<div class="pe-search" style="margin-bottom:8px;"><span class="ico">&#128269;</span><input id="adminItemSearch" type="text" placeholder="Search name, S.No or price / பொருள் தேடு" value="' + estEsc(adminItemSearchQuery) + '" oninput="onAdminItemSearch()" autocomplete="off">' +
-        '<button type="button" class="clr" aria-label="Close search" title="Close search" onclick="peSearchClear()">&#10005;</button></div>' : '') +
-      '<div class="pe-chips" id="peChips" style="margin-top:0;">' +
-        '<button type="button" class="pe-chip pe-schip' + (srchOn ? ' on' : '') + '" title="Search" aria-label="Search" onclick="' + (srchOn ? 'peSearchClear()' : 'peSearchShow()') + '">&#128269;</button>' +
-        chip('', 'All', totalItems) +
-        CATEGORIES.map(function(c, ci){ var n = getCategoryName(ci); return chip(String(ci), n.ta || n.en, c.items.length, (ci + 1) + '. ' + (n.en || n.ta)); }).join('') + '</div>' +
-      offerBarHtml(adminOfferLoc()).replace('<div class="ofbar">', '<div class="ofbar">' + sortSel) +
+      '<div class="frow">' + itemCatBtnHtml() +
+        '<button type="button" class="bf-btn sm' + (f.sort === 'low' ? ' on' : '') + '" title="Price low to high (tap again for S.No order)" aria-label="Price low to high" onclick="peSort(\'low\')">&#8377;&#9650;</button>' +
+        '<button type="button" class="bf-btn sm' + (f.sort === 'high' ? ' on' : '') + '" title="Price high to low (tap again for S.No order)" aria-label="Price high to low" onclick="peSort(\'high\')">&#8377;&#9660;</button>' +
+        '<button type="button" class="bf-btn' + (f.sort === 'recent' ? ' on' : '') + '" title="Recently changed price first" aria-label="Recently changed" onclick="peSort(\'recent\')">&#128338;</button>' +
+        '<div class="bill-sbox' + (adminItemSearchQuery ? ' has' : '') + '"><span class="sb-ico">&#128269;</span>' +
+          '<input id="adminItemSearch" type="text" placeholder="Search item…" aria-label="Search name, S.No or price" value="' + estEsc(adminItemSearchQuery) + '" oninput="onAdminItemSearch()" onkeydown="if(event.key === \'Enter\') this.blur();" autocomplete="off">' +
+          '<button type="button" class="sb-x" title="Clear search" aria-label="Clear search" onclick="peSearchClear()">&#10005;</button></div>' +
+      '</div>' +
+      (itemCatOpen ? itemCatListHtml('8px') : '') +
+      offerBarHtml(adminOfferLoc()) +
     '</div>' + brChips +
     (filtered ? '<div class="pe-count"><span>%%ITEMCOUNT%%</span><button type="button" onclick="resetItemFilters()">Clear filters</button></div>' : '');
 }
