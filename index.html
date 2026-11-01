@@ -859,6 +859,7 @@
   .sl-big{font-size:22px; font-weight:900; color:var(--maroon); line-height:1.15;}
   .sl-cap{font-size:11.5px; font-weight:700; color:#8a6a44; margin-top:2px;}
   .sl-eye{flex:0 0 auto; height:34px; padding:0 12px; border-radius:10px; border:1.5px solid var(--line); background:#fff8ea; color:var(--maroon); font-weight:800; font-size:12.5px; cursor:pointer;}
+  .sl-kpis2{margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);}
   .sl-kpis{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);}
   .sl-kpi{background:#fffaf0; border-radius:10px; padding:8px 10px;}
   .sl-kpi b{display:block; font-size:15px; font-weight:900; color:var(--ink);}
@@ -5248,7 +5249,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v83';
+var APP_BUILD = 'v84';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -9126,7 +9127,7 @@ function dashDayRows(list){
   return Array.from(m.values()).sort(function(a, b){ return a.day < b.day ? -1 : a.day > b.day ? 1 : 0; });
 }
 /* ---- Report letterhead + Branch details, always filled from Admin -> Branches (title, branch name & code, owner,
-   contact number, short address, Google Maps link). A report for one branch shows that branch; "All branches" shows
+   contact number, short address, Licence No / GST No when the admin gave them). A report for one branch shows that branch; "All branches" shows
    the main shop on top and every branch in the Branch details table. A blank title / number falls back to the shop's. ---- */
 var a4FootName = '';
 function rptBid(bid){ bid = adminScope() || bid || ''; return (bid && BRANCHES[bid]) ? bid : ''; }
@@ -9177,7 +9178,9 @@ function rptInfo(b){
   b = b || {};
   return { title: branchTitle(b) || SHOP.name_ta, name: b.name || b.short || b.id || '', code: b.short || '', owner: String(b.owner || '').trim(),
     phone: branchPhoneText(b), addr: branchAddr(b), map: branchMapShort(b),
-    status: b.enabled === false ? 'On hold' : branchSoon(b) ? 'Opening soon' : 'Active' };
+    status: b.enabled === false ? 'On hold' : branchSoon(b) ? 'Opening soon' : 'Active',
+    // Licence No / GST No: printed only when the admin filled them in Branches and allowed them on reports
+    lic: b.regShow === false ? '' : String(b.lic || '').trim(), gst: b.regShow === false ? '' : String(b.gst || '').trim().toUpperCase() };
 }
 function rptNameCode(i){ return i.name + (i.code ? ' (' + i.code + ')' : ''); }
 function rptMain(bid){ return rptInfo(rptBranches(bid)[0] || BRANCHES.main); }
@@ -9192,16 +9195,16 @@ function a4BranchTable(bid){
   if(one){
     var i = rptMain(bid), th = function(t){ return '<th style="width:17%;">' + t + '</th>'; };
     return '<div class="bkr-bd" style="margin-bottom:16px;"><div class="bkr-sec">Branch details</div><table style="margin:0;"><tbody>' +
-      '<tr>' + th('Branch name') + '<td>' + v(rptNameCode(i)) + '</td>' + th('Status') + '<td>' + i.status + '</td></tr>' +
+      '<tr>' + th('Branch name') + (i.lic ? '<td>' + v(rptNameCode(i)) + '</td>' + th('Licence No') + '<td>' + estEsc(i.lic) + '</td>' : '<td colspan="3">' + v(rptNameCode(i)) + '</td>') + '</tr>' +
       '<tr>' + th('Branch owner') + '<td>' + v(i.owner) + '</td>' + th('Contact number') + '<td>' + v(i.phone) + '</td></tr>' +
       '<tr>' + th('Address') + '<td colspan="3">' + v(i.addr) + '</td></tr>' +
-      '<tr>' + th('Google Maps') + '<td colspan="3" style="word-break:break-all;">' + v(i.map) + '</td></tr></tbody></table></div>';
+      (i.gst ? '<tr>' + th('GST No') + '<td colspan="3">' + estEsc(i.gst) + '</td></tr>' : '') + '</tbody></table></div>';
   }
-  return '<div class="bkr-bd" style="margin-bottom:16px;"><div class="bkr-sec">Branch details</div><table style="margin:0;"><thead><tr><th style="width:40px;">Code</th><th style="width:120px;">Branch</th><th style="width:96px;">Owner</th><th style="width:104px;">Contact number</th><th>Address / Google Maps</th><th style="width:62px;">Status</th></tr></thead><tbody>' +
-    rptBranches(bid).map(function(b){
-      var i = rptInfo(b);
+  var infos = rptBranches(bid).map(rptInfo), reg = infos.some(function(i){ return i.lic || i.gst; });
+  return '<div class="bkr-bd" style="margin-bottom:16px;"><div class="bkr-sec">Branch details</div><table style="margin:0;"><thead><tr><th style="width:40px;">Code</th><th style="width:120px;">Branch</th><th style="width:96px;">Owner</th><th style="width:104px;">Contact number</th><th>Address</th>' + (reg ? '<th style="width:130px;">Licence No / GST No</th>' : '') + '</tr></thead><tbody>' +
+    infos.map(function(i){
       return '<tr><td>' + v(i.code) + '</td><td><b>' + v(i.name) + '</b></td><td>' + v(i.owner) + '</td><td style="white-space:nowrap;">' + v(i.phone).replace(/ \/ /g, '<br>') + '</td>' +
-        '<td>' + v(i.addr) + (i.map ? '<div style="font-size:9.5px; word-break:break-all; margin-top:1px;">' + estEsc(i.map) + '</div>' : '') + '</td><td style="white-space:nowrap;">' + i.status + '</td></tr>';
+        '<td>' + v(i.addr) + '</td>' + (reg ? '<td style="font-size:9.5px;">' + (i.lic || i.gst ? (i.lic ? 'Lic: ' + estEsc(i.lic) : '') + (i.lic && i.gst ? '<br>' : '') + (i.gst ? 'GST: ' + estEsc(i.gst) : '') : RPT_DASH) + '</td>' : '') + '</tr>';
     }).join('') + '</tbody></table></div>';
 }
 function a4Head(title, scopeHtml, bid){
@@ -9218,8 +9221,9 @@ function rptThermHead(titleHtml, subHtml, bid){
   var one = rptOne(bid), list = rptBranches(bid), m = rptInfo(list[0] || BRANCHES.main), s = 'font-size:9px; color:#000; line-height:1.35;';
   var h = '<div class="br-head"><div class="br-ta">' + estEsc(m.title) + '</div><div style="font-size:8.5px; letter-spacing:1.5px; color:#000; font-weight:700;">' + estEsc(SHOP.name_en) + '</div>';
   h += (one ? [m] : list.map(rptInfo)).map(function(i){
-    return '<div style="' + s + ' margin-top:3px;"><b>' + (one ? 'Branch: ' : '') + estEsc(rptNameCode(i)) + '</b>' + (i.status !== 'Active' ? ' (' + i.status + ')' : '') +
-      (i.addr ? '<br>' + estEsc(i.addr) : '') + '<br>Ph: ' + estEsc(i.phone) + (i.owner ? ' &bull; Owner: ' + estEsc(i.owner) : '') + '</div>';
+    return '<div style="' + s + ' margin-top:3px;"><b>' + (one ? 'Branch: ' : '') + estEsc(rptNameCode(i)) + '</b>' +
+      (i.addr ? '<br>' + estEsc(i.addr) : '') + '<br>Ph: ' + estEsc(i.phone) + (i.owner ? ' &bull; Owner: ' + estEsc(i.owner) : '') +
+      (i.lic || i.gst ? '<br>' + (i.lic ? 'Licence No: ' + estEsc(i.lic) : '') + (i.lic && i.gst ? ' &bull; ' : '') + (i.gst ? 'GST No: ' + estEsc(i.gst) : '') : '') + '</div>';
   }).join('');
   return h + '<div style="font-size:10.5px; color:#000; margin-top:5px; padding-top:4px; border-top:1px dashed #000; font-weight:800;">' + titleHtml + '</div>' +
     (subHtml ? '<div style="font-size:9px; color:#000; margin-top:2px;">' + subHtml + '</div>' : '') + '</div>';
@@ -10102,7 +10106,7 @@ async function shareBankReportPDF(){
 function rptTile(ico, label, amt, sub, col){
   return `<div style="flex:1; min-width:0; border:1.5px solid ${col}; border-radius:10px; padding:8px 6px; text-align:center;">
       <div style="font-size:11.5px; font-weight:700; color:#5b4630;">${ico} ${label}</div>
-      <div style="font-size:17px; font-weight:800; color:${col}; margin-top:2px;">&#8377;${Math.round(amt).toLocaleString('en-IN')}</div>
+      <div style="font-size:17px; font-weight:800; color:${col}; margin-top:2px;">${typeof amt === 'string' ? amt : '&#8377;' + Math.round(amt).toLocaleString('en-IN')}</div>
       <div style="font-size:10.5px; color:#8a6a44;">${sub}</div></div>`;
 }
 function cashUpiSplitHtml(cash, upi){
@@ -10227,7 +10231,9 @@ function renderAdmin(){
       <div class="sl-sum">
         <div class="sl-sum-top"><div><div class="sl-big">${salesStatsOpen ? '&#8377;' + totalRevenue.toLocaleString('en-IN') : '&#8377; &bull;&bull;&bull;&bull;'}</div><div class="sl-cap">Total sales &middot; ${salesStatsOpen ? 'Today &#8377;' + todayRevenue.toLocaleString('en-IN') + ' &middot; ' : ''}${totalItemsSold} items</div></div>
           <button type="button" class="sl-eye" onclick="toggleSalesStats()" aria-label="${salesStatsOpen ? 'Hide totals' : 'Show totals'}">${salesStatsOpen ? '&#128584; Hide' : '&#128065; Show'}</button></div>
-        ${salesStatsOpen ? `<div class="sl-kpis">${_kpi(confirmedSales.length, '&#129534; Bills', 'k-bills')}${_kpi('&#8377;' + totalCash.toLocaleString('en-IN'), '&#128181; Cash', 'k-cash')}${_kpi('&#8377;' + totalDiscountGiven.toLocaleString('en-IN'), '&#127991; Discount ' + overallDiscountPct + '%', 'k-disc')}${_kpi('&#8377;' + totalUpi.toLocaleString('en-IN'), '&#128241; UPI', 'k-upi')}</div>` : ''}
+        ${salesStatsOpen ? `<div class="sl-kpis2">
+          <div style="display:flex; gap:8px;">${rptTile('&#129534;', 'Total Bill', String(confirmedSales.length), confirmedSales.length ? 'Avg &#8377;' + Math.round(totalRevenue / confirmedSales.length).toLocaleString('en-IN') + ' / bill' : 'No bills yet', '#7a1414')}${rptTile('&#127991;&#65039;', 'Total Discount', totalDiscountGiven, overallDiscountPct + '% of Billed Value', '#1e7a3c')}</div>
+          ${cashUpiSplitHtml(totalCash, totalUpi)}</div>` : ''}
       </div>
       <div class="sl-quick"><button type="button" onclick="openSalesHist('items')">&#128230; Item History</button><button type="button" onclick="openSalesHist('sellers')">&#128100; Seller History</button></div>
       <div class="pl-sticky-head">
@@ -10656,6 +10662,11 @@ function renderAdmin(){
             <label class="field-label">Google Maps link</label>
             <input type="text" id="brMap" inputmode="url" value="${branchMap(br).replace(/"/g, '&quot;')}" placeholder="https://maps.app.goo.gl/...  or  11.30682, 79.71580" style="${_fld}">
             <div style="font-size:10.5px; color:#8a6a44; margin:-3px 0 8px; line-height:1.45;">Google Maps app &rarr; open your shop &rarr; <b>Share</b> &rarr; <b>Copy link</b> &rarr; paste here (or paste the pin&#39;s point location, e.g. <b>11.30682, 79.71580</b>). Customers then get a <b>Map</b> button on the price list, a <b>Directions</b> button on their voucher, and the link in WhatsApp offers.</div>
+            <label class="field-label">Licence No (optional)</label>
+            <input type="text" id="brLic" maxlength="40" autocomplete="off" value="${String(br.lic || '').replace(/"/g, '&quot;')}" placeholder="e.g. Explosives / trade licence number" style="${_fld}">
+            <label class="field-label">GST No (optional)</label>
+            <input type="text" id="brGst" maxlength="20" autocomplete="off" value="${String(br.gst || '').replace(/"/g, '&quot;')}" placeholder="e.g. 33ABCDE1234F1Z5" style="${_fld} text-transform:uppercase;">
+            <label style="display:flex; align-items:center; gap:8px; margin:0 0 10px; font-size:12.5px; font-weight:800; color:#5b4630; cursor:pointer;"><input type="checkbox" id="brRegShow" ${br.regShow === false ? '' : 'checked'} style="width:18px; height:18px;"><span>Show Licence No &amp; GST No on reports <span style="font-weight:600; color:#8a6a44;">(only when filled)</span></span></label>
             <label style="display:flex; align-items:center; gap:8px; margin:2px 0 10px; font-size:12.5px; font-weight:800; color:#5b4630; cursor:pointer;"><input type="checkbox" id="brSoon" ${branchSoon(br) ? 'checked' : ''} style="width:18px; height:18px;"> &#128679; Opening soon (shop not open yet) &mdash; listed last in offer messages</label>
             <button onclick="saveBranchDetails('${bid}')" style="width:100%; padding:10px; background:var(--maroon); color:#fff8e6; border:none; border-radius:8px; font-weight:800; font-size:13px; cursor:pointer;">Save details</button>
             <div style="font-size:10.5px; color:#8a6a44; margin-top:6px;">Owner is kept here only &mdash; it is not printed on the price list.</div>
@@ -13451,6 +13462,8 @@ function saveBranchDetails(id){
   const map = mapFromPoint(v('brMap')) || v('brMap').replace(/[?&]g_st=[^&]*$/, '');
   if(map && !branchMap({ map: map })){ alert('Please paste a Google Maps link (it starts with https://maps.app.goo.gl/ or https://www.google.com/maps/) or a point location like 11.30682, 79.71580.'); return; }
   br.name = name; br.title = v('brTitle'); br.owner = v('brOwner'); br.phone = v('brPhone'); br.addr = v('brAddr'); br.map = map;
+  br.lic = v('brLic'); br.gst = v('brGst').replace(/\s+/g, '').toUpperCase();
+  const regEl = document.getElementById('brRegShow'); if(regEl) br.regShow = !!regEl.checked;
   const soonEl = document.getElementById('brSoon'); if(soonEl) br.soon = !!soonEl.checked;
   saveJSON('ars_branches', BRANCHES);
   try{ populateBranchSelector(); updateUserTag(); }catch(e){}
