@@ -181,7 +181,8 @@
     font-size:14px; background:#fff; color:var(--ink); box-sizing:border-box;
   }
   .search-wrap .ico{position:absolute; left:25px; top:50%; transform:translateY(-50%); opacity:0.55; font-size:14px;}
-  .search-wrap.sw-flex{display:flex; gap:7px; align-items:center;}
+  .search-wrap.sw-flex{display:flex; gap:6px; align-items:center; padding:9px 0;}
+  @media (max-width:374px){ .search-wrap.sw-flex .bf-btn{width:39px; height:40px;} .search-wrap.sw-flex .cat-pick-btn{width:60px; height:40px;} }
   .search-wrap.sw-flex .ico{left:11px;}
   /* category filter button at the start of the item search (Bill 1 / Bill 2 / Self Estimation) */
   .cat-pick-btn{flex:0 0 auto; width:66px; height:42px; padding:2px 3px; box-sizing:border-box; border-radius:10px; border:1.5px solid var(--maroon); background:#fff8ea; color:var(--maroon);
@@ -189,6 +190,10 @@
   .cat-pick-btn .cpb-ico{font-size:16px; line-height:1;}
   .cat-pick-btn .cpb-txt{max-width:100%; font-size:9.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .cat-pick-btn.on{background:var(--maroon); color:#fff8e6;}
+  /* Bill 1 / Bill 2: filter buttons shown directly in the row (in cart, S.No order, price low / high) + search */
+  .bf-btn{flex:0 0 auto; width:42px; height:42px; padding:0; border-radius:10px; border:1.5px solid var(--maroon); background:#fff8ea; color:var(--maroon); font-size:18px; font-weight:800; line-height:1; cursor:pointer;}
+  .bf-btn.sm{font-size:12.5px;}
+  .bf-btn.on{background:var(--maroon); color:#fff8e6;}
 
   .tabbar{display:flex; background:var(--paper); border-bottom:1px solid var(--line); flex:0 0 auto;}
   .tabbar button{flex:1; padding:11px 6px; border:none; background:transparent; font-size:12.5px; font-weight:700;
@@ -1030,9 +1035,15 @@ function __appNotLoaded(){
       </div>
       <div class="search-wrap sw-flex">
         <button id="billCatBtn" type="button" class="cat-pick-btn" title="Category filter" aria-label="Category filter" onclick="toggleBillCat()"><span class="cpb-ico">&#128193;</span><span class="cpb-txt" id="billCatLbl">Category</span></button>
-        <button id="billFilterBtn" type="button" class="cat-pick-btn" title="Filter / sort items" aria-label="Filter items" onclick="toggleBillFilters()"><span class="cpb-ico">&#8645;</span><span class="cpb-txt">Filter</span></button>
-        <button id="billSearchBtn" type="button" class="cat-pick-btn" title="Search item" aria-label="Search item" onclick="toggleBillSearch()"><span class="cpb-ico">&#128269;</span><span class="cpb-txt">Search</span></button>
-        <span id="billItemCount" style="flex:1; min-width:0; text-align:right; font-size:11.5px; font-weight:800; color:#8a6a44;"></span>
+        <span style="flex:0 1 26px; min-width:6px;"></span>
+        <span id="billFilterBtns" style="display:flex; gap:6px; flex:0 0 auto;">
+          <button id="bfIncart" type="button" class="bf-btn" title="Only items in the cart" aria-label="In cart" onclick="setBillFilter('incart')">&#128722;</button>
+          <button id="bfLow" type="button" class="bf-btn sm" title="Price low to high (tap again for S.No order)" aria-label="Price low to high" onclick="setBillFilter('sort', billFilters.sort === 'low' ? '' : 'low')">&#8377;&#9650;</button>
+          <button id="bfHigh" type="button" class="bf-btn sm" title="Price high to low (tap again for S.No order)" aria-label="Price high to low" onclick="setBillFilter('sort', billFilters.sort === 'high' ? '' : 'high')">&#8377;&#9660;</button>
+          <button id="bfRecent" type="button" class="bf-btn" title="Recently sold items (most sold first)" aria-label="Recently sold items" onclick="setBillFilter('recent')">&#128293;</button>
+        </span>
+        <span style="flex:1; min-width:0;"></span>
+        <button id="billSearchBtn" type="button" class="bf-btn" title="Search item" aria-label="Search item" onclick="toggleBillSearch()">&#128269;</button>
       </div>
       <div id="billSearchRow" class="hidden" style="padding:0 14px 8px;">
         <div class="search-wrap" style="padding:0;">
@@ -4552,8 +4563,20 @@ const SHARE_ICON_SVG = '<svg width="19" height="19" viewBox="0 0 24 24" fill="no
 const SHARE_ICON_SVG_SM = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:4px;"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>';
 const WHATSAPP_ICON_SVG_SM = '<span class="wa-logo" style="width:15px; height:15px; margin-right:4px; vertical-align:-3px;"></span>';
 
+/* Bill 1 and Bill 2 each keep their own category, filters (in cart / price order) and search - one never changes the other. */
+var _billTabUi = { 1: null, 2: null };
+function billUiSave(n){ var el = document.getElementById('search'); _billTabUi[n] = { cat: activeCat, f: Object.assign({}, billFilters), q: el ? el.value : '', so: billSearchOpen }; }
+function billUiLoad(n){
+  var s = _billTabUi[n] || { cat: 'ALL', f: { incart:false, recent:false, sort:'' }, q: '', so: false };
+  activeCat = s.cat; billFilters = Object.assign({}, s.f); billSearchOpen = s.so; billCatOpen = false; billFilterOpen = false;
+  var el = document.getElementById('search'); if(el) el.value = s.q;
+  try{ buildCatNav(); }catch(e){}
+}
 function setTab(t){
   if(t !== activeTab) listReset('hist');
+  var _prevTab = activeTab, _isBill = function(x){ return x === 'billing1' || x === 'billing2'; };
+  if(t !== _prevTab && _isBill(_prevTab)) billUiSave(_prevTab === 'billing1' ? 1 : 2);   // remember this bill's filters / search
+  if(t !== _prevTab && _isBill(t)) billUiLoad(t === 'billing1' ? 1 : 2);                  // and bring back the other bill's own
   activeTab = t;
   _billSheetSn = null; { const _bq = document.getElementById('billQtySheet'); if(_bq) _bq.style.display = 'none'; }   // qty panel belongs to the bill tabs only
   // Update button active states
@@ -4685,7 +4708,7 @@ function toggleBillLayout(){
   if(billLayout === 'table'){ billFilters = { incart:false, recent:false, sort:'' }; billFilterOpen = false; billCatOpen = false; activeCat = 'ALL'; var _se = document.getElementById('search'); if(_se) _se.value = ''; try{ buildCatNav(); }catch(e){} } _billSheetSn = null; render(); }
 function toggleBillCat(){ billCatOpen = !billCatOpen; render(); }
 function pickBillCat(v){ billCatOpen = false; setCat(v); }
-function billFilterActive(){ return billFilters.incart || billFilters.sort || activeCat !== 'ALL'; }
+function billFilterActive(){ return billFilters.incart || billFilters.recent || billFilters.sort || activeCat !== 'ALL'; }
 /* Recently billed items: from this account's bills of the last 30 days (admin: all bills) in the active branch,
    ranked by how often they were billed, then by how recently. Matched by the item's English name. */
 var _recentMap = null;
@@ -4718,15 +4741,16 @@ function billFilterPass(price, qty, rk){
   return true;
 }
 function renderBillFilterBar(shown){
-  var btn = document.getElementById('billFilterBtn'), bar = document.getElementById('billFilterBar');
-  if(!btn || !bar) return;
+  var btns = document.getElementById('billFilterBtns'), bar = document.getElementById('billFilterBar');
+  if(!btns || !bar) return;
   var billing = (activeTab === 'billing1' || activeTab === 'billing2');
-  btn.classList.toggle('hidden', !billing);
+  btns.classList.toggle('hidden', !billing);
+  billFilterOpen = false;   // the filter buttons are always in the row now
   var on = billFilterActive();
-  btn.classList.toggle('on', billFilterOpen || on);
+  var _st = function(id, v){ var b = document.getElementById(id); if(b) b.classList.toggle('on', !!v); };
+  _st('bfIncart', billFilters.incart); _st('bfLow', billFilters.sort === 'low'); _st('bfHigh', billFilters.sort === 'high'); _st('bfRecent', billFilters.recent);
   var sb = document.getElementById('billSearchBtn'), sv = (document.getElementById('search') || {}).value || '';
   if(sb) sb.classList.toggle('on', billSearchOpen || !!sv);
-  var ic = document.getElementById('billItemCount'); if(ic) ic.textContent = billing ? shown + ' items' : '';
   var cb = document.getElementById('billCatBtn'), cl = document.getElementById('billCatLbl'), catOn0 = activeCat !== 'ALL';
   if(cb){
     cb.classList.toggle('on', catOn0 || billCatOpen);
@@ -4925,7 +4949,9 @@ function render(){
     html = true ? `<div>${_flat.map(x => x.h).join('')}</div>` : `<div class="item-grid2">${_flat.map(x => x.h).join('')}</div>`;
   }
   renderBillFilterBar(_shown);
-  list.innerHTML = html || `<div class="empty-state">No items found.<br/>பொருள் இல்லை.</div>`;
+  list.innerHTML = html || ((activeTab === 'billing1' || activeTab === 'billing2') && billFilters.recent && _recentMap && !Object.keys(_recentMap).length
+    ? `<div class="empty-state">&#128293; No items sold in the last 30 days yet.<br/>கடந்த 30 நாட்களில் விற்பனை இல்லை.</div>`
+    : `<div class="empty-state">No items found.<br/>பொருள் இல்லை.</div>`);
 
   const {count, subtotal, grand} = computeTotals(cart);
   document.getElementById('cbCount').textContent = count;
@@ -5208,7 +5234,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v79';
+var APP_BUILD = 'v80';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
