@@ -5546,7 +5546,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v90';
+var APP_BUILD = 'v91';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -7294,10 +7294,17 @@ function closeMySummary(){ var o = document.getElementById('mySumOv'); if(o && o
 /* Admin: whose summary - '' = all sellers (shop total + one line per seller), or one person's id. A seller always sees their own. */
 var mySumWho = '';
 function mySumIsAdmin(){ return !!(session && session.role === 'admin'); }
-function mySumSet(v){ mySumWho = v || ''; mySumVal = false; mySumPaint(); }
-/* All sellers summary: shows % only; the admin taps the ARS logo to see the rupee values (back to % when reopened or the filter changes). */
-var mySumVal = false;
-function mySumToggleVal(){ if(!mySumIsAdmin() || mySumWho) return; mySumVal = !mySumVal; mySumPaint(); }
+function mySumSet(v){ mySumWho = v || ''; mySumVal = 0; mySumPaint(); }
+/* All sellers summary: shows % only (0). The admin taps the ARS logo once = today's rupee values (1); taps it twice quickly
+   (double tap) = today + total rupee values (2); one tap while values show = back to % only. Back to % when reopened or the filter changes. */
+var mySumVal = 0, _mySumTapAt = 0;
+function mySumToggleVal(){
+  if(!mySumIsAdmin() || mySumWho) return;
+  var now = Date.now(), dbl = now - _mySumTapAt < 450;
+  _mySumTapAt = dbl ? 0 : now;
+  mySumVal = dbl ? 2 : (mySumVal ? 0 : 1);
+  mySumPaint();
+}
 /* The picker lists the admin who is logged in + only the people who made at least 1 bill (no empty names). */
 function mySumPeople(){
   var m = {};
@@ -7339,12 +7346,12 @@ function mySummaryData(){
 }
 function mySummaryCardHtml(d){
   var inr = function(v){ return '&#8377;' + Math.round(Number(v) || 0).toLocaleString('en-IN'); };
-  var pm = !!d.all && !mySumVal;   // All sellers: % only until the admin taps the logo
+  var pmT = !!d.all && mySumVal < 1, pmA = !!d.all && mySumVal < 2;   // All sellers: % only; logo tap = today's values, double tap = total too
   var pc = function(a, b){ b = Number(b) || 0; return (b > 0 ? Math.round((Number(a) || 0) / b * 1000) / 10 : 0) + '%'; };
   var dt = function(k){ return k ? fullDateLabel(k) : ''; };
   var logo = (document.querySelector('link[rel="apple-touch-icon"]') || {}).href || '';
   var row = function(l, v, b){ return '<div style="display:flex; justify-content:space-between; gap:6px; font-size:12px; padding:3px 0; border-top:1px dashed #ead9b8;' + (b ? ' font-weight:800;' : '') + '"><span style="color:#6b4e2a;">' + l + '</span><span style="color:#3a2a14; font-weight:800;">' + v + '</span></div>'; };
-  var col = function(title, sub, a){
+  var col = function(title, sub, a, pm){
     return '<div style="flex:1; min-width:0; background:#fff; border:1.5px solid #ead9b8; border-radius:12px; padding:10px;">' +
       '<div style="font-size:10.5px; font-weight:900; letter-spacing:1.2px; color:#8a6a44;">' + title + '</div>' +
       '<div style="font-size:10px; color:#a08560; min-height:13px;">' + sub + '</div>' +
@@ -7357,12 +7364,12 @@ function mySummaryCardHtml(d){
   var now = new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
   return '<div id="mySumCard" style="width:360px; box-sizing:border-box; background:#fffaf0; border-radius:16px; overflow:hidden; color:#3a2a14; font-family:\'Segoe UI\', Roboto, \'Noto Sans Tamil\', Arial, sans-serif;">' +
     '<div style="background:linear-gradient(115deg, #3d0a0a, #7a1414 55%, #d3761f); color:#fff8e6; padding:14px 16px; display:flex; gap:12px; align-items:center;">' +
-      (logo ? '<img src="' + logo + '" alt=""' + (d.all && mySumIsAdmin() ? ' onclick="mySumToggleVal()" title="Show / hide values"' : '') + ' style="flex:0 0 auto; width:46px; height:46px; border-radius:12px; background:#fff;' + (d.all && mySumIsAdmin() ? ' cursor:pointer;' : '') + '">' : '') +
+      (logo ? '<img src="' + logo + '" alt=""' + (d.all && mySumIsAdmin() ? ' onclick="mySumToggleVal()" title="Tap: today values · double tap: total values"' : '') + ' style="flex:0 0 auto; width:46px; height:46px; border-radius:12px; background:#fff;' + (d.all && mySumIsAdmin() ? ' cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent;' : '') + '">' : '') +
       '<div style="min-width:0;"><div style="font-size:17px; font-weight:800; line-height:1.25;">' + estEsc(title) + '</div>' +
       '<div style="font-size:10.5px; letter-spacing:1.5px; font-weight:700; opacity:.9;">' + estEsc(String(SHOP.name_en || '').toUpperCase()) + (br ? ' &bull; ' + estEsc(br.name || '') + (br.short ? ' (' + estEsc(br.short) + ')' : '') : '') + '</div></div></div>' +
     '<div style="padding:12px 16px 2px;"><div style="font-size:16px; font-weight:900; color:#7a1414;">' + (d.all ? 'Sales Summary' : (mySumIsAdmin() && d.who !== (session && session.id) ? 'Seller Summary' : 'My Summary')) + '</div>' +
       '<div style="font-size:12px; color:#8a6a44; margin-top:1px;"><b style="color:#3a2a14;">' + estEsc(d.name) + '</b>' + (d.all ? ' &middot; ' + d.people.length + ' seller' + (d.people.length === 1 ? '' : 's') : '') + (d.pid ? ' &middot; ' + estEsc(d.pid) : '') + (d.role ? ' &middot; ' + d.role : '') + ' &middot; ' + now + '</div></div>' +
-    '<div style="display:flex; gap:10px; padding:10px 16px;">' + col('TODAY', dt(saleLocalDate(new Date())), d.today) + col('TOTAL', d.first ? 'since ' + dt(d.first) : 'no bills yet', d.total) + '</div>' +
+    '<div style="display:flex; gap:10px; padding:10px 16px;">' + col('TODAY', dt(saleLocalDate(new Date())), d.today, pmT) + col('TOTAL', d.first ? 'since ' + dt(d.first) : 'no bills yet', d.total, pmA) + '</div>' +
     '<div style="margin:2px 16px 12px; padding:10px 12px; border-radius:12px; background:#fff3d6; border:1px solid #e9c77a; display:flex; gap:10px; align-items:center;">' +
       '<div style="flex:0 0 auto; min-width:46px; height:46px; padding:0 6px; box-sizing:border-box; border-radius:12px; background:#7a1414; color:#fff8e6; font-size:22px; font-weight:900; display:flex; align-items:center; justify-content:center;">' + d.days + '</div>' +
       '<div style="min-width:0;"><div style="font-size:13px; font-weight:800; color:#7a1414;">&#128197; ' + (d.all ? 'Days with sales' : 'Present days / வருகை நாட்கள்') + '</div>' +
@@ -7371,8 +7378,8 @@ function mySummaryCardHtml(d){
       '<div style="display:flex; gap:6px; padding:7px 10px; background:#fbeed2; font-size:10px; font-weight:900; letter-spacing:.6px; color:#8a6a44;"><span style="flex:1;">SELLER</span><span style="width:70px; text-align:right;">TODAY</span><span style="width:78px; text-align:right;">TOTAL</span><span style="width:34px; text-align:right;">DAYS</span></div>' +
       d.people.map(function(e){ return '<div style="display:flex; gap:6px; align-items:center; padding:7px 10px; border-top:1px dashed #ead9b8; font-size:12px;">' +
         '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><b style="color:#3a2a14;">' + (e.inToday ? '<span style="color:#1e7a3c;">&#9679;</span> ' : '') + estEsc(e.name) + '</b>' + (e.pid ? ' <span style="font-size:10px; color:#a08560;">' + estEsc(e.pid) + '</span>' : '') + '</span>' +
-        '<span style="width:70px; text-align:right; color:#3a2a14; font-weight:800;">' + (pm ? pc(e.tn, d.today.net) : inr(e.tn)) + '<br><span style="font-size:9.5px; color:#a08560; font-weight:700;">' + e.tb + ' bill' + (e.tb === 1 ? '' : 's') + '</span></span>' +
-        '<span style="width:78px; text-align:right; color:#7a1414; font-weight:900;">' + (pm ? pc(e.an, d.total.net) : inr(e.an)) + '<br><span style="font-size:9.5px; color:#a08560; font-weight:700;">' + e.ab + ' bill' + (e.ab === 1 ? '' : 's') + '</span></span>' +
+        '<span style="width:70px; text-align:right; color:#3a2a14; font-weight:800;">' + (pmT ? pc(e.tn, d.today.net) : inr(e.tn)) + '<br><span style="font-size:9.5px; color:#a08560; font-weight:700;">' + e.tb + ' bill' + (e.tb === 1 ? '' : 's') + '</span></span>' +
+        '<span style="width:78px; text-align:right; color:#7a1414; font-weight:900;">' + (pmA ? pc(e.an, d.total.net) : inr(e.an)) + '<br><span style="font-size:9.5px; color:#a08560; font-weight:700;">' + e.ab + ' bill' + (e.ab === 1 ? '' : 's') + '</span></span>' +
         '<span style="width:34px; text-align:right; font-weight:900; color:#3a2a14;">' + e.nDays + '</span></div>'; }).join('') + '</div>' : '') +
     '<div style="text-align:center; font-size:9.5px; color:#a08560; padding:0 0 10px;">A.R.S Billing App &middot; days with at least 1 bill count as ' + (d.all ? 'sales days' : 'present') + '</div>' +
     '</div>';
@@ -7381,7 +7388,7 @@ function openMySummary(){
   closeShareMenu(); closeMySummary();
   if(!session){ return; }
   mySumWho = session.id;   // opens on the logged-in person's own sales (admin can pick another seller or All sellers)
-  mySumVal = false;
+  mySumVal = 0;
   var ov = document.createElement('div'); ov.id = 'mySumOv';
   var pick = !mySumIsAdmin() ? '' : '<div style="display:flex; align-items:center; gap:8px; margin:0 0 10px;"><span style="font-size:12.5px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>' +
     '<select id="mySumSel" onchange="mySumSet(this.value)" style="flex:1; min-width:0; height:42px; padding:0 10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:800; color:var(--maroon); font-family:inherit;">' +
@@ -7404,7 +7411,9 @@ function mySumPaint(){
   var wrap = document.getElementById('mySumWrap'); if(!wrap) return;
   wrap.innerHTML = '<div style="max-width:100%; overflow:hidden;">' + mySummaryCardHtml(mySummaryData()) + '</div>';
   var hint = document.getElementById('mySumHint');
-  if(hint){ var allV = mySumIsAdmin() && !mySumWho; hint.style.display = allV ? 'block' : 'none'; hint.innerHTML = mySumVal ? '&#128065; Showing &#8377; values &mdash; tap the ARS logo to show % only' : '&#128274; Showing % only &mdash; tap the ARS logo to see &#8377; values'; }
+  if(hint){ var allV = mySumIsAdmin() && !mySumWho; hint.style.display = allV ? 'block' : 'none'; hint.innerHTML = mySumVal === 2 ? '&#128065; Today + total &#8377; values &mdash; tap the ARS logo to show % only'
+    : mySumVal === 1 ? '&#128065; Today&rsquo;s &#8377; values &mdash; double tap the ARS logo for total too'
+    : '&#128274; % only &mdash; tap the ARS logo: today&rsquo;s &#8377; &middot; double tap: total &#8377;'; }
   var card = document.getElementById('mySumCard'), ov = document.getElementById('mySumOv');     // narrow phones: shrink the card to fit, the saved picture stays full size
   if(card && ov){ var w = ov.firstChild.clientWidth - 24; if(w < 360){ card.style.transform = 'scale(' + (w / 360) + ')'; card.style.transformOrigin = 'top left'; card.parentNode.style.width = w + 'px'; card.parentNode.style.height = Math.ceil(card.offsetHeight * w / 360) + 'px'; } }
 }
