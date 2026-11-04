@@ -5420,7 +5420,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v87';
+var APP_BUILD = 'v88';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -7168,7 +7168,10 @@ function closeMySummary(){ var o = document.getElementById('mySumOv'); if(o && o
 /* Admin: whose summary - '' = all sellers (shop total + one line per seller), or one person's id. A seller always sees their own. */
 var mySumWho = '';
 function mySumIsAdmin(){ return !!(session && session.role === 'admin'); }
-function mySumSet(v){ mySumWho = v || ''; mySumPaint(); }
+function mySumSet(v){ mySumWho = v || ''; mySumVal = false; mySumPaint(); }
+/* All sellers summary: shows % only; the admin taps the ARS logo to see the rupee values (back to % when reopened or the filter changes). */
+var mySumVal = false;
+function mySumToggleVal(){ if(!mySumIsAdmin() || mySumWho) return; mySumVal = !mySumVal; mySumPaint(); }
 /* The picker lists the admin who is logged in + only the people who made at least 1 bill (no empty names). */
 function mySumPeople(){
   var m = {};
@@ -7210,6 +7213,8 @@ function mySummaryData(){
 }
 function mySummaryCardHtml(d){
   var inr = function(v){ return '&#8377;' + Math.round(Number(v) || 0).toLocaleString('en-IN'); };
+  var pm = !!d.all && !mySumVal;   // All sellers: % only until the admin taps the logo
+  var pc = function(a, b){ b = Number(b) || 0; return (b > 0 ? Math.round((Number(a) || 0) / b * 1000) / 10 : 0) + '%'; };
   var dt = function(k){ return k ? fullDateLabel(k) : ''; };
   var logo = (document.querySelector('link[rel="apple-touch-icon"]') || {}).href || '';
   var row = function(l, v, b){ return '<div style="display:flex; justify-content:space-between; gap:6px; font-size:12px; padding:3px 0; border-top:1px dashed #ead9b8;' + (b ? ' font-weight:800;' : '') + '"><span style="color:#6b4e2a;">' + l + '</span><span style="color:#3a2a14; font-weight:800;">' + v + '</span></div>'; };
@@ -7217,15 +7222,16 @@ function mySummaryCardHtml(d){
     return '<div style="flex:1; min-width:0; background:#fff; border:1.5px solid #ead9b8; border-radius:12px; padding:10px;">' +
       '<div style="font-size:10.5px; font-weight:900; letter-spacing:1.2px; color:#8a6a44;">' + title + '</div>' +
       '<div style="font-size:10px; color:#a08560; min-height:13px;">' + sub + '</div>' +
-      '<div style="font-size:21px; font-weight:900; color:#7a1414; margin:4px 0 1px;">' + inr(a.net) + '</div>' +
+      '<div style="font-size:21px; font-weight:900; color:#7a1414; margin:4px 0 1px;">' + (!pm ? inr(a.net) : a === d.total ? '&#8377; &bull;&bull;&bull;&bull;' : pc(a.net, d.total.net) + '<span style="font-size:10.5px; font-weight:800; color:#a08560;"> of total</span>') + '</div>' +
       '<div style="font-size:11px; color:#8a6a44; margin-bottom:5px;">' + a.bills + ' bill' + (a.bills === 1 ? '' : 's') + ' &middot; ' + a.items + ' items</div>' +
-      row('&#128181; Cash', inr(a.cash)) + row('&#128241; UPI', inr(a.upi)) + row('Discount', inr(a.disc)) + '</div>';
+      (pm ? row('&#128181; Cash', pc(a.cash, a.cash + a.upi)) + row('&#128241; UPI', pc(a.upi, a.cash + a.upi)) + row('Discount', pc(a.disc, a.net + a.disc))
+          : row('&#128181; Cash', inr(a.cash)) + row('&#128241; UPI', inr(a.upi)) + row('Discount', inr(a.disc))) + '</div>';
   };
   var br = d.br, title = (br && branchTitle(br)) || SHOP.name_ta;
   var now = new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
   return '<div id="mySumCard" style="width:360px; box-sizing:border-box; background:#fffaf0; border-radius:16px; overflow:hidden; color:#3a2a14; font-family:\'Segoe UI\', Roboto, \'Noto Sans Tamil\', Arial, sans-serif;">' +
     '<div style="background:linear-gradient(115deg, #3d0a0a, #7a1414 55%, #d3761f); color:#fff8e6; padding:14px 16px; display:flex; gap:12px; align-items:center;">' +
-      (logo ? '<img src="' + logo + '" alt="" style="flex:0 0 auto; width:46px; height:46px; border-radius:12px; background:#fff;">' : '') +
+      (logo ? '<img src="' + logo + '" alt=""' + (d.all && mySumIsAdmin() ? ' onclick="mySumToggleVal()" title="Show / hide values"' : '') + ' style="flex:0 0 auto; width:46px; height:46px; border-radius:12px; background:#fff;' + (d.all && mySumIsAdmin() ? ' cursor:pointer;' : '') + '">' : '') +
       '<div style="min-width:0;"><div style="font-size:17px; font-weight:800; line-height:1.25;">' + estEsc(title) + '</div>' +
       '<div style="font-size:10.5px; letter-spacing:1.5px; font-weight:700; opacity:.9;">' + estEsc(String(SHOP.name_en || '').toUpperCase()) + (br ? ' &bull; ' + estEsc(br.name || '') + (br.short ? ' (' + estEsc(br.short) + ')' : '') : '') + '</div></div></div>' +
     '<div style="padding:12px 16px 2px;"><div style="font-size:16px; font-weight:900; color:#7a1414;">' + (d.all ? 'Sales Summary' : (mySumIsAdmin() && d.who !== (session && session.id) ? 'Seller Summary' : 'My Summary')) + '</div>' +
@@ -7239,8 +7245,8 @@ function mySummaryCardHtml(d){
       '<div style="display:flex; gap:6px; padding:7px 10px; background:#fbeed2; font-size:10px; font-weight:900; letter-spacing:.6px; color:#8a6a44;"><span style="flex:1;">SELLER</span><span style="width:70px; text-align:right;">TODAY</span><span style="width:78px; text-align:right;">TOTAL</span><span style="width:34px; text-align:right;">DAYS</span></div>' +
       d.people.map(function(e){ return '<div style="display:flex; gap:6px; align-items:center; padding:7px 10px; border-top:1px dashed #ead9b8; font-size:12px;">' +
         '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><b style="color:#3a2a14;">' + (e.inToday ? '<span style="color:#1e7a3c;">&#9679;</span> ' : '') + estEsc(e.name) + '</b>' + (e.pid ? ' <span style="font-size:10px; color:#a08560;">' + estEsc(e.pid) + '</span>' : '') + '</span>' +
-        '<span style="width:70px; text-align:right; color:#3a2a14; font-weight:800;">' + inr(e.tn) + '<br><span style="font-size:9.5px; color:#a08560; font-weight:700;">' + e.tb + ' bill' + (e.tb === 1 ? '' : 's') + '</span></span>' +
-        '<span style="width:78px; text-align:right; color:#7a1414; font-weight:900;">' + inr(e.an) + '<br><span style="font-size:9.5px; color:#a08560; font-weight:700;">' + e.ab + ' bill' + (e.ab === 1 ? '' : 's') + '</span></span>' +
+        '<span style="width:70px; text-align:right; color:#3a2a14; font-weight:800;">' + (pm ? pc(e.tn, d.today.net) : inr(e.tn)) + '<br><span style="font-size:9.5px; color:#a08560; font-weight:700;">' + e.tb + ' bill' + (e.tb === 1 ? '' : 's') + '</span></span>' +
+        '<span style="width:78px; text-align:right; color:#7a1414; font-weight:900;">' + (pm ? pc(e.an, d.total.net) : inr(e.an)) + '<br><span style="font-size:9.5px; color:#a08560; font-weight:700;">' + e.ab + ' bill' + (e.ab === 1 ? '' : 's') + '</span></span>' +
         '<span style="width:34px; text-align:right; font-weight:900; color:#3a2a14;">' + e.nDays + '</span></div>'; }).join('') + '</div>' : '') +
     '<div style="text-align:center; font-size:9.5px; color:#a08560; padding:0 0 10px;">A.R.S Billing App &middot; days with at least 1 bill count as ' + (d.all ? 'sales days' : 'present') + '</div>' +
     '</div>';
@@ -7249,6 +7255,7 @@ function openMySummary(){
   closeShareMenu(); closeMySummary();
   if(!session){ return; }
   mySumWho = session.id;   // opens on the logged-in person's own sales (admin can pick another seller or All sellers)
+  mySumVal = false;
   var ov = document.createElement('div'); ov.id = 'mySumOv';
   var pick = !mySumIsAdmin() ? '' : '<div style="display:flex; align-items:center; gap:8px; margin:0 0 10px;"><span style="font-size:12.5px; font-weight:800; color:#5b4630; white-space:nowrap;">&#128100; Seller</span>' +
     '<select id="mySumSel" onchange="mySumSet(this.value)" style="flex:1; min-width:0; height:42px; padding:0 10px; border-radius:10px; border:1.5px solid var(--line); background:#fff; font-size:14px; font-weight:800; color:var(--maroon); font-family:inherit;">' +
@@ -7257,7 +7264,8 @@ function openMySummary(){
   var btn = 'flex:1; padding:12px 8px; border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer;';
   ov.innerHTML = '<div style="background:#f3e9d6; width:100%; max-width:480px; max-height:94vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:12px 12px calc(12px + env(safe-area-inset-bottom)); box-sizing:border-box;">' +
     '<div style="width:42px; height:4px; border-radius:2px; background:#d9c7a6; margin:0 auto 10px;"></div>' +
-    pick + '<div id="mySumWrap" style="display:flex; justify-content:center;"></div>' +
+    pick + '<div id="mySumHint" style="display:none; margin:-4px 2px 8px; font-size:11.5px; font-weight:700; color:#8a6a44;"></div>' +
+    '<div id="mySumWrap" style="display:flex; justify-content:center;"></div>' +
     '<div style="display:flex; gap:8px; margin-top:12px;">' +
       '<button id="mySumSave" type="button" onclick="mySummaryExport(\'save\')" style="' + btn + ' border:none; background:var(--maroon); color:#fff8e6;">&#128190; Save image</button>' +
       '<button id="mySumShare" type="button" onclick="mySummaryExport(\'share\')" style="' + btn + ' border:1.5px solid var(--maroon); background:#fff; color:var(--maroon);">&#128228; Share</button></div>' +
@@ -7269,6 +7277,8 @@ function openMySummary(){
 function mySumPaint(){
   var wrap = document.getElementById('mySumWrap'); if(!wrap) return;
   wrap.innerHTML = '<div style="max-width:100%; overflow:hidden;">' + mySummaryCardHtml(mySummaryData()) + '</div>';
+  var hint = document.getElementById('mySumHint');
+  if(hint){ var allV = mySumIsAdmin() && !mySumWho; hint.style.display = allV ? 'block' : 'none'; hint.innerHTML = mySumVal ? '&#128065; Showing &#8377; values &mdash; tap the ARS logo to show % only' : '&#128274; Showing % only &mdash; tap the ARS logo to see &#8377; values'; }
   var card = document.getElementById('mySumCard'), ov = document.getElementById('mySumOv');     // narrow phones: shrink the card to fit, the saved picture stays full size
   if(card && ov){ var w = ov.firstChild.clientWidth - 24; if(w < 360){ card.style.transform = 'scale(' + (w / 360) + ')'; card.style.transformOrigin = 'top left'; card.parentNode.style.width = w + 'px'; card.parentNode.style.height = Math.ceil(card.offsetHeight * w / 360) + 'px'; } }
 }
@@ -11606,7 +11616,7 @@ function flashSaved(k){
 
 /* ---------------- ADMIN ITEMS: SEARCH + EDIT/ADD MODAL ---------------- */
 /* ---- Price List filters: category, price range, recently changed, sort, reset ---- */
-var itemFilters = { cat:'', min:'', max:'', recent:'', sort:'' };
+var itemFilters = { cat:'', min:'', max:'', recent:'', sort:'', ns:false };
 function itemLastChange(serial){
   try{
     var log = loadJSON('ars_price_changes', []) || [], best = 0, code = '';
@@ -11618,6 +11628,10 @@ function itemLastChange(serial){
 function itemFilterPass(ci, ii, price, serial){
   var f = itemFilters;
   if(f.cat !== '' && String(ci) !== String(f.cat)) return false;
+  if(f.ns){   // 🚫 filter: only items not sold (in the branch being viewed, else in any running branch)
+    var _nb = adminItemsBranch && BRANCHES[adminItemsBranch] ? adminItemsBranch : '';
+    if(!(_nb ? !isItemInBranch(ci, ii, _nb) : liveBranches().some(function(b){ return !isItemInBranch(ci, ii, b.id); }))) return false;
+  }
   price = Number(price) || 0;
   if(f.min !== '' && price < Number(f.min)) return false;
   if(f.max !== '' && price > Number(f.max)) return false;
@@ -11648,7 +11662,7 @@ function itemFilterToggleHtml(){
   return '<button type="button" title="Filters" onclick="toggleItemFilters()" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); width:34px; height:32px; border:none; border-radius:8px; background:' + (itemFilterOpen || on ? 'var(--maroon)' : 'transparent') + '; color:' + (itemFilterOpen || on ? '#fff8e6' : 'var(--maroon)') + '; font-size:15px; font-weight:800; cursor:pointer;">' + (itemFilterOpen ? '&#9650;' : '&#9660;') + '</button>';
 }
 function setItemFilter(k, v){ itemFilters[k] = v; renderAdmin(); }
-function resetItemFilters(){ itemFilters = { cat:'', min:'', max:'', recent:'', sort:'' }; itemCatOpen = false; adminItemSearchQuery = ''; peSearchOpen = false; renderAdmin(); }
+function resetItemFilters(){ itemFilters = { cat:'', min:'', max:'', recent:'', sort:'', ns:false }; itemCatOpen = false; adminItemSearchQuery = ''; peSearchOpen = false; renderAdmin(); }
 /* Same simple filter row as Bill 1 / Bill 2: Category, S.No order, price low / high, recently changed, item count, reset. */
 var itemCatOpen = false;
 function toggleItemCat(){ itemCatOpen = !itemCatOpen; renderAdmin(); }
@@ -11706,6 +11720,7 @@ function peFilterRowHtml(){
         '<button type="button" class="bf-btn sm' + (f.sort === 'low' ? ' on' : '') + '" title="Price low to high (tap again for S.No order)" aria-label="Price low to high" onclick="peSort(\'low\')">&#8377;&#9650;</button>' +
         '<button type="button" class="bf-btn sm' + (f.sort === 'high' ? ' on' : '') + '" title="Price high to low (tap again for S.No order)" aria-label="Price high to low" onclick="peSort(\'high\')">&#8377;&#9660;</button>' +
         '<button type="button" class="bf-btn' + (f.sort === 'recent' ? ' on' : '') + '" title="Recently changed price first" aria-label="Recently changed" onclick="peSort(\'recent\')">&#128338;</button>' +
+        '<button type="button" class="bf-btn' + (f.ns ? ' on' : '') + '" title="Only not-sold items" aria-label="Not sold items" onclick="itemFilters.ns = !itemFilters.ns; renderAdmin();">&#128683;</button>' +
         '<div class="bill-sbox' + (adminItemSearchQuery ? ' has' : '') + '"><span class="sb-ico">&#128269;</span>' +
           '<input id="adminItemSearch" type="text" placeholder="Search item…" aria-label="Search name, S.No or price" value="' + estEsc(adminItemSearchQuery) + '" oninput="onAdminItemSearch()" onkeydown="if(event.key === \'Enter\') this.blur();" autocomplete="off">' +
           '<button type="button" class="sb-x" title="Clear search" aria-label="Clear search" onclick="peSearchClear()">&#10005;</button></div>' +
@@ -11713,7 +11728,7 @@ function peFilterRowHtml(){
       (itemCatOpen ? itemCatListHtml('8px') : '');
 }
 function peHeadHtml(totalItems){
-  var f = itemFilters, filtered = f.cat !== '' || !!f.sort || !!adminItemSearchQuery.trim() || f.min !== '' || f.max !== '' || !!f.recent;
+  var f = itemFilters, filtered = f.cat !== '' || !!f.sort || !!adminItemSearchQuery.trim() || f.min !== '' || f.max !== '' || !!f.recent || !!f.ns;
   var menu = !peMoreOpen ? '' : '<div class="pe-shade" onclick="peMore(false)"></div><div class="pe-menu" role="menu">' +
     '<button type="button" onclick="peMoreDo(\'pdf\')">&#128196; Share price list PDF</button>' +
     '<button type="button" onclick="peMoreDo(\'excel\')">&#128202; Export Excel</button>' +
