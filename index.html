@@ -426,6 +426,8 @@
   .ofpanel{display:none; position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:12; background:#fff8e6; border:1.5px solid #f0c969; border-radius:12px; padding:10px; box-shadow:0 6px 16px rgba(0,0,0,.18); flex-wrap:wrap; gap:8px; align-items:center;}
   .ofpanel select{flex:1 1 180px; padding:8px; border-radius:8px; border:1.5px solid var(--line); font-size:13px; background:#fff; font-family:inherit;}
   .ofpanel input{width:84px; padding:8px; border-radius:8px; border:1.5px solid var(--line); font-size:14px; background:#fff; font-family:inherit;}
+  .ofpanel .ofp-max{flex:1 1 100%; display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; font-weight:800; color:#7a1414;}
+  .ofpanel .ofp-max small{display:block; font-size:10px; font-weight:700; color:#8a6a44;}
   .ofpanel button{padding:9px 18px; border:none; border-radius:8px; background:var(--maroon); color:#fff8e6; font-weight:800; font-size:13px; cursor:pointer;}
 
   /* ---- Device layout: phones keep the full-width design. Computers (Windows, Mac, Linux) get a centred column with
@@ -740,6 +742,13 @@
   .bk2-eye.on{background:#1e7a3c; border-color:#1e7a3c;}
   .bk2-rs{flex:0 0 auto; padding:8px 13px; border-radius:20px; border:1.5px solid #1e7a3c; background:#eef8f1; color:#1e7a3c; font-weight:800; font-size:12.5px; cursor:pointer;}
   .bk2-del{flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:1.5px solid #f1c4bf; background:#fff; color:#b3261e; font-size:14px; cursor:pointer; padding:0;}
+  .yl-card.due{border:1.5px solid #e0a43a; background:#fffaf0;}
+  .yl-yr{flex:0 0 56px; height:40px; border-radius:11px; background:#f3efe4; color:#5a4a2a; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:15px;}
+  .yl-yr.on{background:#7a1414; color:#fff8e6;}
+  .yl-st{font-size:13px; font-weight:800;} .yl-st.on{color:#7a1414;} .yl-st.op{color:#1e7a3c;} .yl-st.no{color:#b45309;}
+  .yl-btn{flex:0 0 auto; padding:8px 12px; border-radius:20px; border:1.5px solid #7a1414; background:#fff; color:#7a1414; font-weight:800; font-size:12.5px; cursor:pointer; white-space:nowrap;}
+  .yl-btn.lock{background:#7a1414; color:#fff8e6;}
+  .yl-dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:#e8710a; margin-left:4px; vertical-align:top;}
   .bk2-card .bk2-btn{background:#f3f8f4; border:1.5px solid #cfe3d2; font-size:12.5px;}
   .bk2-link{display:block; width:100%; margin-top:4px; padding:8px; border:none; background:none; color:#1e7a3c; font-weight:800; font-size:12.5px; cursor:pointer;}
   .bk2-more{display:flex; justify-content:space-between; align-items:center; width:100%; padding:12px 14px; border-radius:14px; border:1px solid #e9c98a; background:#fffaf0; color:#6b4a2e; font-weight:800; font-size:13px; cursor:pointer; margin-bottom:12px;}
@@ -1832,6 +1841,94 @@ function offerActive(){ return !!(OFFER && OFFER.on && (OFFER.title || OFFER.tex
 /* The offer's discount on bills and estimates (default 20%). 0 once the offer has ended or is switched off. */
 function offerDiscPct(){ var d = OFFER ? OFFER.disc : undefined; d = (d === undefined || d === null || d === '') ? 20 : Number(d); return isNaN(d) ? 0 : Math.max(0, Math.min(80, d)); }
 function offerDiscNow(){ return offerActive() ? offerDiscPct() : 0; }
+/* ---- YEAR LOCK (Admin -> Backup, shown from 2027 on): a finished year can be locked. Locked = that year's bills and
+   login history are hidden everywhere (History, Sales, Reports, summaries) and can never be changed, cancelled or
+   overwritten by a restore. Unlock (admin password) shows it again for 24 hours, view only. Kept at settings/yearLock. ---- */
+var YEAR_LOCK = loadJSON('ars_year_lock', {}) || {};
+var YEAR_UNLOCK_MS = 24 * 3600 * 1000;
+function yearLockAny(){ for(var y in YEAR_LOCK){ if(YEAR_LOCK[y] && YEAR_LOCK[y].on) return true; } return false; }
+function yearLockOn(y){ var e = YEAR_LOCK && YEAR_LOCK[String(y)]; return !!(e && e.on); }
+function yearHidden(y){ var e = YEAR_LOCK && YEAR_LOCK[String(y)]; return !!(e && e.on && !(Number(e.openUntil) > Date.now())); }
+function recYear(r){ var t = r && r.time; if(!t) return 0; return Number(saleLocalDate(t).slice(0, 4)) || 0; }
+function saleHidden(s){ return yearLockAny() && !!s && yearHidden(recYear(s)); }       // not shown
+function saleProtected(s){ return yearLockAny() && !!s && yearLockOn(recYear(s)); }    // never changed
+/* Bill numbers start again from 1 every new year from 2027 on: the series of 2027 is "main_2027" (2026 keeps "main"). */
+function billSeriesKey(bid, year){ bid = bid || 'main'; year = Number(year) || new Date().getFullYear(); return year >= 2027 ? bid + '_' + year : bid; }
+function billSeriesOf(s){ return billSeriesKey((s && s.branchId) || 'main', recYear(s)); }
+/* Backup tab -> Year lock. Shows by itself once a past year has bills or logins (from 2027). Locking a year hides its bills
+   and login history everywhere and nobody can change or delete them. Unlock (admin password) opens it to view for 24 hours,
+   then it locks itself again. */
+function yearLockYears(){
+  var cur = new Date().getFullYear(), by = {};
+  function add(y, f){ if(!(y > 2000) || y >= cur) return; if(!by[y]) by[y] = { y: y, bills: 0, logins: 0 }; by[y][f]++; }
+  (loadJSON('ars_sales', []) || []).forEach(function(s){ add(recYear(s), 'bills'); });
+  (LOGIN_HISTORY || []).forEach(function(l){ add(recYear(l), 'logins'); });
+  Object.keys(YEAR_LOCK || {}).forEach(function(y){ y = Number(y); if(y > 2000 && y < cur && !by[y]) by[y] = { y: y, bills: 0, logins: 0 }; });
+  return Object.keys(by).map(function(y){ return by[y]; }).sort(function(a, b){ return b.y - a.y; });
+}
+function yearLockDue(){ try{ return bkIsMainAdmin() && yearLockYears().some(function(r){ return !yearLockOn(r.y); }); }catch(e){ return false; } }
+function yearLockWhen(t){ var d = new Date(Number(t) || 0); return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); }
+function yearLockTill(t){ var d = new Date(Number(t) || 0); return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); }
+function yearLockCardHtml(){
+  var rows = yearLockYears();
+  if(!rows.length) return '';
+  var main = bkIsMainAdmin(), due = rows.some(function(r){ return !yearLockOn(r.y); });
+  var h = '<div class="bk2-card yl-card' + (due ? ' due' : '') + '"><div class="bk2-h">&#128274; Year lock</div>';
+  rows.forEach(function(r){
+    var e = YEAR_LOCK[String(r.y)] || {}, on = !!e.on, open = on && Number(e.openUntil) > Date.now();
+    var state = !on ? '<span class="yl-st no">Not locked</span>' : open ? '<span class="yl-st op">&#128275; Open till ' + yearLockTill(e.openUntil) + '</span>' : '<span class="yl-st on">&#128274; Locked</span>';
+    var meta = r.bills.toLocaleString('en-IN') + ' bill' + (r.bills === 1 ? '' : 's') + ' &middot; ' + r.logins.toLocaleString('en-IN') + ' login' + (r.logins === 1 ? '' : 's') +
+      (on && e.at ? ' &middot; locked ' + yearLockWhen(e.at) + (e.by ? ' by ' + custEsc(e.by) : '') : '');
+    var btn = !main ? '' : !on ? '<button class="yl-btn lock" onclick="yearLockSet(' + r.y + ', this)">&#128274; Lock</button>'
+      : open ? '<button class="yl-btn lock" onclick="yearRelock(' + r.y + ')">&#128274; Lock again</button>'
+      : '<button class="yl-btn" onclick="yearUnlock(' + r.y + ')">&#128275; Unlock</button>';
+    h += '<div class="bk2-item"><div class="yl-yr' + (on && !open ? ' on' : '') + '">' + r.y + '</div>' +
+      '<div style="flex:1; min-width:0;"><div>' + state + '</div><div class="bk2-meta">' + meta + '</div></div>' + btn + '</div>';
+  });
+  return h + '</div>';
+}
+async function yearLockSet(y, btn){
+  if(!bkIsMainAdmin()) return;
+  var ok = await showConfirm('🔒 LOCK YEAR ' + y + '?\n\nAll ' + y + ' bills and login history will be hidden in every tab, and nobody can change or delete them.\n\nA backup of the server is taken first.\nTo see them again: Backup → Year lock → Unlock (admin password).\n\nContinue?');
+  if(!ok) return;
+  var old = btn ? btn.innerHTML : '';
+  if(btn){ btn.disabled = true; btn.innerHTML = 'Backing up&hellip;'; }
+  if(_fbDb && !_fbReadOnly && window.indexedDB){ try{ await bkMake('year ' + y); }catch(e){} }   // the year's closing copy, kept on this phone
+  YEAR_LOCK = Object.assign({}, YEAR_LOCK || {});
+  YEAR_LOCK[String(y)] = { on: true, at: Date.now(), by: (session && session.name) || '' };
+  saveJSON('ars_year_lock', YEAR_LOCK);
+  if(btn){ btn.disabled = false; btn.innerHTML = old; }
+  _bkList = null;
+  renderAdmin();
+  alert('✓ ' + y + ' is locked.');
+}
+async function yearUnlock(y){
+  if(!bkIsMainAdmin() || !yearLockOn(y)) return;
+  var ok = await askAdminPassword();
+  if(!ok) return;
+  YEAR_LOCK = Object.assign({}, YEAR_LOCK || {});
+  YEAR_LOCK[String(y)] = Object.assign({}, YEAR_LOCK[String(y)], { openUntil: Date.now() + YEAR_UNLOCK_MS, openBy: (session && session.name) || '' });
+  saveJSON('ars_year_lock', YEAR_LOCK);
+  renderAdmin();
+  alert('🔓 ' + y + ' is open to view till ' + yearLockTill(YEAR_LOCK[String(y)].openUntil) + '.\nIts bills still cannot be changed or deleted. It locks again by itself.');
+}
+function yearRelock(y){
+  if(!bkIsMainAdmin() || !yearLockOn(y)) return;
+  YEAR_LOCK = Object.assign({}, YEAR_LOCK || {});
+  var e = Object.assign({}, YEAR_LOCK[String(y)]); delete e.openUntil; delete e.openBy;
+  YEAR_LOCK[String(y)] = e;
+  saveJSON('ars_year_lock', YEAR_LOCK);
+  renderAdmin();
+}
+/* the 24-hour view ends by itself: hide that year again on screen */
+var _ylShut = {};
+setInterval(function(){
+  try{
+    var exp = false, now = Date.now();
+    Object.keys(YEAR_LOCK || {}).forEach(function(y){ var e = YEAR_LOCK[y], k = y + ':' + (e && e.openUntil); if(e && e.on && e.openUntil && !(Number(e.openUntil) > now) && !_ylShut[k]){ _ylShut[k] = 1; exp = true; } });
+    if(exp){ var as = document.getElementById('adminScreen'); if(as && !as.classList.contains('hidden')) renderAdmin(); else render(); }
+  }catch(e){}
+}, 60000);
 /* Offer per location (Price Edit tab, "Offer for this location"). A location that has its own switch and % uses them on its
    bills, estimates and Price Edit prices. A location without one keeps the shop-wide offer above, as before. */
 function branchOffer(bid){ var b = bid && BRANCHES[bid]; return (b && b.offer && typeof b.offer === 'object') ? b.offer : null; }
@@ -1849,7 +1946,18 @@ function offerVoucherCopy(){
   return { title: OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!', text: 'கடையின் Self-Order QR-ஐ ஸ்கேன் செய்து, ' + (u ? offerDateLabel(u) + ' வரை ' : '') + 'கூடுதல் ' + pct + '% தள்ளுபடி பெறுங்கள்!' };
 }
 function offerPctValueFor(bid){ var o = branchOffer(bid); if(!o) return offerDiscPct(); var v = Number(o.pct); return isNaN(v) ? 0 : Math.max(0, Math.min(80, v)); }
-function offerSetFor(bid, on, pct, until){ var v = Math.max(0, Math.min(80, Number(pct) || 0)); var u = (until === undefined) ? offerUntilFor(bid) : String(until || ''); var o = { on: !!on, pct: v }; if(/^\d{4}-\d{2}-\d{2}$/.test(u)) o.until = u; BRANCHES[bid].offer = o; saveJSON('ars_branches', BRANCHES); try{ offerApply(); var _ev = document.getElementById('estVoucherOverlay'); if(_ev && _ev.style.display === 'block') estScreenPaint(); }catch(e){} }
+function offerSetFor(bid, on, pct, until, max){ var v = Math.max(0, Math.min(80, Number(pct) || 0)); var u = (until === undefined) ? offerUntilFor(bid) : String(until || ''); var o = { on: !!on, pct: v }; if(/^\d{4}-\d{2}-\d{2}$/.test(u)) o.until = u; var _old = branchOffer(bid), _mx = (max === undefined) ? (_old ? _old.max : undefined) : max; if(_mx != null && _mx !== '' && !isNaN(Number(_mx))) o.max = Math.max(0, Math.min(80, Number(_mx))); BRANCHES[bid].offer = o; saveJSON('ars_branches', BRANCHES); try{ offerApply(); var _ev = document.getElementById('estVoucherOverlay'); if(_ev && _ev.style.display === 'block') estScreenPaint(); }catch(e){} }
+/* Max discount for SELLERS on a bill (Price Edit -> offer panel, per location). Blank = no lock. Admins have no limit (80% shop rule). */
+function offerMaxFor(bid){ var o = branchOffer(bid); var m = o && o.max != null && o.max !== '' ? Number(o.max) : NaN; return isNaN(m) ? null : Math.max(0, Math.min(80, m)); }
+function billMaxDiscPct(){
+  if(!session || session.role === 'admin') return 80;
+  var m = offerMaxFor(activeBranchId || 'main'); return m == null ? 80 : m;
+}
+function billCapNote(msg){
+  var t = document.getElementById('billCapToast');
+  if(!t){ t = document.createElement('div'); t.id = 'billCapToast'; t.style.cssText = 'position:fixed; left:50%; bottom:calc(96px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:99999; background:#7a1414; color:#fff8e6; padding:9px 14px; border-radius:20px; font-size:13px; font-weight:800; box-shadow:0 4px 14px rgba(0,0,0,.3); max-width:88vw; text-align:center;'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function(){ t.style.display = 'none'; }, 2600);
+}
 function offerDateLabel(ymd){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || ''); if(!m) return ''; return m[3] + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(m[2]) - 1] + ' ' + m[1]; }
 /* The offer banner is shown on the customer's voucher only - the Add Items page stays clear for the items
    (the offer price is still shown in the bottom total there). */
@@ -2153,6 +2261,12 @@ const FB_DOCS = {
     isEmpty: function(){ return !PID_SEQ || !(PID_SEQ.S || PID_SEQ.A); },
     apply: function(r){ if(!r || typeof r !== 'object') return; Object.keys(r).forEach(function(k){ if((Number(r[k]) || 0) > (PID_SEQ[k] || 0)) PID_SEQ[k] = Number(r[k]); }); _rawSaveJSON('ars_pid_seq', PID_SEQ); }
   },
+  yearlock: {
+    path: 'settings/yearLock',
+    get: function(){ return YEAR_LOCK; },
+    isEmpty: function(){ return !YEAR_LOCK || !Object.keys(YEAR_LOCK).length; },
+    apply: function(r){ if(!r || typeof r !== 'object') return; YEAR_LOCK = r; _rawSaveJSON('ars_year_lock', YEAR_LOCK); try{ if(!document.getElementById('adminScreen').classList.contains('hidden')) renderAdmin(); else render(); }catch(e){} }
+  },
   diwali: {
     path: 'settings/diwali',
     get: function(){ return DIWALI; },
@@ -2355,6 +2469,7 @@ function mergeRemoteSales(list){
     if(!remote || !remote.id) return;
     if(!Array.isArray(remote.items)) remote.items = fbToArr(remote.items);
     var existing = byId[remote.id];
+    if(existing && saleProtected(existing)) return;   // locked year: keep this phone's copy as it is
     if(!existing){
       SALES.push(remote); byId[remote.id] = remote; changed = true;
       var age = Date.now() - new Date(remote.time).getTime();
@@ -2475,7 +2590,7 @@ function fbFlushPendingResets(){
       var all = snap.val() || {}, upd = {}, gone = {};
       Object.keys(all).forEach(function(k){
         var t = Date.parse(all[k] && all[k].time);
-        if(!(t > ts)){ gone[k] = 1; upd[c.path + '/' + k] = null; upd[c.path + 'Archive/' + ts + '/' + k] = all[k]; }   // removed, but kept in the archive (Backup -> Restore)
+        if(!(t > ts) && !saleProtected(all[k])){ gone[k] = 1; upd[c.path + '/' + k] = null; upd[c.path + 'Archive/' + ts + '/' + k] = all[k]; }   // removed, but kept in the archive (Backup -> Restore)
       });
       keptMax = 0;
       Object.keys(all).forEach(function(k){ if(!gone[k] && all[k] && !all[k].billCode && all[k].billNo > keptMax) keptMax = all[k].billNo; });
@@ -2644,6 +2759,7 @@ function bkCounts(data){
 function bkCountsText(c){ return 'Bills ' + (c.bills || 0) + ' · Price items ' + (c.prices || 0) + ' · Accounts ' + (c.accounts || 0) + ' · Customers ' + (c.customers || 0) + ' · Logins ' + (c.logins || 0); }
 function bkIsMainAdmin(){ return !!(typeof session !== 'undefined' && session && session.role === 'admin' && !adminScope()); }
 /* Reads the whole server (all the data above) and keeps it on this phone. */
+function bkIsYearCopy(x){ return !!x && String(x.kind || '').indexOf('year ') === 0; }
 async function bkMake(kind){
   if(!_fbDb || _fbReadOnly) throw new Error('Not connected to the server');
   var vals = await Promise.all(BK_NODES.map(function(nd){ return fbTimeout(_fbDb.ref(nd[0]).once('value'), 60000, 'Backup').then(function(sn){ return sn.val(); }); }));
@@ -2654,7 +2770,7 @@ async function bkMake(kind){
   await bkTx(['info', 'data'], 'readwrite', function(tx){ tx.objectStore('info').put(info); tx.objectStore('data').put({ id: id, data: data }); return null; });
   // keep the last BK_KEEP copies + the one with the most bills
   var all = await bkInfos(), best = all.slice().sort(function(a, b){ return (b.counts.bills || 0) - (a.counts.bills || 0) || b.at - a.at; })[0];
-  var drop = all.slice(BK_KEEP).filter(function(x){ return !best || x.id !== best.id; });
+  var drop = all.slice(BK_KEEP).filter(function(x){ return (!best || x.id !== best.id) && !bkIsYearCopy(x); });   // a year's closing copy is always kept
   if(drop.length) await bkTx(['info', 'data'], 'readwrite', function(tx){ drop.forEach(function(x){ tx.objectStore('info').delete(x.id); tx.objectStore('data').delete(x.id); }); return null; });
   try{ localStorage.setItem('ars_bk_last_day', info.day); }catch(e){}
   _bkList = null;
@@ -2706,6 +2822,7 @@ async function bkRestore(data, types, overwrite){
     if(mode === 1 && typeof bk === 'object'){
       Object.keys(bk).forEach(function(k){
         if(cur && cur[k] != null && !overwrite) return;
+        if(cur && cur[k] != null && (name === 'sales' || name === 'loginHistory') && (saleProtected(cur[k]) || saleProtected(bk[k]))) return;   // locked year
         if(cur && cur[k] != null && JSON.stringify(cur[k]) === JSON.stringify(bk[k])) return;
         upd[name + '/' + k] = bk[k]; got[typ] = (got[typ] || 0) + 1;
         if(name === 'sales' && bk[k] && bk[k].id) bills.push(bk[k]);
@@ -2757,7 +2874,7 @@ function bkDetHtml(x){
     tile('&#129534;', 'Bills', c.bills || 0, billSub) + tile('&#128176;', 'Price items', c.prices || 0) +
     tile('&#128100;', 'Accounts', c.accounts || 0) + tile('&#127968;', 'Branches', c.shop || 0) +
     tile('&#129489;', 'Customers', c.customers || 0) + tile('&#128272;', 'Logins', c.logins || 0) + '</div>' +
-    '<div style="font-size:11px; color:#6b7c70; margin:0 0 6px 20px;">' + (x.kind === 'auto' ? '&#128338; Automatic' : '&#9995; Manual') + (x.by ? ' &middot; ' + estEsc(x.by) : '') + ' &middot; ' + bkWhen(x.at) + ' &middot; ' + sz + '</div>';
+    '<div style="font-size:11px; color:#6b7c70; margin:0 0 6px 20px;">' + (x.kind === 'auto' ? '&#128338; Automatic' : bkIsYearCopy(x) ? '&#128274; Closing copy of ' + estEsc(String(x.kind).slice(5)) : '&#9995; Manual') + (x.by ? ' &middot; ' + estEsc(x.by) : '') + ' &middot; ' + bkWhen(x.at) + ' &middot; ' + sz + '</div>';
 }
 function bkLastText(){
   if(!_bkList || !_bkList.length) return _bkList === null ? 'Checking&hellip;' : 'No backup yet';
@@ -2772,7 +2889,7 @@ function bkCardHtml(){
     var on = !!_bkOpen[x.id];
     h += '<div class="bk2-item"><span class="bk2-dot' + (x.wiped ? ' bad' : (x.kind === 'auto' ? '' : ' man')) + '" title="' + (x.kind === 'auto' ? 'Automatic' : 'Manual') + '"></span>' +
       '<div style="flex:1; min-width:0;"><div class="bk2-when">' + bkDayWhen(x.at) + '</div><div class="bk2-meta">' +
-      (x.wiped ? '<b style="color:#b3261e;">&#9888;&#65039; server looked empty</b>' : (c.bills || 0) + ' bills') + '</div></div>' +
+      (x.wiped ? '<b style="color:#b3261e;">&#9888;&#65039; server looked empty</b>' : (c.bills || 0) + ' bills' + (bkIsYearCopy(x) ? ' &middot; &#128274; ' + estEsc(String(x.kind).slice(5)) + ' closing copy' : '')) + '</div></div>' +
       '<button class="bk2-eye' + (on ? ' on' : '') + '" onclick="bkEye(\'' + x.id + '\')" title="' + (on ? 'Hide details' : 'Show details') + '" aria-label="' + (on ? 'Hide details' : 'Show details') + '">' + (on ? '&#128584;' : '&#128065;&#65039;') + '</button>' +
       '<button class="bk2-rs" onclick="bkRestoreOpen(\'' + x.id + '\')">&#9851;&#65039; Restore</button>' + '<button class="bk2-del" onclick="bkDelete(\'' + x.id + '\')" title="Delete this copy from this phone" aria-label="Delete this copy">&#128465;</button></div>' + (on ? bkDetHtml(x) : '');
   });
@@ -2868,8 +2985,8 @@ function fbApplyMeta(meta){
   [['sales', 'ars_sales'], ['loginHistory', 'ars_login_history']].forEach(function(pair){
     var ts = meta && meta[pair[0] + 'ResetAt'];
     if(!ts || !(ts > (known[pair[0]] || 0))) return;
-    var all0 = loadJSON(pair[1], []) || [], list = all0.filter(function(r){ return Date.parse(r.time) > ts; });
-    rescueKeep(pair[0], all0.filter(function(r){ return !(Date.parse(r.time) > ts); }), ts);   // never lost: kept on this phone + the server archive
+    var all0 = loadJSON(pair[1], []) || [], list = all0.filter(function(r){ return Date.parse(r.time) > ts || saleProtected(r); });   // a locked year is never cleared
+    rescueKeep(pair[0], all0.filter(function(r){ return !(Date.parse(r.time) > ts) && !saleProtected(r); }), ts);   // never lost: kept on this phone + the server archive
     _rawSaveJSON(pair[1], list);
     if(pair[0] === 'sales'){
       SALES = list;
@@ -3651,6 +3768,7 @@ saveJSON = function(key, val){
     else if(key === 'ars_bk_cfg') fbDocChanged('bkcfg');
     else if(key === 'ars_pid_seq') fbDocChanged('pidseq');
     else if(key === 'ars_diwali') fbDocChanged('diwali');
+    else if(key === 'ars_year_lock') fbDocChanged('yearlock');
     else if(key === 'ars_login_history') fbPushMissing('loginHistory');
     else if(key === 'ars_sales') fbPushMissing('sales');
   }catch(e){}
@@ -3858,7 +3976,7 @@ function billNoLabel(s){ if(!s || s.billNo == null || s.billNo === '') return '-
 function billNoRef(s){ return (s && s.billCode) ? billNoLabel(s) : '#' + ((s && s.billNo) || '-'); }
 function billSeriesMaxes(list){
   var m = {};
-  (list || []).forEach(function(s){ var n = Number(s && s.billNo); if(s && s.billCode && n > 0){ var b = billBrOf(s); if(n > (m[b] || 0)) m[b] = n; } });
+  (list || []).forEach(function(s){ var n = Number(s && s.billNo); if(s && s.billCode && n > 0){ var b = billSeriesOf(s); if(n > (m[b] || 0)) m[b] = n; } });
   return m;
 }
 function billCountersRaise(m){
@@ -3866,7 +3984,7 @@ function billCountersRaise(m){
   Object.keys(m || {}).forEach(function(b){ var v = Number(m[b]) || 0; if(v > (Number(BILL_COUNTERS[b]) || 0)){ BILL_COUNTERS[b] = v; ch = true; } });
   if(ch) _rawSaveJSON('ars_bill_counters', BILL_COUNTERS);
 }
-function billPendingText(bid){ bid = bid || 'main'; return billCodeFor(bid) + '/' + ((Number(BILL_COUNTERS[bid]) || 0) + 1) + ' (pending)'; }
+function billPendingText(bid){ bid = bid || 'main'; return billCodeFor(bid) + '/' + ((Number(BILL_COUNTERS[billSeriesKey(bid)]) || 0) + 1) + ' (pending)'; }
 function billSeriesNext(bid){ billCountersRaise(billSeriesMaxes(loadJSON('ars_sales', []) || [])); return (Number(BILL_COUNTERS[bid]) || 0) + 1; }
 function billClaim(want, bid){
   // the server keeps the last number handed out: take 'want' if it is still free, else the next free one
@@ -3875,7 +3993,7 @@ function billClaim(want, bid){
     .then(function(r){ if(!r || !r.committed) throw new Error('Bill number not confirmed'); return Number(r.snapshot.val()) || 0; });
 }
 function billNoNext(bid){
-  bid = bid || 'main';
+  bid = billSeriesKey(bid || 'main');   // 2027 on: this year's series (starts again from 1)
   var want = billSeriesNext(bid);
   if(!_fbDb || _fbReadOnly || !navigator.onLine) return Promise.resolve({ n: want, temp: true, claim: null });
   var claim;
@@ -4046,7 +4164,7 @@ function billNoFinal(saleId, n){
   delete _billClaims[saleId]; _rawSaveJSON('ars_bill_claims', _billClaims);
   if(!n) return;
   var list = loadJSON('ars_sales', []) || [], s = list.find(function(x){ return x.id === saleId; });
-  if(s && s.billCode){ var _m = {}; _m[billBrOf(s)] = n; billCountersRaise(_m); }
+  if(s && s.billCode){ var _m = {}; _m[billSeriesOf(s)] = n; billCountersRaise(_m); }
   else if(n > BILL_COUNTER){ BILL_COUNTER = n; _rawSaveJSON('ars_bill_counter', BILL_COUNTER); }
   if(!s || (!s.billNoTemp && s.billNo === n)) return;
   var was = s.billNo;
@@ -4076,7 +4194,7 @@ function billClaimsReconcile(){
   var p = Promise.resolve();
   ids.forEach(function(id){
     _billClaimBusy[id] = 1;
-    p = p.then(function(){ var b = byId[id]; return billClaim(b.billNo, b.billCode ? billBrOf(b) : '').then(function(n){ billNoFinal(id, n); }); })
+    p = p.then(function(){ var b = byId[id]; return billClaim(b.billNo, b.billCode ? billSeriesOf(b) : '').then(function(n){ billNoFinal(id, n); }); })
       .catch(function(){}).then(function(){ delete _billClaimBusy[id]; });
   });
 }
@@ -4188,8 +4306,11 @@ function adminOfferSave(){
   if(isNaN(v) || v < 0 || v > 80){ alert('Offer % must be between 0 and 80.'); return; }
   var ud = ((document.getElementById('ofbUntil') || {}).value || '').trim();
   if(ud && !/^\d{4}-\d{2}-\d{2}$/.test(ud)){ alert('Pick a valid last day, or leave it blank for no end date.'); return; }
+  var mxs = ((document.getElementById('ofbMax') || {}).value || '').trim(), mx = mxs === '' ? '' : Number(mxs);
+  if(mx !== '' && (isNaN(mx) || mx < 0 || mx > 80)){ alert('Max discount for sellers must be between 0 and 80 (or blank for no lock).'); return; }
+  if(mx !== '' && mx < v){ alert('Max discount for sellers (' + mx + '%) cannot be less than the offer % (' + v + '%).'); return; }
   var ids = sel === 'all' ? liveBranches().map(function(b){ return b.id; }) : [sel];
-  ids.forEach(function(id){ var o = branchOffer(id), on = o ? !!o.on : (offerDiscNow() > 0); offerSetFor(id, on, v, ud); });
+  ids.forEach(function(id){ var o = branchOffer(id), on = o ? !!o.on : (offerDiscNow() > 0); offerSetFor(id, on, v, ud, mx); });
   if(sel !== 'all') adminOfferBranch = sel;
   renderAdmin();
 }
@@ -4198,15 +4319,17 @@ function adminOfferPanelLoc(v){
   var p = document.getElementById('ofbPct'), u = document.getElementById('ofbUntil');
   if(p) p.value = offerPctValueFor(loc);
   if(u) u.value = offerUntilFor(loc) || '';
+  var mx = document.getElementById('ofbMax'); if(mx){ var m = offerMaxFor(loc); mx.value = m == null ? '' : m; }
 }
 function offerBarHtml(loc){
   var on = offerPctFor(loc) > 0, val = offerPctValueFor(loc), short = BRANCHES[loc] ? (BRANCHES[loc].short || '') : '';
   var opts = '<option value="all">All branches</option>' + liveBranches().map(function(b){ return '<option value="' + b.id + '"' + (b.id === loc ? ' selected' : '') + '>' + estEsc(b.name) + ' (' + estEsc(b.short || '') + ')</option>'; }).join('');
   return '<div class="ofbar">' +
-    '<button type="button" class="ofpill' + (on ? '' : ' off') + '" onclick="offerPanelToggle()" title="Offer % - tap to change">&#127873;' + (on ? ' ' + estEsc(short) + ' ' + val + '%' : ' Off') + '</button>' +
+    '<button type="button" class="ofpill' + (on ? '' : ' off') + '" onclick="offerPanelToggle()" title="Offer % - tap to change">&#127873;' + (on ? ' ' + estEsc(short) + ' ' + val + '%' : ' Off') + (offerMaxFor(loc) != null ? ' <span style="font-size:.85em; opacity:.85;">&middot; &#128274;' + offerMaxFor(loc) + '%</span>' : '') + '</button>' +
     '<label class="ofbar-switch" title="Offer on / off for this location"><input type="checkbox"' + (on ? ' checked' : '') + ' onchange="adminOfferToggle(this.checked)"><span class="ofbar-slider"></span></label>' +
     '<div class="ofpanel" id="ofPanel"><select id="ofbLoc" aria-label="Location" onchange="adminOfferPanelLoc(this.value)">' + opts + '</select>' +
       '<input id="ofbPct" type="number" min="0" max="80" step="0.5" inputmode="decimal" value="' + val + '" aria-label="Offer %">' +
+      '<div class="ofp-max"><span>&#128274; Max discount for sellers</span><input id="ofbMax" type="number" min="0" max="80" step="0.5" inputmode="decimal" placeholder="No lock" value="' + (offerMaxFor(loc) == null ? '' : offerMaxFor(loc)) + '" aria-label="Max discount % for sellers"></div>' +
       '<label class="ofp-lbl" title="Last day of this offer (blank = no end date)">Last day <input id="ofbUntil" type="date" value="' + estEsc(offerUntilFor(loc)) + '" aria-label="Offer last day"></label>' +
       '<button type="button" onclick="adminOfferSave()">Save</button></div>' +
     '</div>';
@@ -4287,7 +4410,7 @@ function adminScope(){
   return '';
 }
 function liveBranches(){ return Object.values(BRANCHES || {}).filter(function(b){ return b.enabled; }); }
-function saleInBranch(s, bid){ return !bid || (s.branchId || 'main') === bid; }
+function saleInBranch(s, bid){ return (!bid || (s.branchId || 'main') === bid) && !saleHidden(s); }   // a locked year's bills are left out of every list / report
 function branchChipsHtml(current, handler){
   var list = liveBranches();
   if(adminScope() || list.length < 2) return '';
@@ -5181,7 +5304,8 @@ function openBill(preserveEntries){
   if(!preserveEntries){
     // offer discount (20%) is ON by default only while the offer runs (till its last day); after that: OFF
     var _od = offerPctFor(activeBranchId);
-    _billPctBase = _od || offerDiscPct() || 20;
+    _billPctBase = Math.min(_od || offerDiscPct() || 20, billMaxDiscPct());
+    if(_od > billMaxDiscPct()) _od = billMaxDiscPct();
     document.getElementById('billDiscOn').checked = _od > 0;
     document.getElementById('billDiscPercentInput').disabled = !(_od > 0);
     document.getElementById('billDiscPercentInput').value = _od;
@@ -5240,7 +5364,7 @@ function onDiscToggle(){
 function billPaidGuesses(subtotal){
   var on = document.getElementById('billDiscOn'); if((on && !on.checked) || subtotal <= 0) return [];
   var base = Math.round(subtotal * (1 - Math.max(0, Math.min(80, _billPctBase || 0)) / 100));
-  var low = Math.ceil(subtotal * (1 - BILL_GUESS_MAX_DISC / 100)), out = [];
+  var low = Math.ceil(subtotal * (1 - Math.min(BILL_GUESS_MAX_DISC, billMaxDiscPct()) / 100)), out = [];
   [10, 50, 100, 500, 1000].forEach(function(st){ var v = Math.floor((base - 1) / st) * st; if(v > 0 && v >= low && out.indexOf(v) < 0) out.push(v); });
   for(var v = (out.length ? Math.max.apply(null, out) : Math.floor((base - 1) / 10) * 10) - 10; out.length < 3 && v >= low && v > 0; v -= 10){ if(out.indexOf(v) < 0) out.push(v); }
   return out.sort(function(a, b){ return b - a; }).slice(0, 3);
@@ -5277,7 +5401,7 @@ function renderBillTotals(){
 
   let percent, discount, grand, paidAmount;
 
-  const MAX_DISC_PCT = 80;  // shop rule: max 80% discount
+  const MAX_DISC_PCT = billMaxDiscPct();  // shop rule: max 80% discount; sellers: the max set by the admin for this branch
   if(paidManuallyEdited){
     const paidRaw = parseFloat(paidInput.value);
     // Empty / zero box → treat as full payment (no discount), not ₹0
@@ -5289,6 +5413,7 @@ function renderBillTotals(){
       paidAmount = Math.max(0, paidRaw);
       // Cap: paid cannot exceed subtotal; discount cannot exceed 80 %
       const minPaid = Math.ceil(subtotal * (1 - MAX_DISC_PCT / 100));
+      if(paidAmount < minPaid && MAX_DISC_PCT < 80){ billCapNote('\uD83D\uDD12 Max discount for sellers: ' + MAX_DISC_PCT + '% (min \u20B9' + minPaid.toLocaleString('en-IN') + ')'); paidInput.value = minPaid; }
       paidAmount = Math.max(minPaid, Math.min(subtotal, paidAmount));
       discount = subtotal - paidAmount;
       if(discount < 0) discount = 0;
@@ -5299,7 +5424,8 @@ function renderBillTotals(){
   } else {
     percent = parseFloat(percentInput.value);
     if(isNaN(percent)) percent = 0;
-    percent = Math.max(0, Math.min(MAX_DISC_PCT, percent));  // cap at 80 %
+    if(percent > MAX_DISC_PCT && MAX_DISC_PCT < 80){ billCapNote('\uD83D\uDD12 Max discount for sellers: ' + MAX_DISC_PCT + '%'); percentInput.value = MAX_DISC_PCT; _billPctBase = MAX_DISC_PCT; }
+    percent = Math.max(0, Math.min(MAX_DISC_PCT, percent));  // cap at 80 % (sellers: at the branch max)
     discount = Math.round(subtotal * percent / 100);
     grand = subtotal - discount;
     paidInput.value = grand;
@@ -5420,7 +5546,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v88';
+var APP_BUILD = 'v90';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6633,9 +6759,9 @@ async function completeSale(paymentMethod, splitDetails){
   const _bBid = activeBranchId || 'main';
   let bn;
   try{ bn = await billNoNext(_bBid); }
-  catch(e){ bn = { n: (Number(BILL_COUNTERS[_bBid]) || 0) + 1, temp: true, claim: null }; }
+  catch(e){ bn = { n: (Number(BILL_COUNTERS[billSeriesKey(_bBid)]) || 0) + 1, temp: true, claim: null }; }
   finally{ _saleSaving = false; }
-  (function(){ var _m = {}; _m[_bBid] = bn.n; billCountersRaise(_m); })();
+  (function(){ var _m = {}; _m[billSeriesKey(_bBid)] = bn.n; billCountersRaise(_m); })();
   const newSale = {
     id: 'S' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
     billNo: bn.n,
@@ -7053,7 +7179,7 @@ function historyScope(){
   } else {
     // a seller sees only their own bills - the full history (all sellers / other sellers) is for admin only
     historySellerFilter = '';
-    list = all.filter(function(x){ return x.sellerId === session.id; });
+    list = all.filter(function(x){ return x.sellerId === session.id && !saleHidden(x); });
     title = session.name + ' \u2014 Sales History';
   }
   if(!isAdmin && (histDates.from || histDates.to)){
@@ -7073,7 +7199,7 @@ function toggleHistDates(){
   listReset('hist');
   if(histDates.from || histDates.to){ histDates = { from: '', to: '' }; render(); return; }
   var today = saleLocalDate(new Date()), first = today;
-  (SALES || []).forEach(function(x){ if(x.sellerId === session.id){ var d = saleLocalDate(x.time); if(d < first) first = d; } });
+  (SALES || []).forEach(function(x){ if(x.sellerId === session.id && !saleHidden(x)){ var d = saleLocalDate(x.time); if(d < first) first = d; } });
   histDates = { from: first, to: today };
   render();
 }
@@ -7086,7 +7212,7 @@ function onHistDateChange(){
 }
 function histAttendanceHtml(){
   var days = {}, bills = 0;
-  (SALES || []).forEach(function(x){ if(x.sellerId === session.id && histInDates(x)){ days[saleLocalDate(x.time)] = 1; bills++; } });
+  (SALES || []).forEach(function(x){ if(x.sellerId === session.id && !saleHidden(x) && histInDates(x)){ days[saleLocalDate(x.time)] = 1; bills++; } });
   var list = Object.keys(days).sort();
   var inp = 'flex:1; min-width:0; padding:8px 6px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:700; color:var(--maroon);';
   return '<div style="display:flex; gap:6px; align-items:center; margin:0 0 8px; font-size:12px; font-weight:800; color:#5b4630;">' +
@@ -7182,7 +7308,7 @@ function mySumPeople(){
 }
 function mySummaryData(){
   var all = mySumIsAdmin() && !mySumWho, me = mySumIsAdmin() ? (mySumWho || '') : (session && session.id), today = saleLocalDate(new Date());
-  var mine = (loadJSON('ars_sales', []) || SALES || []).filter(function(s){ return s && (all ? saleInBranch(s, adminScope()) : s.sellerId === me); });
+  var mine = (loadJSON('ars_sales', []) || SALES || []).filter(function(s){ return s && (all ? saleInBranch(s, adminScope()) : (s.sellerId === me && !saleHidden(s))); });
   var agg = function(list){
     var c = list.filter(function(s){ return isCountedSale(s); });
     var sum = function(fn){ return c.reduce(function(a, s){ return a + (Number(fn(s)) || 0); }, 0); };
@@ -8038,9 +8164,10 @@ function buildLoginHistoryReportHTML(loginsList){
 
 async function shareLoginHistoryPDF(){
   LOGIN_HISTORY = loadJSON('ars_login_history', []);
-  if(LOGIN_HISTORY.length === 0){ alert('No login history yet.'); return; }
+  const _shown = LOGIN_HISTORY.filter(l => !saleHidden(l));   // a locked year's logins are not in the PDF
+  if(_shown.length === 0){ alert('No login history yet.'); return; }
   try{
-    const doc = await renderOffscreenToPDF(buildLoginHistoryReportHTML([...LOGIN_HISTORY].reverse()));
+    const doc = await renderOffscreenToPDF(buildLoginHistoryReportHTML([..._shown].reverse()));
     await shareGeneratedPDF(doc, 'Login_History_' + new Date().toISOString().slice(0,10) + '.pdf', 'Login History Report');
   } catch(e){
     alert('Could not generate/share the PDF. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
@@ -9036,6 +9163,7 @@ function toggleSaleDetail(id){
 function setSaleStatus(saleId, status){
   const s = SALES.find(x => x.id === saleId);
   if(!s) return;
+  if(saleProtected(s)){ alert('\uD83D\uDD12 ' + recYear(s) + ' is locked - its bills cannot be changed.'); return; }
   s.status = status;
   saveJSON('ars_sales', SALES);
   s._sheetSynced = false;  // changed, so the admin's next "Save to Google Sheet" re-sends this row
@@ -9079,6 +9207,7 @@ function openSaleEdit(id){
   if(typeof session === 'undefined' || !session || session.role !== 'admin') return;
   SALES = loadJSON('ars_sales', []) || [];
   var s = SALES.find(function(x){ return x.id === id; }); if(!s) return;
+  if(saleProtected(s)){ alert('\uD83D\uDD12 ' + recYear(s) + ' is locked - its bills cannot be changed.'); return; }
   if(saleStatus(s) !== 'confirmed'){ alert('Only a confirmed bill can be edited.'); return; }
   _seId = id;
   _seRows = (s.items || []).map(function(it){ return { it: it, qty: Number(it.qty) || 0, price: Number(it.price) || 0 }; });
@@ -9258,7 +9387,7 @@ function salesPeriodLabel(){
 function salesYears(){
   var set = {}; set[String(new Date().getFullYear())] = 1;
   (SALES || []).forEach(function(s){ var y = saleLocalDate(s.time).slice(0, 4); if(y) set[y] = 1; });
-  return Object.keys(set).sort().reverse();
+  return Object.keys(set).filter(function(y){ return !yearHidden(y); }).sort().reverse();   // a locked year has no chip
 }
 /* The Sales tab's "More periods" list: only the periods that have no chip of their own (Today / Yesterday / This year /
    All are chips) - other years and the Diwali seasons. */
@@ -9786,9 +9915,16 @@ async function shareDashboardA4(){
 var a4Rep = { kind: 'month', date: '', month: '', year: '', seller: '', detail: 'simple' };
 function a4RepVals(){
   var t = saleLocalDate(new Date());
-  return { kind: a4Rep.kind || 'month', date: a4Rep.date || t, month: a4Rep.month || t.slice(0, 7), year: a4Rep.year || t.slice(0, 4), seller: a4Rep.seller || '', detail: a4Rep.detail || 'simple' };
+  var ok = function(v){ return v && !yearHidden(String(v).slice(0, 4)) ? v : ''; };   // a locked year is never used
+  return { kind: a4Rep.kind || 'month', date: ok(a4Rep.date) || t, month: ok(a4Rep.month) || t.slice(0, 7), year: ok(a4Rep.year) || t.slice(0, 4), seller: a4Rep.seller || '', detail: a4Rep.detail || 'simple' };
 }
-function a4RepSet(k, v){ a4Rep[k] = v; renderAdmin(); }
+function a4RepSet(k, v){
+  var y = (k === 'date' || k === 'month' || k === 'year') ? Number(String(v || '').slice(0, 4)) : 0;
+  if(y && yearHidden(y)){ alert('\uD83D\uDD12 ' + y + ' is locked. Unlock it in Backup \u2192 Year lock to make its statement.'); renderAdmin(); return; }
+  a4Rep[k] = v; renderAdmin();
+}
+/* the first date that is not in a locked year (locked years are the old ones) - the date / month pickers start here */
+function yearLockMinDate(){ var m = 0; Object.keys(YEAR_LOCK || {}).forEach(function(y){ if(yearHidden(y) && Number(y) > m) m = Number(y); }); return m ? (m + 1) + '-01-01' : ''; }
 function a4RepRange(f){
   if(f.kind === 'date' && f.date) return { from: f.date, to: f.date, label: fullDateLabel(f.date) };
   if(f.kind === 'month' && f.month){
@@ -9822,6 +9958,7 @@ async function shareSalesA4(){
   if(!(await rptChooseBranch())) return;
   var f = a4RepVals(), r = a4RepRange(f);
   if(!r){ alert('Choose a period first.'); return; }
+  if(yearHidden(r.from.slice(0, 4))){ alert('\uD83D\uDD12 ' + r.from.slice(0, 4) + ' is locked.'); return; }
   var list = a4StatementList(f, r);
   if(!list.length){ alert('No sales in ' + r.label + '.'); return; }
   a4EdOpen({ kind: 'sales', previewOnly: true, list: list, f: f, r: r, fileBase: 'Sales_Statement_' + r.from + '_to_' + r.to, shareTitle: 'Sales Statement — ' + r.label });
@@ -9845,8 +9982,9 @@ function a4RepCardHtml(){
   var h = '<div class="section-title" style="margin-top:26px;">Sales Statement (A4) — Date, Month, Year or Diwali</div>' +
     '<div class="filter-bar">' +
       '<div class="filter-field"><label>Filter</label><select onchange="a4RepSet(\'kind\', this.value)">' + opt('date', 'Date', f.kind) + opt('month', 'Month', f.kind) + opt('year', 'Year (overall)', f.kind) + opt('diwali', 'Diwali season', f.kind) + '</select></div>';
-  if(f.kind === 'date') h += '<div class="filter-field"><label>Date</label><input type="date" value="' + f.date + '" onchange="a4RepSet(\'date\', this.value)"></div>';
-  else if(f.kind === 'month') h += '<div class="filter-field"><label>Month</label><input type="month" value="' + f.month + '" onchange="a4RepSet(\'month\', this.value)"></div>';
+  var _ylMin = yearLockMinDate();
+  if(f.kind === 'date') h += '<div class="filter-field"><label>Date</label><input type="date" value="' + f.date + '"' + (_ylMin ? ' min="' + _ylMin + '"' : '') + ' onchange="a4RepSet(\'date\', this.value)"></div>';
+  else if(f.kind === 'month') h += '<div class="filter-field"><label>Month</label><input type="month" value="' + f.month + '"' + (_ylMin ? ' min="' + _ylMin.slice(0, 7) + '"' : '') + ' onchange="a4RepSet(\'month\', this.value)"></div>';
   else h += '<div class="filter-field"><label>' + (f.kind === 'diwali' ? 'Diwali year' : 'Year') + '</label><select onchange="a4RepSet(\'year\', this.value)">' + ys.map(function(y){ return opt(y, y, f.year); }).join('') + '</select></div>';
   h += '<div class="filter-field"><label>Seller</label><select onchange="a4RepSet(\'seller\', this.value)"><option value="">All sellers</option>' + a4SellerOptions(f.seller) + '</select></div>' +
     '<div class="filter-field"><label>Details</label><select onchange="a4RepSet(\'detail\', this.value)">' + opt('simple', 'Simple (summary + sellers)', f.detail) + opt('daily', 'With day-wise', f.detail) + '</select></div>' +
@@ -9869,6 +10007,7 @@ function salesInDates(s){
 }
 function applySalesFilters(salesList){
   return salesList.filter(s => {
+    if(saleHidden(s)) return false;
     if(!salesInDates(s)) return false;
     if(salesFilters.seller && sellerKeyOf(s) !== salesFilters.seller) return false;
     if(salesFilters.billNo && !String(s.billNo||'').includes(salesFilters.billNo.trim())) return false;
@@ -9960,7 +10099,7 @@ function salesRecordsScope(){
 var loginFilterId = '';
 function loginPick(id){ loginFilterId = loginFilterId === id ? '' : id; listReset('logins'); renderAdmin(); }
 function loginSummaryHtml(){
-  var list = LOGIN_HISTORY || [], today = saleLocalDate(new Date()), by = {}, devs = {}, devsToday = {}, todayN = 0;
+  var list = (LOGIN_HISTORY || []).filter(function(l){ return !saleHidden(l); }), today = saleLocalDate(new Date()), by = {}, devs = {}, devsToday = {}, todayN = 0;
   Object.keys(USERS || {}).forEach(function(id){ var u = USERS[id] || {}; by[id] = { id: id, name: u.name || id, role: u.role || 'seller', n: 0, nToday: 0, last: '', dev: {} }; });
   list.forEach(function(l){
     if(!l || !l.id) return;
@@ -10079,7 +10218,7 @@ function bankPeriodLabel(type, key){
 }
 function bankAvailablePeriods(type){
   const keys = new Set();
-  SALES.forEach(s => { if(isCountedSale(s)) keys.add(bankPeriodKey(type, new Date(s.time))); });
+  SALES.forEach(s => { if(isCountedSale(s) && !saleHidden(s)) keys.add(bankPeriodKey(type, new Date(s.time))); });
   return [...keys].sort().reverse();
 }
 function onBankReportTypeChange(){
@@ -10092,7 +10231,7 @@ function onBankReportPeriodChange(){
 }
 
 function buildBankReportHTML(type, periodKey){
-  const inPeriod = SALES.filter(s => isCountedSale(s) && bankPeriodKey(type, new Date(s.time)) === periodKey);
+  const inPeriod = SALES.filter(s => isCountedSale(s) && !saleHidden(s) && bankPeriodKey(type, new Date(s.time)) === periodKey);
   const gross = inPeriod.reduce((a,s)=>a+(s.subtotal||s.total),0);
   const disc = inPeriod.reduce((a,s)=>a+(s.discount||0),0);
   const net = inPeriod.reduce((a,s)=>a+s.total,0);
@@ -10276,6 +10415,7 @@ async function shareBankReportPDF(){
   const type = bankReport.type;
   const period = document.getElementById('bankReportPeriod') ? document.getElementById('bankReportPeriod').value : bankReport.period;
   if(!period){ alert('Select a period first.'); return; }
+  if(yearHidden(String(period).slice(0, 4))){ alert('\uD83D\uDD12 ' + String(period).slice(0, 4) + ' is locked.'); return; }   // a locked year has no income statement
   try{
     const doc = await a4MakePdf(bankReportA4Blocks(type, period), 'BUSINESS INCOME STATEMENT', true);   // one A4 page
     await shareGeneratedPDF(doc, 'Income_Statement_' + period + '.pdf', SHOP.name_en + ' — Income Statement ' + period);
@@ -10367,6 +10507,7 @@ function renderScopedItems(main, bid){
 function renderAdmin(){
   const main = document.getElementById('adminMain');
   SALES = loadJSON('ars_sales', []);
+  try{ var _bkb = document.getElementById('adminTabBackupBtn'); if(_bkb) _bkb.innerHTML = '&#9729; Backup' + (yearLockDue() ? '<span class="yl-dot"></span>' : ''); }catch(e){}   // an old year is waiting to be locked
   const _scope = adminScope();
   if(_scope){ salesFilters.branch = _scope; adminItemsBranch = _scope; if(!{ sales:1, items:1, branch:1 }[adminTab]) adminTab = 'sales'; }
   var _dockOn = (adminTab === 'items' && !_scope && adminPriceView === 'edit');
@@ -10663,7 +10804,7 @@ function renderAdmin(){
   } else if(adminTab === 'logins'){
     LOGIN_HISTORY = loadJSON('ars_login_history', []);
     if(loginFilterId && !LOGIN_HISTORY.some(l => l.id === loginFilterId) && !USERS[loginFilterId]) loginFilterId = '';
-    const loginsList = [...LOGIN_HISTORY].reverse().filter(l => !loginFilterId || l.id === loginFilterId);
+    const loginsList = [...LOGIN_HISTORY].reverse().filter(l => (!loginFilterId || l.id === loginFilterId) && !saleHidden(l));   // a locked year's logins are hidden
     const _today = saleLocalDate(new Date()), _yday = saleLocalDate(Date.now() - 86400000);
     const _dayName = d => d === _today ? 'Today' : d === _yday ? 'Yesterday' : fullDateLabel(d);
     let html = loginSummaryHtml();
@@ -10879,7 +11020,7 @@ function renderAdmin(){
     }
     // all branches together (full admin, more than one branch)
     if(!_scope && ids.length > 1){
-      const all = SALES.filter(s => isCountedSale(s));
+      const all = SALES.filter(s => isCountedSale(s) && !saleHidden(s));
       html += `<div style="margin-top:16px; padding:10px 12px; background:#f3e6cc; border-radius:8px; font-size:12px; font-weight:800; color:var(--maroon);">All branches together: ${fmt(all.reduce((a,s)=>a+s.total,0))} &bull; ${all.length} bills</div>`;
     }
     main.innerHTML = html;
@@ -10915,6 +11056,7 @@ function renderAdmin(){
           <button class="bk2-btn ghost" onclick="bkSaveFile(this)">&#11015;&#65039; Save file</button>
         </div>
       </div>
+      ${yearLockCardHtml()}
       <div class="bk2-card">
         <div class="bk2-h" style="display:flex; justify-content:space-between; align-items:center;"><span>&#9851;&#65039; Restore</span><span style="font-size:10.5px; font-weight:700; color:#6b7c70;"><span class="bk2-dot" style="display:inline-block; width:8px; height:8px;"></span> Auto &nbsp;<span class="bk2-dot man" style="display:inline-block; width:8px; height:8px;"></span> Manual</span></div>
         <div id="bkBox">${bkCardHtml()}</div>
@@ -11473,8 +11615,8 @@ async function resetAllSales(){
   var typed = window.prompt('To clear all sales, type DELETE');
   if(String(typed || '').trim().toUpperCase() !== 'DELETE'){ alert('Not cleared.'); return; }
   var resetTs = Date.now();
-  rescueKeep('sales', loadJSON('ars_sales', []) || [], resetTs);   // kept on this phone + the server archive first (same time as the reset)
-  SALES = [];
+  rescueKeep('sales', (loadJSON('ars_sales', []) || []).filter(function(r){ return !saleProtected(r); }), resetTs);   // kept on this phone + the server archive first (same time as the reset)
+  SALES = (loadJSON('ars_sales', []) || []).filter(saleProtected);   // a locked year's bills stay
   saveJSON('ars_sales', SALES);
   
   // Also reset Bill Number counter to 0 (so next bill will be 1)
@@ -11494,7 +11636,7 @@ async function resetLoginHistory(){
   var typed = window.prompt('To clear the login history, type DELETE');
   if(String(typed || '').trim().toUpperCase() !== 'DELETE'){ alert('Not cleared.'); return; }
 
-  LOGIN_HISTORY = [];
+  LOGIN_HISTORY = (LOGIN_HISTORY || []).filter(saleProtected);   // a locked year's logins stay
   saveJSON('ars_login_history', LOGIN_HISTORY);
   fbResetCollection('loginHistory');   // clear it on the Firebase server and every other phone too
   renderAdmin();
@@ -11764,17 +11906,17 @@ function priceHistoryPoints(ci, ii){
     if(!c || (c.type !== 'price' && c.type !== 'added')) return false;
     return (code && c.code) ? String(c.code) === code : Number(c.serial) === Number(serial);
   }).map(function(c){ return { t: Date.parse(c.time) || 0, type: c.type, old: Number(c.old), nw: Number(c.new), by: c.by || '' }; })
-    .filter(function(c){ return c.t > 0 && !isNaN(c.nw); }).sort(function(a, b){ return a.t - b.t; });
+    .filter(function(c){ return c.t > 0 && !isNaN(c.nw) && !(c.type === 'price' && c.old === c.nw); }).sort(function(a, b){ return a.t - b.t; });
   return { ev: ev, cur: cur };
 }
 function priceGraphSvg(ev, cur){
-  var now = Date.now(), W = 340, H = 190, L = 44, R = 14, T = 22, B = 30, pts = [];
+  var now = Date.now(), W = 340, H = 205, L = 44, R = 14, T = 28, B = 30, pts = [];
   if(!ev.length){ pts = [{ t: now - 30 * 86400000, p: cur }, { t: now, p: cur }]; }
   else{
     var f = ev[0], start = f.type === 'added' || isNaN(f.old) ? f.nw : f.old;
     var span = Math.max(now - f.t, 86400000), t0 = f.t - Math.max(86400000, span * 0.12);
     pts.push({ t: t0, p: start });
-    ev.forEach(function(c){ var prev = pts[pts.length - 1].p; pts.push({ t: c.t, p: prev }); pts.push({ t: c.t, p: c.nw, dot: 1 }); });
+    ev.forEach(function(c){ var prev = pts[pts.length - 1].p; if(c.nw === prev) return; pts.push({ t: c.t, p: prev }); pts.push({ t: c.t, p: c.nw, dot: 1, from: prev }); });
     pts.push({ t: now, p: cur });
   }
   var tMin = pts[0].t, tMax = Math.max(now, pts[pts.length - 1].t), ps = pts.map(function(x){ return x.p; });
@@ -11792,11 +11934,32 @@ function priceGraphSvg(ev, cur){
   var m = new Date(tMin); m = new Date(m.getFullYear(), m.getMonth() + 1, 1);
   while(m.getTime() < tMax){ var xm = X(m.getTime()); g += '<line x1="' + xm.toFixed(1) + '" x2="' + xm.toFixed(1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="#d9c7a3" stroke-dasharray="3 3"/><text x="' + xm.toFixed(1) + '" y="' + (H - B + 13) + '" text-anchor="middle" font-size="10" font-weight="800" fill="#7a1414">' + mon[m.getMonth()] + '</text>'; m = new Date(m.getFullYear(), m.getMonth() + 1, 1); }
   g += '<text x="' + L + '" y="' + (H - 6) + '" font-size="9.5" fill="#8a6a44">' + dl(tMin) + '</text><text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end" font-size="9.5" fill="#8a6a44">Today</text>';
-  var dots = pts.filter(function(x){ return x.dot; }), lab = dots.length <= 6 ? dots : dots.filter(function(x, i){ return i === 0 || i === dots.length - 1; });
-  var d = dots.map(function(x){ return '<circle cx="' + X(x.t).toFixed(1) + '" cy="' + Y(x.p).toFixed(1) + '" r="4" fill="#fff" stroke="#7a1414" stroke-width="2.2"/>'; }).join('') +
-    lab.map(function(x){ return '<text x="' + X(x.t).toFixed(1) + '" y="' + (Y(x.p) - 8).toFixed(1) + '" text-anchor="middle" font-size="10" font-weight="800" fill="#7a1414">' + inr(x.p) + '</text>'; }).join('');
+  // price labels: beside each change dot (right of the step line, left near the right edge), never on top of each other
+  var dots = pts.filter(function(x){ return x.dot; }), lab = dots;
+  if(dots.length > 6){ var ps2 = dots.map(function(x){ return x.p; }), mx2 = Math.max.apply(null, ps2), mn2 = Math.min.apply(null, ps2); lab = dots.filter(function(x, i){ return i === 0 || i === dots.length - 1 || x.p === mx2 || x.p === mn2; }); }
+  var boxes = [], tw = function(t){ return String(t).length * 6.1 + 2; };
+  var place = function(txt, x, y, anchor, size, col, alt){
+    var w = tw(txt), bx = anchor === 'end' ? x - w : x, tries = [y, alt == null ? y - 14 : alt, y - 14, y + 18];
+    for(var k = 0; k < tries.length; k++){
+      var ty = tries[k]; if(ty < T - 10 || ty > H - B - 2) continue;
+      var hit = boxes.some(function(b){ return bx < b.x + b.w + 3 && bx + w + 3 > b.x && ty - 10 < b.y && ty > b.y - 10; });
+      if(!hit){ boxes.push({ x: bx, y: ty, w: w }); return '<text x="' + x.toFixed(1) + '" y="' + ty.toFixed(1) + '" text-anchor="' + anchor + '" font-size="' + size + '" font-weight="800" fill="' + col + '" stroke="#fffdf8" stroke-width="3.5" stroke-linejoin="round" paint-order="stroke">' + txt + '</text>'; }
+    }
+    return '';
+  };
+  var d = dots.map(function(x){ return '<circle cx="' + X(x.t).toFixed(1) + '" cy="' + Y(x.p).toFixed(1) + '" r="4" fill="#fff" stroke="#7a1414" stroke-width="2.2"/>'; }).join('');
+  var labs = '';
+  lab.forEach(function(x){
+    var px = X(x.t), py = Y(x.p), txt = inr(x.p), right = px + 8 + tw(txt) <= W - R;
+    var up = x.p >= (x.from == null ? x.p : x.from);   // a rise: room above the new level; a drop: room below it too
+    labs += place(txt, right ? px + 8 : px - 8, py - 7, right ? 'start' : 'end', 10.5, '#7a1414', up ? py - 7 : py + 16);
+  });
   var last = pts[pts.length - 1];
-  if(ev.length) d += '<text x="' + (X(pts[0].t) + 2).toFixed(1) + '" y="' + (Y(pts[0].p) - 7).toFixed(1) + '" font-size="9.5" font-weight="700" fill="#8a6a44">' + inr(pts[0].p) + '</text>';   // the first known price
+  if(ev.length){   // the first known price, on the first flat part of the line
+    var sx = X(pts[0].t) + 4, sy = Y(pts[0].p), goesUp = dots.length && dots[0].p > pts[0].p;
+    labs = place(inr(pts[0].p), sx, goesUp ? sy + 15 : sy - 7, 'start', 9.5, '#8a6a44', goesUp ? sy - 7 : sy + 15) + labs;
+  }
+  d += labs;
   d += '<circle cx="' + X(last.t).toFixed(1) + '" cy="' + Y(last.p).toFixed(1) + '" r="5" fill="#1e7a3c"/>';
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pgFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a1414" stop-opacity="0.22"/><stop offset="1" stop-color="#7a1414" stop-opacity="0.02"/></linearGradient></defs>' +
     g + '<path d="' + area + '" fill="url(#pgFill)"/><path d="' + line + '" fill="none" stroke="#7a1414" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>' + d + '</svg>';
