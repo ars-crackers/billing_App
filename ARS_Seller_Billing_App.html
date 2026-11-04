@@ -860,6 +860,37 @@
   .sl-cap{font-size:11.5px; font-weight:700; color:#8a6a44; margin-top:2px;}
   .sl-eye{flex:0 0 auto; height:34px; padding:0 12px; border-radius:10px; border:1.5px solid var(--line); background:#fff8ea; color:var(--maroon); font-weight:800; font-size:12.5px; cursor:pointer;}
   .sl-kpis2{margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);}
+  /* Sales tab: smart chips + trend graph (works in hidden mode too - no rupee amounts there) */
+  .sl-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .sl-chip{display:inline-flex; align-items:center; gap:4px; padding:5px 9px; border-radius:999px; background:#fff8ea; border:1px solid #eadcc0; font-size:11.5px; font-weight:800; color:#5b4630; white-space:nowrap;}
+  .sl-chip.up{background:#e6f4ea; border-color:#bfe3c9; color:#1e7a3c;} .sl-chip.down{background:#fdecea; border-color:#f3c7c2; color:#b3261e;}
+  .sl-graph{margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);}
+  .sld{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);}
+  .sld-card{border:1.5px solid #eadcc0; border-radius:12px; padding:8px 8px 7px; background:#fffdf8; min-width:0;}
+  .sld-t{font-size:11.5px; font-weight:800; color:#5b4630; text-align:center; white-space:nowrap;}
+  .sld-ring{display:block; width:100%; max-width:118px; margin:3px auto 2px;}
+  .sld-lg{display:flex; justify-content:space-between; align-items:baseline; gap:4px; font-size:11px; font-weight:700; color:#5b4630; margin-top:3px; white-space:nowrap;}
+  .sld-lg i{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:4px; vertical-align:0;}
+  .sld-lg b{font-weight:900;}
+  .sld-amt{text-align:right; font-size:12.5px; font-weight:900; color:#2a1408; line-height:1.2; white-space:nowrap;}
+  .sld-wide{grid-column:1 / -1;}
+  .sld-bar{height:12px; border-radius:6px; background:#eadcc0; overflow:hidden; margin:6px 0 4px;}
+  .sld-bar span{display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,#c9651a,#7a1414);}
+  .sld-row{display:flex; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:700; color:#5b4630;}
+  .sld-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:6px; text-align:center;}
+  .sld-stats div{background:#fff8ea; border-radius:10px; padding:6px 2px;}
+  .sld-stats b{display:block; font-size:16px; font-weight:900; color:#7a1414; line-height:1.15;}
+  .sld-stats span{font-size:10.5px; font-weight:700; color:#8a6a44;}
+  .slg-head{display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:12px; font-weight:800; color:var(--maroon);}
+  .slg-head small{font-size:10.5px; font-weight:700; color:#8a6a44;}
+  .slg-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-top:6px;}
+  .slg-bars{display:flex; align-items:flex-end; gap:4px; height:132px;}
+  .slg-col{flex:1 0 22px; min-width:22px; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center;}
+  .slg-v{font-size:9.5px; font-weight:800; color:#8a6a44; margin-bottom:2px; white-space:nowrap;}
+  .slg-bar{width:72%; max-width:26px; min-height:2px; border-radius:6px 6px 2px 2px; background:linear-gradient(180deg,#b23a2a,#7a1414);}
+  .slg-col.pk .slg-bar{background:linear-gradient(180deg,#ffd34d,#e0a400);} .slg-col.pk .slg-v{color:#7a1414;}
+  .slg-col.z .slg-bar{background:#eadcc0;}
+  .slg-x{font-size:9.5px; font-weight:700; color:#8a6a44; margin-top:3px; white-space:nowrap; height:12px;}
   .sl-kpis{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);}
   .sl-kpi{background:#fffaf0; border-radius:10px; padding:8px 10px;}
   .sl-kpi b{display:block; font-size:15px; font-weight:900; color:var(--ink);}
@@ -880,7 +911,10 @@
   .sl-name{cursor:pointer;}
   .sl-sub{font-size:11px; color:var(--ink-soft); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .sl-amt{flex:0 0 auto; text-align:right; font-size:16px; font-weight:900; color:var(--maroon); white-space:nowrap;}
-  .sl-amt small{display:block; font-size:10.5px; font-weight:700; color:#a08560; text-decoration:line-through;}
+  .sl-amt small{display:block; font-size:10.5px; font-weight:700; color:#a08560; margin-top:1px;}
+  .sl-amt small s{text-decoration:line-through;}
+  .sl-pct{display:inline-block; margin-right:4px; padding:0 5px; border-radius:6px; background:#e6f4ea; color:#1e7a3c; font-size:10px; font-weight:900; line-height:15px; vertical-align:1px;}
+  .sl-pct.hi{background:#fdecea; color:#b3261e;}
   .pe-search{position:relative;}
   .pe-search input{width:100%; height:44px; box-sizing:border-box; padding:0 42px 0 38px; border-radius:12px; border:1.5px solid var(--line); background:#fff; font-size:14px; color:var(--ink); outline:none; font-family:inherit;}
   .pe-search input:focus{border-color:var(--maroon);}
@@ -909,6 +943,10 @@
   .pe-ta{font-size:14px; font-weight:800; color:var(--ink); line-height:1.3;}
   .pe-en{font-size:11px; color:var(--ink-soft); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .pe-tags{margin-top:4px;}
+  .pe-ns{display:inline-flex; align-items:center; gap:2px; font-size:11px; line-height:1; padding:2px 4px; margin-right:4px; border-radius:6px; background:#fde8e6; vertical-align:1px;}
+  .pe-ns b{font-size:9.5px; font-weight:900; color:#b3261e;}
+  .pg-ov{position:fixed; inset:0; z-index:9500; background:rgba(0,0,0,0.45); display:flex; align-items:flex-end; justify-content:center;}
+  .pg-sheet{background:#fffaf0; width:100%; max-width:480px; max-height:88vh; overflow:auto; border-radius:18px 18px 0 0; padding:12px 14px calc(14px + env(safe-area-inset-bottom)); box-sizing:border-box;}
   .pe-price{flex:0 0 auto; text-align:right; min-width:62px; padding:4px 6px; margin:-4px -6px -4px 0; border-radius:8px;}
   .pe-now{font-size:16px; font-weight:900; color:var(--maroon); line-height:1.2;}
   .pe-was{font-size:11.5px; color:#8a6a44; text-decoration:line-through; font-weight:700; line-height:1.2;}
@@ -3865,6 +3903,136 @@ function highDiscNotice(list){
     '</div>';
 }
 /* Bill header amount: the amount received; with a discount the price-list amount is shown struck out before it. */
+/* ---- Sales tab: trend graph + smart insights from the bills the filters show (branch, period / dates, seller).
+   Hidden mode shows no rupee amount: bars are scaled by sales, labelled with bill counts, and the chips use % only. ---- */
+var SL_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function slShortInr(v){ v = Math.round(v); return v >= 100000 ? (Math.round(v / 10000) / 10) + 'L' : v >= 1000 ? (Math.round(v / 100) / 10) + 'k' : String(v); }
+function slHourLabel(h){ var a = h % 12 || 12; return a + (h < 12 ? 'a' : 'p'); }
+function slTrend(list){
+  if(!list.length) return null;
+  var dayKeys = {}; list.forEach(function(x){ dayKeys[saleLocalDate(x.time)] = 1; });
+  var dk = Object.keys(dayKeys).sort(), d0 = new Date(dk[0] + 'T00:00:00'), d1 = new Date(dk[dk.length - 1] + 'T00:00:00');
+  var spanDays = Math.round((d1 - d0) / 86400000) + 1, mode = dk.length === 1 ? 'hour' : spanDays <= 45 ? 'day' : 'month', b = [], idx = {};
+  var add = function(k, label){ idx[k] = b.length; b.push({ k: k, label: label, amt: 0, bills: 0 }); };
+  if(mode === 'hour'){
+    var hs = list.map(function(x){ return new Date(x.time).getHours(); }), h0 = Math.min.apply(null, hs), h1 = Math.max.apply(null, hs);
+    for(var h = h0; h <= h1; h++) add(String(h), slHourLabel(h));
+  } else if(mode === 'day'){
+    for(var t = d0.getTime(); t <= d1.getTime() + 3600000; t += 86400000){ var dd = new Date(t), key2 = saleLocalDate(dd.toISOString()); if(idx[key2] == null) add(key2, dd.getDate() + ' ' + SL_MON[dd.getMonth()]); }
+  } else {
+    var m = new Date(d0.getFullYear(), d0.getMonth(), 1); while(m <= d1){ add(m.getFullYear() + '-' + m.getMonth(), SL_MON[m.getMonth()] + (d0.getFullYear() !== d1.getFullYear() ? " '" + String(m.getFullYear()).slice(2) : '')); m = new Date(m.getFullYear(), m.getMonth() + 1, 1); }
+  }
+  list.forEach(function(x){
+    var dt = new Date(x.time), k = mode === 'hour' ? String(dt.getHours()) : mode === 'day' ? saleLocalDate(x.time) : dt.getFullYear() + '-' + dt.getMonth();
+    var i = idx[k]; if(i == null) return; b[i].amt += Number(x.total) || 0; b[i].bills++;
+  });
+  var pk = 0; b.forEach(function(x, i){ if(x.amt > b[pk].amt) pk = i; });
+  return { mode: mode, b: b, pk: pk };
+}
+function slGraphHtml(list, open){
+  var tr = slTrend(list); if(!tr) return '';
+  var max = Math.max.apply(null, tr.b.map(function(x){ return x.amt; })) || 1, p = tr.b[tr.pk];
+  var title = tr.mode === 'hour' ? '&#128200; Sales by hour' : tr.mode === 'day' ? '&#128200; Sales by day' : '&#128200; Sales by month';
+  var peak = tr.mode === 'hour' ? 'Busiest ' + slHourLabel(Number(p.k)) + '&ndash;' + slHourLabel((Number(p.k) + 1) % 24) : 'Best ' + p.label;
+  var cols = tr.b.map(function(x, i){
+    var hgt = x.amt > 0 ? Math.max(4, Math.round(x.amt / max * 100)) : 0;
+    var v = x.bills ? (open ? slShortInr(x.amt) : String(x.bills)) : '';
+    return '<div class="slg-col' + (i === tr.pk && x.amt > 0 ? ' pk' : '') + (x.amt > 0 ? '' : ' z') + '" title="' + x.label + ': ' + x.bills + ' bill' + (x.bills === 1 ? '' : 's') + (open ? ' • ₹' + Math.round(x.amt).toLocaleString('en-IN') : '') + '">' +
+      '<span class="slg-v">' + v + '</span><div class="slg-bar" style="height:' + hgt + '%;"></div><span class="slg-x">' + x.label + '</span></div>';
+  }).join('');
+  return '<div class="sl-graph"><div class="slg-head"><span>' + title + '</span><small>' + peak + ' &middot; ' + (open ? 'bar = &#8377; sales' : 'number = bills') + '</small></div>' +
+    '<div class="slg-scroll"><div class="slg-bars" style="min-width:' + (tr.b.length * 26) + 'px;">' + cols + '</div></div></div>';
+}
+/* ---- Sales tab dashboard as graphs: every total of the Sales card in a picture - bills / items / average,
+   sales vs discount ring, cash vs UPI ring, today's share. Hidden mode (eye): % and counts only, no rupee amount. ---- */
+function slRing(a, b, ca, cb, top, sub){
+  var tot = (a + b) || 1, r = 42, c = 2 * Math.PI * r, la = c * a / tot;
+  return '<svg class="sld-ring" viewBox="0 0 110 110" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="55" cy="55" r="' + r + '" fill="none" stroke="#eadcc0" stroke-width="15"/>' +
+    (a > 0 ? '<circle cx="55" cy="55" r="' + r + '" fill="none" stroke="' + ca + '" stroke-width="15" stroke-dasharray="' + la.toFixed(1) + ' ' + (c - la).toFixed(1) + '" transform="rotate(-90 55 55)"/>' : '') +
+    (b > 0 ? '<circle cx="55" cy="55" r="' + r + '" fill="none" stroke="' + cb + '" stroke-width="15" stroke-dasharray="' + (c - la).toFixed(1) + ' ' + la.toFixed(1) + '" stroke-dashoffset="' + (-la).toFixed(1) + '" transform="rotate(-90 55 55)"/>' : '') +
+    '<text x="55" y="56" text-anchor="middle" font-size="' + (String(top).length > 6 ? 15 : 19) + '" font-weight="900" fill="#4a0c0c">' + top + '</text>' +
+    '<text x="55" y="71" text-anchor="middle" font-size="9.5" font-weight="800" fill="#8a6a44">' + sub + '</text></svg>';
+}
+function slDashHtml(list, open){
+  if(!list.length) return '';
+  var sum = function(fn){ return list.reduce(function(a, x){ return a + (Number(fn(x)) || 0); }, 0); };
+  var net = sum(function(x){ return x.total; }), disc = sum(function(x){ return x.discount; }), gross = net + disc;
+  var items = sum(function(x){ return (x.items || []).reduce(function(a, it){ return a + (Number(it.qty) || 0); }, 0); });
+  var cash = sum(saleCashAmount), upi = sum(saleUpiAmount), n = list.length;
+  var pc = function(a, b){ return b > 0 ? Math.round(a / b * 1000) / 10 : 0; };
+  var inr = function(v){ return '&#8377;' + Math.round(v).toLocaleString('en-IN'); };
+  var lg = function(col, label, amt, pct){ return '<div class="sld-lg"><span><i style="background:' + col + ';"></i>' + label + '</span><b>' + pct + '%</b></div>' + (open ? '<div class="sld-amt">' + inr(amt) + '</div>' : ''); };
+  // today's share (only when the period is longer than today)
+  var todayKey = saleLocalDate(new Date()), td = list.filter(function(x){ return saleLocalDate(x.time) === todayKey; });
+  var tdAmt = td.reduce(function(a, x){ return a + (Number(x.total) || 0); }, 0), p = String(salesFilters.yr || '');
+  var showToday = td.length && td.length < n && !(p === 'today' && !salesFilters.from && !salesFilters.to);
+  var h = '<div class="sld">' +
+    '<div class="sld-card sld-wide"><div class="sld-stats">' +
+      '<div><b>' + n.toLocaleString('en-IN') + '</b><span>&#129534; Total bills</span></div>' +
+      '<div><b>' + items.toLocaleString('en-IN') + '</b><span>&#128230; Items sold</span></div>' +
+      '<div><b>' + (open ? inr(net / n) : (Math.round(items / n * 10) / 10)) + '</b><span>' + (open ? 'Avg / bill' : 'Items / bill') + '</span></div>' +
+    '</div></div>' +
+    '<div class="sld-card"><div class="sld-t">Sales vs Discount</div>' + slRing(net, disc, '#7a1414', '#1e7a3c', pc(disc, gross) + '%', 'discount') +
+      lg('#7a1414', 'Sales', net, pc(net, gross)) + lg('#1e7a3c', 'Discount', disc, pc(disc, gross)) + '</div>' +
+    '<div class="sld-card"><div class="sld-t">Cash vs UPI</div>' + slRing(cash, upi, '#b45309', '#0b5fd8', pc(cash, cash + upi) + '%', 'cash') +
+      lg('#b45309', '&#128181; Cash', cash, pc(cash, cash + upi)) + lg('#0b5fd8', '&#128241; UPI', upi, pc(upi, cash + upi)) + '</div>';
+  if(showToday) h += '<div class="sld-card sld-wide"><div class="sld-row"><span>&#128197; Today</span><span>' + td.length + ' bill' + (td.length === 1 ? '' : 's') + (open ? ' &middot; <b style="color:#7a1414;">' + inr(tdAmt) + '</b>' : '') + '</span></div>' +
+    '<div class="sld-bar"><span style="width:' + Math.max(2, pc(tdAmt, net)) + '%;"></span></div><div class="sld-row" style="font-size:10.5px; color:#8a6a44;"><span>' + pc(tdAmt, net) + '% of ' + (p.indexOf('y:') === 0 ? 'this year' : 'this period') + '</span><span>' + (open ? 'Total ' + inr(net) : '') + '</span></div></div>';
+  return h + '</div>';
+}
+/* Compare with the day before - for Today: yesterday up to the same time of day. */
+function slCompare(list){
+  var p = String(salesFilters.yr || ''); if(salesFilters.from || salesFilters.to || (p !== 'today' && p !== 'yday')) return null;
+  var base = p === 'today' ? Date.now() - 86400000 : Date.now() - 2 * 86400000, bd = saleLocalDate(base), lim = null;
+  if(p === 'today'){ var n = new Date(); lim = n.getHours() * 60 + n.getMinutes(); }
+  var prev = (SALES || []).filter(function(x){
+    if(!isCountedSale(x) || !saleInBranch(x, salesFilters.branch) || saleLocalDate(x.time) !== bd) return false;
+    if(salesFilters.seller && sellerKeyOf(x) !== salesFilters.seller) return false;
+    if(lim != null){ var t = new Date(x.time); if(t.getHours() * 60 + t.getMinutes() > lim) return false; }
+    return true;
+  }).reduce(function(a, x){ return a + (Number(x.total) || 0); }, 0);
+  var cur = list.reduce(function(a, x){ return a + (Number(x.total) || 0); }, 0);
+  if(!(prev > 0)) return null;
+  var pc = Math.round((cur - prev) / prev * 100);
+  return { pc: pc, label: p === 'today' ? 'vs yesterday (same time)' : 'vs day before' };
+}
+function slChipsHtml(list, open){
+  if(!list.length) return '';
+  var c = [], chip = function(t, cls){ c.push('<span class="sl-chip' + (cls ? ' ' + cls : '') + '">' + t + '</span>'); };
+  var amt = list.reduce(function(a, x){ return a + (Number(x.total) || 0); }, 0);
+  var cmp = slCompare(list); if(cmp) chip((cmp.pc >= 0 ? '&#9650; ' : '&#9660; ') + Math.abs(cmp.pc) + '% ' + cmp.label, cmp.pc >= 0 ? 'up' : 'down');
+  if(!salesFilters.seller){
+    var bySel = {}; list.forEach(function(x){ var k = x.sellerName || x.sellerId || '?'; bySel[k] = (bySel[k] || 0) + (Number(x.total) || 0); });
+    var names = Object.keys(bySel); if(names.length > 1){ names.sort(function(a, b){ return bySel[b] - bySel[a]; }); chip('&#127942; ' + custEsc(names[0]) + ' ' + Math.round(bySel[names[0]] / (amt || 1) * 100) + '%'); }
+  }
+  var byIt = {}; list.forEach(function(x){ (x.items || []).forEach(function(it){ var k = it.en || it.ta || ''; if(k) byIt[k] = (byIt[k] || 0) + (Number(it.qty) || 0); }); });
+  var its = Object.keys(byIt).sort(function(a, b){ return byIt[b] - byIt[a]; }); if(its.length) chip('&#128293; ' + custEsc(its[0]) + ' &times;' + byIt[its[0]]);
+  var cash = list.reduce(function(a, x){ return a + saleCashAmount(x); }, 0), upi = list.reduce(function(a, x){ return a + saleUpiAmount(x); }, 0);
+  if(false && cash + upi > 0){ var cp = Math.round(cash / (cash + upi) * 100); chip('&#128181; ' + cp + '% &middot; &#128241; ' + (100 - cp) + '%'); }
+  var gross = list.reduce(function(a, x){ return a + (Number(x.subtotal) || Number(x.total) || 0); }, 0), disc = list.reduce(function(a, x){ return a + (Number(x.discount) || 0); }, 0);
+  if(false && gross > 0 && disc > 0) chip('&#127991;&#65039; Avg disc ' + (Math.round(disc / gross * 1000) / 10) + '%');
+  return '<div class="sl-chips">' + c.join('') + '</div>';
+}
+/* Bill row amount (Sales tab + History tab): amount received; with a discount, the % given and the price-list amount struck out. */
+function slAmtHtml(s){
+  var got = Number(s && s.total) || 0, orig = Number(s && s.subtotal) || 0, h = '&#8377;' + got.toLocaleString('en-IN');
+  if(orig > got){ var p = saleDiscPct(s), pt = (Math.round(p * 10) / 10).toString(); h += '<small><span class="sl-pct' + (saleIsHighDisc(s) ? ' hi' : '') + '">' + pt + '%</span><s>&#8377;' + orig.toLocaleString('en-IN') + '</s></small>'; }
+  return h;
+}
+/* Bill row top (Sales tab + History tab): bill no | seller, date, payment, items | amount. */
+function slTopHtml(s, detailId, nameHtml, isNew){
+  var status = saleStatus(s);
+  var badge = status === 'cancelled' ? '<span class="status-badge cancelled">Cancelled</span>' : status === 'cancel_pending' ? '<span class="status-badge pending">Cancel requested</span>' : '';
+  var qty = (s.items || []).reduce(function(a, it){ return a + (Number(it.qty) || 0); }, 0);
+  var d = new Date(s.time), dt = d.toLocaleString('en-IN', d.getFullYear() === new Date().getFullYear() ? { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  var pay = s.paymentMethod === 'split' ? '&#128181;+&#128241; Split' : s.paymentMethod === 'upi' ? '&#128241; UPI' : '&#128181; Cash';
+  return '<div class="sl-top" onclick="toggleSaleDetail(\'' + detailId + '\')">' +
+      '<div class="sl-no">' + billNoRef(s) + '</div>' +
+      '<div class="sl-mid"><div class="sl-who">' + nameHtml + (isNew ? ' <span class="new-tag">NEW</span>' : '') + (badge ? ' ' + badge : '') + billNoTag(s) + saleEditTag(s) + '</div>' +   // a 30%+ discount shows as the red % next to the amount
+        '<div class="sl-sub">' + dt + ' &middot; ' + pay + ' &middot; ' + qty + ' item' + (qty === 1 ? '' : 's') + '</div></div>' +
+      '<div class="sl-amt">' + slAmtHtml(s) + '</div></div>';
+}
 function saleAmtHtml(s){
   var orig = Number(s && s.subtotal) || 0, got = Number(s && s.total) || 0;
   return (orig > got ? '<span style="font-size:12px; font-weight:700; color:#8a6a44; text-decoration:line-through; margin-right:5px;">\u20B9' + orig.toLocaleString('en-IN') + '</span>' : '') + '\u20B9' + got.toLocaleString('en-IN');
@@ -5252,7 +5420,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v86';
+var APP_BUILD = 'v87';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -7284,14 +7452,9 @@ function renderHistoryList(){
     if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${fmtPhones(s.buyerPhone)}</span></div>`;
     if(s.paidAmount) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
     itemsHtml += saleEditNote(s);
-    html += (swAct ? `<div class="pe-swipe" style="margin-bottom:7px;"><div class="pe-act">${swAct}</div><div class="sale-card pe-row" style="display:block; margin:0; padding:10px 12px;">` : `<div class="sale-card">`) + `
-        <div class="sale-card-top" onclick="toggleSaleDetail('h-${s.id}')">
-          <div>
-            <div class="sc-seller">${billNoRef(s)}${billNoTag(s)} &middot; ${(isAdmin || s.sellerId !== session.id) ? estEsc(s.sellerName) + ' ' : ''}${statusBadge}${highDiscTag(s)}${saleEditTag(s)}</div>
-            <div class="sc-time">${dt}</div>
-          </div>
-          <div style="display:flex; align-items:center;"><div class="sc-total" style="white-space:nowrap;">${saleAmtHtml(s)}</div></div>
-        </div>
+    const _off = status === 'confirmed' ? '' : ' sl-off';
+    html += (swAct ? `<div class="pe-swipe" style="margin-bottom:6px;"><div class="pe-act">${swAct}</div><div class="sale-card sl-card pe-row${_off}" style="display:block; margin:0;">` : `<div class="sale-card sl-card${_off}">`) + `
+        ${slTopHtml(s, 'h-' + s.id, estEsc(s.sellerName || ''), false)}
         <div class="sale-detail" id="detail-h-${s.id}">${itemsHtml}
           <div class="sale-card-actions">
             ${isAdmin && status === 'confirmed' ? `<button class="btn-edit-bill ico-only" onclick="event.stopPropagation(); openSaleEdit('${s.id}')" title="Edit bill (qty / price)" aria-label="Edit bill">&#9998;</button>` : ''}
@@ -9841,13 +10004,14 @@ function clearReportFilters(){
   renderAdmin();
 }
 
-function buildReportPDFHTML(totalPaid, totalDiscount, label, cash, upi, bid){
+function buildReportPDFHTML(totalPaid, totalDiscount, label, cash, upi, bid, bills){
   const totalBilled = totalPaid + totalDiscount;
   const discPct = totalBilled > 0 ? Math.round((totalDiscount/totalBilled)*1000)/10 : 0;
   return `<div class="br-page" style="width:302px;">
       ${rptThermHead('Sales Report &mdash; ' + estEsc(label), '', bid)}
-      <div style="padding:12px 10px 0; text-align:center;">${buildSalesDonutChartSVG(totalPaid, totalDiscount)}</div>
+      <div style="padding:12px 10px 0; text-align:center;">${buildSalesDonutChartSVG(totalPaid, totalDiscount, bills)}</div>
       <div class="br-summary" style="padding:6px 10px 12px;">
+        ${bills != null ? `<div class="br-row"><span>Total Bills</span><span>${Number(bills) || 0}</span></div>` : ''}
         <div class="br-row"><span>Total Sales</span><span>&#8377;${totalPaid.toLocaleString('en-IN')}</span></div>
         <div class="br-row" style="padding-left:10px;"><span>&#8226; Cash</span><span>&#8377;${Math.round(cash || 0).toLocaleString('en-IN')}</span></div>
         <div class="br-row" style="padding-left:10px;"><span>&#8226; UPI</span><span>&#8377;${Math.round(upi || 0).toLocaleString('en-IN')}</span></div>
@@ -9871,7 +10035,7 @@ async function shareReportPDF(){
   const label = reportFilters.date ? new Date(reportFilters.date).toLocaleDateString('en-IN', {dateStyle:'medium'}) : 'Overall (All Time)';
   if(totalPaid + totalDiscountGiven === 0){ alert('No sales data to export for this period.'); return; }
   try{
-    const doc = await renderOffscreenToPDF(buildReportPDFHTML(totalPaid, totalDiscountGiven, label, totalCash, totalUpi, bid));
+    const doc = await renderOffscreenToPDF(buildReportPDFHTML(totalPaid, totalDiscountGiven, label, totalCash, totalUpi, bid, confirmedSales.length));
     await shareGeneratedPDF(doc, 'Sales_Report_' + (reportFilters.date || 'overall') + '.pdf', 'A.R.S Crackers — Sales Report');
   } catch(e){
     alert('Could not generate/share the PDF. ' + (e && e.message ? e.message : 'Please check your internet connection and try again.'));
@@ -10129,7 +10293,7 @@ function cashUpiSplitHtml(cash, upi){
       <div style="display:flex; gap:8px; margin-top:8px;">${tile('&#128181;', 'Cash', cash, cp, '#b45309')}${tile('&#128241;', 'UPI', upi, up, '#0b5fd8')}</div>
     </div>`;
 }
-function buildSalesDonutChartSVG(totalPaid, totalDiscount){
+function buildSalesDonutChartSVG(totalPaid, totalDiscount, bills){
   const total = totalPaid + totalDiscount;
   const W = 220, H = 220, cx = W/2, cy = H/2, r = 80, strokeW = 28;
   if(total <= 0){
@@ -10152,8 +10316,8 @@ function buildSalesDonutChartSVG(totalPaid, totalDiscount){
         stroke-dasharray="${discLen.toFixed(1)} ${(circumference-discLen).toFixed(1)}"
         stroke-dashoffset="${-paidLen.toFixed(1)}"
         transform="rotate(-90 ${cx} ${cy})"/>
-      <text x="${cx}" y="${cy-6}" text-anchor="middle" style="font-size:18px; font-weight:800; fill:var(--maroon-dark);">₹${total.toLocaleString('en-IN')}</text>
-      <text x="${cx}" y="${cy+13}" text-anchor="middle" style="font-size:9.5px; fill:var(--ink-soft); font-weight:700;">Total Billed Value</text>
+      <text x="${cx}" y="${cy+4}" text-anchor="middle" style="font-size:34px; font-weight:900; fill:var(--maroon-dark);">${Number(bills) || 0}</text>
+      <text x="${cx}" y="${cy+22}" text-anchor="middle" style="font-size:10.5px; fill:var(--ink-soft); font-weight:800;">${(Number(bills) || 0) === 1 ? 'Bill' : 'Bills'}</text>
     </svg>
     <div style="display:flex; gap:8px; margin-top:10px;">${rptTile('&#129534;', 'Total Sales', totalPaid, paidPct + '% of Billed Value', '#7a1414')}${rptTile('&#127991;&#65039;', 'Total Discount', totalDiscount, discPct + '% of Billed Value', '#1e7a3c')}</div>`;
 }
@@ -10241,9 +10405,9 @@ function renderAdmin(){
       <div class="sl-sum">
         <div class="sl-sum-top"><div><div class="sl-big">${salesStatsOpen ? '&#8377;' + totalRevenue.toLocaleString('en-IN') : '&#8377; &bull;&bull;&bull;&bull;'}</div><div class="sl-cap">Total sales &middot; ${salesStatsOpen ? 'Today &#8377;' + todayRevenue.toLocaleString('en-IN') + ' &middot; ' : ''}${totalItemsSold} items</div></div>
           <button type="button" class="sl-eye" onclick="toggleSalesStats()" aria-label="${salesStatsOpen ? 'Hide totals' : 'Show totals'}">${salesStatsOpen ? '&#128584; Hide' : '&#128065; Show'}</button></div>
-        ${salesStatsOpen ? `<div class="sl-kpis2">
-          <div style="display:flex; gap:8px;">${rptTile('&#129534;', 'Total Bill', String(confirmedSales.length), confirmedSales.length ? 'Avg &#8377;' + Math.round(totalRevenue / confirmedSales.length).toLocaleString('en-IN') + ' / bill' : 'No bills yet', '#7a1414')}${rptTile('&#127991;&#65039;', 'Total Discount', totalDiscountGiven, overallDiscountPct + '% of Billed Value', '#1e7a3c')}</div>
-          ${cashUpiSplitHtml(totalCash, totalUpi)}</div>` : ''}
+        ${slDashHtml(confirmedSales, salesStatsOpen)}
+        ${slGraphHtml(confirmedSales, salesStatsOpen)}
+        ${slChipsHtml(confirmedSales, salesStatsOpen)}
       </div>
       <div class="sl-quick"><button type="button" onclick="openSalesHist('items')">&#128230; Item History</button><button type="button" onclick="openSalesHist('sellers')">&#128100; Seller History</button></div>
       <div class="pl-sticky-head">
@@ -10358,14 +10522,7 @@ function renderAdmin(){
         const _d = new Date(s.time), _dt = _d.toLocaleString('en-IN', _d.getFullYear() === new Date().getFullYear() ? { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
         const _pay = s.paymentMethod === 'split' ? '&#128181;+&#128241; Split' : s.paymentMethod === 'upi' ? '&#128241; UPI' : '&#128181; Cash';
         html += `<div class="sale-card sl-card${status === 'confirmed' ? '' : ' sl-off'}">
-            <div class="sl-top" onclick="toggleSaleDetail('${s.id}')">
-              <div class="sl-no">${billNoRef(s)}</div>
-              <div class="sl-mid">
-                <div class="sl-who"><span class="sl-name" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${estEsc(s.sellerName)}</span>${isNew ? ' <span class="new-tag">NEW</span>' : ''}${status === 'confirmed' ? '' : ' ' + statusBadge}${billNoTag(s)}${highDiscTag(s)}${saleEditTag(s)}</div>
-                <div class="sl-sub">${_dt} &middot; ${_pay} &middot; ${_qty} item${_qty === 1 ? '' : 's'}</div>
-              </div>
-              <div class="sl-amt">&#8377;${(Number(s.total) || 0).toLocaleString('en-IN')}${(Number(s.subtotal) || 0) > (Number(s.total) || 0) ? `<small>&#8377;${Number(s.subtotal).toLocaleString('en-IN')}</small>` : ''}</div>
-            </div>
+            ${slTopHtml(s, s.id, `<span class="sl-name" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${estEsc(s.sellerName)}</span>`, isNew)}
             <div class="sale-detail" id="detail-${s.id}">${itemsHtml}
               <div class="sale-card-actions">
                 ${status === 'cancel_pending'
@@ -10417,15 +10574,18 @@ function renderAdmin(){
         const _shownPrice = _vb ? getBranchPrice(ci, ii, _vb) : inv.price;
         const _tags = liveBranches().map(b => {
           const r = branchRule(ci, ii, b.id); if(!r) return '';
-          return r.off
-            ? `<span style="font-size:10px; font-weight:800; background:#fde8e6; color:#b3261e; border-radius:6px; padding:2px 6px; margin-right:4px;">${estEsc(b.short)} &#10005; not sold</span>`
+          return r.off ? ''   // not sold: a small logo beside the name (below)
             : (r.price != null ? `<span style="font-size:10px; font-weight:800; background:#fff3d6; color:#8a5a00; border-radius:6px; padding:2px 6px; margin-right:4px;">${estEsc(b.short)} &#8377;${r.price}</span>` : '');
         }).join('');
-        _rows.push({ serial: serial, price: Number(_shownPrice) || 0, t: itemLastChange(serial), h: `<div class="pe-swipe"><div class="pe-act"><button type="button" onclick="peEdit('${k}')" aria-label="Edit">&#9998;<span>Edit</span></button></div><div class="pe-row" style="${_soldHere ? '' : 'opacity:0.5;'}">
+        const _nsOff = _vb ? [] : liveBranches().filter(b => { const r = branchRule(ci, ii, b.id); return r && r.off; });
+        const _ns = _vb ? (_soldHere ? '' : ' <span class="pe-ns" title="Not sold here" aria-label="Not sold here">&#128683;</span>')
+          : _nsOff.map(b => ` <span class="pe-ns" title="Not sold in ${estEsc(b.name || b.short)}" aria-label="Not sold in ${estEsc(b.name || b.short)}">&#128683;${liveBranches().length > 1 ? '<b>' + estEsc(b.short) + '</b>' : ''}</span>`).join('');
+        const _dim = !_soldHere || (!_vb && _nsOff.length && _nsOff.length === liveBranches().length);
+        _rows.push({ serial: serial, price: Number(_shownPrice) || 0, t: itemLastChange(serial), h: `<div class="pe-swipe"><div class="pe-act"><button type="button" onclick="peEdit('${k}')" aria-label="Edit">&#9998;<span>Edit</span></button></div><div class="pe-row" style="${_dim ? 'opacity:0.55;' : ''}">
             <div class="pe-sn">${serial}</div>
-            <div class="pe-info">
-              <div class="pe-ta">${estEsc(name.ta)}</div>
-              <div class="pe-en">${estEsc(name.en)} &middot; ${estEsc(cn.en)}${_soldHere ? '' : ' &middot; <b style="color:#b3261e;">not sold here</b>'}</div>
+            <div class="pe-info" data-k="${k}">
+              <div class="pe-ta">${estEsc(name.ta)}${_ns}</div>
+              <div class="pe-en">${estEsc(name.en)} &middot; ${estEsc(cn.en)}</div>
               ${_tags ? `<div class="pe-tags">${_tags}</div>` : ''}
             </div>
             ${pePriceHtml(_shownPrice, _offLoc, inv.unit || 'box', k, !!_vb)}
@@ -10535,7 +10695,7 @@ function renderAdmin(){
         </div>
       </div>
       <div class="section-title">Total Sales vs Total Discount${reportFilters.date ? ' — ' + (reportFilters.date === saleLocalDate(new Date()) ? 'Today, ' : '') + new Date(reportFilters.date).toLocaleDateString('en-IN', {dateStyle:'medium'}) : ' (Overall)'}</div>
-      <div class="chart-card">${buildSalesDonutChartSVG(totalPaid, totalDiscountGiven)}${cashUpiSplitHtml(totalCash, totalUpi)}</div>
+      <div class="chart-card">${buildSalesDonutChartSVG(totalPaid, totalDiscountGiven, confirmedSales.length)}${cashUpiSplitHtml(totalCash, totalUpi)}</div>
       <button onclick="shareReportPDF()" style="width:100%; background:var(--maroon); color:#fff8e6; border:none; padding:11px; border-radius:8px; font-size:13px; font-weight:700; margin-top:4px;">${SHARE_ICON_SVG_SM}PDF</button>
 
       <div class="section-title" style="margin-top:26px;">Bank / Loan Report (A4 Income Statement)</div>
@@ -10755,7 +10915,7 @@ function renderAdmin(){
         <div id="restoreBox" style="margin-top:8px;">${restoreCardHtml()}</div>
         <div class="bk2-meta" style="margin:8px 2px 0;">${_bfAt ? 'Last file saved ' + bkDayWhen(_bfAt) + '. ' : ''}Keep the saved file in Google Drive or WhatsApp it to yourself.</div>
       </div>
-      <button class="bk2-more" onclick="_bkMore=!_bkMore; renderAdmin();"><span>&#9881;&#65039; More (Google Sheet, Firebase, Reset)</span><span>${_bkMore ? '&#9652;' : '&#9662;'}</span></button>
+      <button class="bk2-more" onclick="_bkMore=!_bkMore; renderAdmin();"><span>&#9881;&#65039; More (Google Sheet, Firebase)</span><span>${_bkMore ? '&#9652;' : '&#9662;'}</span></button>
       <div style="display:${_bkMore ? 'block' : 'none'};">
       <div class="backup-card" style="background:#eef7ee; border-color:#2e7d32;">
         <div class="section-title" style="margin-top:0; margin-bottom:0; color:#2e7d32; display:flex; align-items:center; justify-content:space-between;"><span>&#128190; Google Sheet Backup (manual)</span><button onclick="bkEyeToggle('sheet')" title="Show / hide" style="width:auto; margin:0; padding:4px 10px; background:#fff; border:1px solid #2e7d32; border-radius:8px; font-size:16px; cursor:pointer;">${_bkShow.sheet?'&#128065;':'&#128584;'}</button></div>
@@ -10782,13 +10942,6 @@ function renderAdmin(){
         <div class="empty-admin" style="text-align:left; padding:8px 4px 0; font-size:11.5px;" id="fbStatus">${firebaseStatusText()}</div>
         <button onclick="testFirebaseConnection()" style="width:100%; padding:11px; margin-top:10px; background:#fff; color:#b45309; border:2px solid #e8710a; border-radius:8px; font-weight:700; cursor:pointer;">&#128268; Test Connection</button>
         <div class="empty-admin" style="text-align:left; padding:8px 4px 0; font-size:12px; line-height:1.6;" id="fbTestResult"></div>
-        </div>
-      </div>
-      <div class="backup-card" style="background:#ffe2e2; border-color:#ffb3a8; margin-top:20px;">
-        <div class="section-title" style="margin-top:0; color:var(--danger);">⚠️ Reset Data</div>
-        <div class="icon-square-row">
-          <button class="icon-square-btn" onclick="resetAllSales()" style="background:var(--danger); color:#fff;" title="Reset All Sales Records">🗑️<span>Sales</span></button>
-          <button class="icon-square-btn" onclick="resetLoginHistory()" style="background:var(--danger); color:#fff;" title="Reset Login History">🗑️<span>Logins</span></button>
         </div>
       </div>
       </div>
@@ -11587,6 +11740,104 @@ function pePriceHtml(price, loc, unit, k, branchView){
   }
   return '<div class="air-meta pe-price"' + tap + '><div class="pe-now"><span class="price-display">&#8377;' + estEsc(price) + '</span></div><div class="pe-unit">/ ' + u + '</div></div>';
 }
+/* ---- Price Edit: long press an item name -> its price history as a simple line graph (date / month and price) ----
+   From the price-change log (normal price). The line holds a price until it changed; dots mark each change. */
+function closePriceGraph(){ var o = document.getElementById('pgOv'); if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
+function priceHistoryPoints(ci, ii){
+  var code = itemCode(ci, ii), serial = itemSerialNo(ci, ii), cur = Number(getBasePrice(ci, ii)) || 0;
+  var ev = (loadJSON('ars_price_changes', []) || []).filter(function(c){
+    if(!c || (c.type !== 'price' && c.type !== 'added')) return false;
+    return (code && c.code) ? String(c.code) === code : Number(c.serial) === Number(serial);
+  }).map(function(c){ return { t: Date.parse(c.time) || 0, type: c.type, old: Number(c.old), nw: Number(c.new), by: c.by || '' }; })
+    .filter(function(c){ return c.t > 0 && !isNaN(c.nw); }).sort(function(a, b){ return a.t - b.t; });
+  return { ev: ev, cur: cur };
+}
+function priceGraphSvg(ev, cur){
+  var now = Date.now(), W = 340, H = 190, L = 44, R = 14, T = 22, B = 30, pts = [];
+  if(!ev.length){ pts = [{ t: now - 30 * 86400000, p: cur }, { t: now, p: cur }]; }
+  else{
+    var f = ev[0], start = f.type === 'added' || isNaN(f.old) ? f.nw : f.old;
+    var span = Math.max(now - f.t, 86400000), t0 = f.t - Math.max(86400000, span * 0.12);
+    pts.push({ t: t0, p: start });
+    ev.forEach(function(c){ var prev = pts[pts.length - 1].p; pts.push({ t: c.t, p: prev }); pts.push({ t: c.t, p: c.nw, dot: 1 }); });
+    pts.push({ t: now, p: cur });
+  }
+  var tMin = pts[0].t, tMax = Math.max(now, pts[pts.length - 1].t), ps = pts.map(function(x){ return x.p; });
+  var pMin = Math.min.apply(null, ps), pMax = Math.max.apply(null, ps);
+  if(pMax === pMin){ pMin = pMin * 0.85; pMax = pMax * 1.15 || 10; } else { var pad = (pMax - pMin) * 0.18; pMin = Math.max(0, pMin - pad); pMax += pad; }
+  var X = function(t){ return L + (t - tMin) / Math.max(1, tMax - tMin) * (W - L - R); }, Y = function(p){ return T + (1 - (p - pMin) / Math.max(1e-9, pMax - pMin)) * (H - T - B); };
+  var inr = function(v){ return '₹' + Math.round(v).toLocaleString('en-IN'); };
+  var mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], dl = function(t){ var d = new Date(t); return d.getDate() + ' ' + mon[d.getMonth()]; };
+  var line = pts.map(function(x, i){ return (i ? 'L' : 'M') + X(x.t).toFixed(1) + ' ' + Y(x.p).toFixed(1); }).join(' ');
+  var area = line + ' L' + X(pts[pts.length - 1].t).toFixed(1) + ' ' + (H - B) + ' L' + X(pts[0].t).toFixed(1) + ' ' + (H - B) + ' Z';
+  var g = '';
+  // grid: 3 price lines
+  for(var i = 0; i <= 2; i++){ var pv = pMin + (pMax - pMin) * i / 2, yy = Y(pv); g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy.toFixed(1) + '" y2="' + yy.toFixed(1) + '" stroke="#eadcc0" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (yy + 3.5).toFixed(1) + '" text-anchor="end" font-size="9.5" fill="#8a6a44">' + inr(pv) + '</text>'; }
+  // month lines (1st of each month inside the range) + the two end dates
+  var m = new Date(tMin); m = new Date(m.getFullYear(), m.getMonth() + 1, 1);
+  while(m.getTime() < tMax){ var xm = X(m.getTime()); g += '<line x1="' + xm.toFixed(1) + '" x2="' + xm.toFixed(1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="#d9c7a3" stroke-dasharray="3 3"/><text x="' + xm.toFixed(1) + '" y="' + (H - B + 13) + '" text-anchor="middle" font-size="10" font-weight="800" fill="#7a1414">' + mon[m.getMonth()] + '</text>'; m = new Date(m.getFullYear(), m.getMonth() + 1, 1); }
+  g += '<text x="' + L + '" y="' + (H - 6) + '" font-size="9.5" fill="#8a6a44">' + dl(tMin) + '</text><text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end" font-size="9.5" fill="#8a6a44">Today</text>';
+  var dots = pts.filter(function(x){ return x.dot; }), lab = dots.length <= 6 ? dots : dots.filter(function(x, i){ return i === 0 || i === dots.length - 1; });
+  var d = dots.map(function(x){ return '<circle cx="' + X(x.t).toFixed(1) + '" cy="' + Y(x.p).toFixed(1) + '" r="4" fill="#fff" stroke="#7a1414" stroke-width="2.2"/>'; }).join('') +
+    lab.map(function(x){ return '<text x="' + X(x.t).toFixed(1) + '" y="' + (Y(x.p) - 8).toFixed(1) + '" text-anchor="middle" font-size="10" font-weight="800" fill="#7a1414">' + inr(x.p) + '</text>'; }).join('');
+  var last = pts[pts.length - 1];
+  if(ev.length) d += '<text x="' + (X(pts[0].t) + 2).toFixed(1) + '" y="' + (Y(pts[0].p) - 7).toFixed(1) + '" font-size="9.5" font-weight="700" fill="#8a6a44">' + inr(pts[0].p) + '</text>';   // the first known price
+  d += '<circle cx="' + X(last.t).toFixed(1) + '" cy="' + Y(last.p).toFixed(1) + '" r="5" fill="#1e7a3c"/>';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pgFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a1414" stop-opacity="0.22"/><stop offset="1" stop-color="#7a1414" stop-opacity="0.02"/></linearGradient></defs>' +
+    g + '<path d="' + area + '" fill="url(#pgFill)"/><path d="' + line + '" fill="none" stroke="#7a1414" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>' + d + '</svg>';
+}
+function openPriceGraph(k){
+  var ci = -1, ii = -1;
+  CATEGORIES.forEach(function(c, a){ c.items.forEach(function(x, b){ if(key(a, b) === k){ ci = a; ii = b; } }); });
+  if(ci < 0) return;
+  closePriceGraph();
+  var nm = getItemName(ci, ii), h = priceHistoryPoints(ci, ii), ev = h.ev, cur = h.cur, unit = estEsc(getUnit(ci, ii) || 'box');
+  var first = ev.length ? (ev[0].type === 'added' || isNaN(ev[0].old) ? ev[0].nw : ev[0].old) : cur, diff = cur - first, pc = first > 0 ? Math.round(diff / first * 1000) / 10 : 0;
+  var inr = function(v){ return '&#8377;' + Math.round(v).toLocaleString('en-IN'); };
+  var chg = !ev.length ? '<span style="color:#8a6a44;">No price change recorded yet</span>'
+    : diff === 0 ? '<span style="color:#8a6a44;">Same as first price (' + inr(first) + ')</span>'
+    : '<span style="color:' + (diff > 0 ? '#b3261e' : '#1e7a3c') + ';">' + (diff > 0 ? '&#9650; +' : '&#9660; &minus;') + inr(Math.abs(diff)) + ' (' + Math.abs(pc) + '%)</span> <span style="color:#8a6a44;">since ' + new Date(ev[0].t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</span>';
+  var rows = ev.slice().reverse().map(function(c){
+    var when = new Date(c.t).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    var what = c.type === 'added' ? 'Added at ' + inr(c.nw) : inr(c.old) + ' &rarr; <b>' + inr(c.nw) + '</b>';
+    return '<div style="display:flex; justify-content:space-between; gap:8px; padding:7px 2px; border-bottom:1px solid #f0e6d3; font-size:12px;"><span style="color:#5b4630;">' + when + (c.by ? ' &middot; ' + estEsc(c.by) : '') + '</span><span style="white-space:nowrap; color:#7a1414;">' + what + '</span></div>';
+  }).join('');
+  var ov = document.createElement('div'); ov.id = 'pgOv'; ov.className = 'pg-ov';
+  ov.innerHTML = '<div class="pg-sheet">' +
+    '<div style="width:42px; height:4px; border-radius:2px; background:#d9c7a6; margin:0 auto 10px;"></div>' +
+    '<div style="display:flex; align-items:center; gap:10px;">' + snDot(itemSerialNo(ci, ii), 26, 12) +
+      '<div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:15px; color:#2a1408; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + estEsc(nm.ta) + '</div><div style="font-size:11.5px; color:#8a6a44; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + estEsc(nm.en) + ' &middot; Price history</div></div>' +
+      '<button type="button" onclick="closePriceGraph()" aria-label="Close" style="flex:0 0 auto; width:34px; height:34px; border:none; border-radius:50%; background:#f1e6d2; color:#7a1414; font-size:15px; font-weight:900; cursor:pointer;">&#10005;</button></div>' +
+    '<div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin:12px 2px 4px;"><div><span style="font-size:24px; font-weight:900; color:#7a1414;">' + inr(cur) + '</span> <span style="font-size:11px; font-weight:700; color:#8a6a44;">/ ' + unit + ' now</span></div><div style="font-size:12px; font-weight:800; text-align:right;">' + chg + '</div></div>' +
+    '<div style="background:#fff; border:1px solid #eadcc0; border-radius:12px; padding:8px 6px 4px;">' + priceGraphSvg(ev, cur) + '</div>' +
+    (rows ? '<div style="font-size:11px; font-weight:800; color:#8a6a44; margin:12px 2px 2px;">Changes (' + ev.length + ')</div>' + rows : '<div style="font-size:12px; color:#8a6a44; margin:10px 2px 0;">Price changes made from now on are shown here.</div>') +
+    '</div>';
+  ov.addEventListener('click', function(e){ if(e.target === ov) closePriceGraph(); });
+  document.body.appendChild(ov);
+  try{ if(!history.state) history.pushState({ arsApp: true }, ''); }catch(e){}   // phone Back closes the graph
+}
+(function priceGraphLongPress(){
+  var tm = null, x0 = 0, y0 = 0, el = null, lastOpen = 0, swallow = false;
+  function clear(){ if(tm){ clearTimeout(tm); tm = null; } el = null; }
+  function fire(k){
+    if(!k || Date.now() - lastOpen < 900) return; lastOpen = Date.now(); swallow = true;   // the finger lifting must not close the graph again
+    try{ peSwipeCloseAll(); }catch(_e){}
+    try{ if(navigator.vibrate) navigator.vibrate(25); }catch(_e){}
+    openPriceGraph(k);
+  }
+  document.addEventListener('pointerdown', function(e){
+    var info = e.target && e.target.closest ? e.target.closest('.pe-info[data-k]') : null; if(!info) return;
+    clear(); el = info; x0 = e.clientX; y0 = e.clientY;
+    tm = setTimeout(function(){ tm = null; var k = el && el.getAttribute('data-k'); el = null; fire(k); }, 480);
+  }, true);
+  document.addEventListener('pointermove', function(e){ if(tm && (Math.abs(e.clientX - x0) > 8 || Math.abs(e.clientY - y0) > 8)) clear(); }, true);
+  document.addEventListener('pointerup', clear, true);
+  document.addEventListener('pointerdown', function(e){ if(swallow && Date.now() - lastOpen > 400) swallow = false; }, true);
+  document.addEventListener('click', function(e){ if(!swallow) return; swallow = false; if(Date.now() - lastOpen > 5000) return; e.preventDefault(); e.stopImmediatePropagation(); }, true);
+  document.addEventListener('pointercancel', clear, true);
+  // a phone's own long-press signal (it can also stop the touch before our timer ends)
+  document.addEventListener('contextmenu', function(e){ var info = e.target && e.target.closest ? e.target.closest('.pe-info[data-k]') : null; if(!info) return; e.preventDefault(); clear(); fire(info.getAttribute('data-k')); }, true);
+})();
 function peEdit(k){ peSwipeCloseAll(); openItemEditModal(k); }
 function peSwipeCloseAll(except){ document.querySelectorAll('.pe-swipe.open').forEach(function(s){ if(s !== except) s.classList.remove('open'); }); }
 (function peSwipeInit(){
@@ -13690,7 +13941,7 @@ function openAddBranchModal(){
     if(_so && _so.style.display === 'flex'){ closeScanOrder(true); return; }
     if(_estPopping){ _estPopping = false; return; }
     if(_pubHist){ publicMenu(true); return; }
-    if(pdfPreviewClose() || closeShareMenu() || closePromoQuick() || closeMySummary()){ stay(); return; }
+    if(pdfPreviewClose() || closeShareMenu() || closePromoQuick() || closeMySummary() || closePriceGraph()){ stay(); return; }
     var appEl = document.getElementById('app'), adminEl = document.getElementById('adminScreen');
     var loggedIn = (typeof session !== 'undefined') && session;
     var _pr = document.getElementById('promoShareOverlay');
