@@ -966,6 +966,7 @@
   .pe-act button span{font-size:11px; letter-spacing:.3px; text-align:center; line-height:1.15;}
   .pe-row{position:relative; display:flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; touch-action:pan-y; user-select:none; -webkit-user-select:none; transition:transform .22s ease; will-change:transform;}
   .pe-swipe.open .pe-row{transform:translateX(-84px);}
+  .pe-row:has(.pe-info[data-k]){cursor:pointer;}
   .pe-sn{flex:0 0 auto; min-width:30px; height:30px; padding:0 5px; box-sizing:border-box; border-radius:15px; background:#fbeed2; color:var(--maroon); font-size:11.5px; font-weight:900; display:flex; align-items:center; justify-content:center;}
   .pe-info{flex:1; min-width:0;}
   .pe-ta{font-size:14px; font-weight:800; color:var(--ink); line-height:1.3;}
@@ -5683,7 +5684,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v96';
+var APP_BUILD = 'v97';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -12197,7 +12198,7 @@ function pePriceHtml(price, loc, unit, k, branchView){
   }
   return '<div class="air-meta pe-price"' + tap + '><div class="pe-now"><span class="price-display">&#8377;' + estEsc(price) + '</span></div><div class="pe-unit">/ ' + u + '</div></div>';
 }
-/* ---- Price Edit: long press an item name -> its price history as a simple line graph (date / month and price) ----
+/* ---- Price Edit: tap (or long press) an item -> its price history as a simple line graph (date / month and price) ----
    From the price-change log (normal price). The line holds a price until it changed; dots mark each change. */
 function priceGraphEdit(k){ closePriceGraph(); peEdit(k); }   // ✏️ on the price history: straight to the item's edit panel
 function closePriceGraph(){ var o = document.getElementById('pgOv'); if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
@@ -12325,7 +12326,7 @@ function peSwipeCloseAll(except){ document.querySelectorAll('.pe-swipe.open').fo
   function end(){
     if(!row) return;
     row.style.transition = ''; row.style.transform = ''; sw.classList.remove('drag');
-    if(mode === 'h'){ var open = (base + dx) < -W / 2; sw.classList.toggle('open', open); if(open) peSwipeCloseAll(sw); }
+    if(mode === 'h'){ var open = (base + dx) < -W / 2; sw.classList.toggle('open', open); if(open) peSwipeCloseAll(sw); _peSwipeAt = Date.now(); }
     row = null; sw = null; mode = '';
   }
   document.addEventListener('pointerdown', function(e){
@@ -12340,11 +12341,21 @@ function peSwipeCloseAll(except){ document.querySelectorAll('.pe-swipe.open').fo
     dx = ddx; sw.classList.add('drag'); row.style.transition = 'none'; row.style.transform = 'translateX(' + Math.max(-W - 16, Math.min(0, base + dx)) + 'px)';
   }, true);
   document.addEventListener('pointerup', function(e){
-    if(row && !mode && sw.classList.contains('open')){ sw.classList.remove('open'); row = null; return; }   // a tap on an open row closes it
+    if(row && !mode && sw.classList.contains('open')){ sw.classList.remove('open'); row = null; _peSwipeAt = Date.now(); return; }   // a tap on an open row closes it
     end();
   }, true);
   document.addEventListener('pointercancel', end, true);
+  // one tap on an item (Price Edit) = its price history graph (swipe left = Edit, as before)
+  document.addEventListener('click', function(e){
+    var r = e.target && e.target.closest ? e.target.closest('.pe-row') : null; if(!r) return;
+    var info = r.querySelector('.pe-info[data-k]'); if(!info) return;
+    if(e.target.closest('input, button, select, textarea, a')) return;
+    if(Date.now() - _peSwipeAt < 450) return;            // the finger was swiping / closing the Edit button
+    if(document.getElementById('pgOv')) return;
+    openPriceGraph(info.getAttribute('data-k'));
+  });
 })();
+var _peSwipeAt = 0;
 function pePriceTap(event, k){
   event.stopPropagation();
   if(event.target && event.target.tagName === 'INPUT') return;           // already editing
