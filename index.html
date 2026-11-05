@@ -2195,6 +2195,30 @@ function fbRefreshUI(what){
    - The whole price list travels as ONE document, so another phone can never
      see new item positions with old prices (or the reverse). */
 let _fbDirty = loadJSON('ars_fb_dirty', {}) || {};
+/* Accounts: a phone sends ONLY the accounts it changed itself (one by one), never its whole list - so a phone that
+   still holds an old account list can never put old user IDs / names / PINs back over everyone's accounts.
+   _usersSnap = the list as it was last received / saved; _usersPend = { id: time } changed here, not yet on the server.
+   Automatic changes (account numbers, PIN hashes) wait until the server's own list has arrived (_fbUsersSeen). */
+var _usersSnap = null, _fbUsersSeen = false;
+var _usersPend = loadJSON('ars_users_pending', {}) || {};
+if(_fbDirty.users){ delete _fbDirty.users; _rawSaveJSON('ars_fb_dirty', _fbDirty); }   // an old "send the whole list" mark is never used again
+function usersSnapNow(){ try{ _usersSnap = JSON.parse(JSON.stringify(USERS || {})); }catch(e){ _usersSnap = {}; } }
+usersSnapNow();
+/* a change that could not reach the server in 12 hours is dropped (an old phone must not send old accounts later) */
+function usersDropStale(){
+  var ks = Object.keys(_usersPend || {}); if(!ks.length) return;
+  var newest = Math.max.apply(null, ks.map(function(k){ return Number(_usersPend[k]) || 0; }));
+  if(Date.now() - newest > 12 * 3600 * 1000){ _usersPend = {}; _rawSaveJSON('ars_users_pending', _usersPend); }
+}
+function usersNoteChanges(){
+  if(!_usersSnap) usersSnapNow();
+  var now = Date.now(), any = false, ids = {};
+  Object.keys(USERS || {}).forEach(function(id){ ids[id] = 1; }); Object.keys(_usersSnap || {}).forEach(function(id){ ids[id] = 1; });
+  Object.keys(ids).forEach(function(id){ if(JSON.stringify((USERS || {})[id]) !== JSON.stringify(_usersSnap[id])){ _usersPend[id] = now; any = true; } });
+  usersSnapNow();
+  if(any) _rawSaveJSON('ars_users_pending', _usersPend);
+  return any;
+}
 var _fbPricelistLive = false;   // true once the server's own price list has been received in this session
 /* Version of the price list this phone holds: the one shipped in this file, or a newer one
    it has since received from the server (so a phone still running an older copy of the app
@@ -2283,14 +2307,32 @@ const FB_DOCS = {
 
 function fbDocChanged(name){
   if(_fbReadOnly) return;
+  if(name === 'users'){ clearTimeout(_fbDocTimers.users); _fbDocTimers.users = setTimeout(function(){ fbPushDoc('users'); }, 150); return; }   // only the changed accounts go (see _usersPend)
   _fbDocSeq[name] = (_fbDocSeq[name] || 0) + 1;
   if(!_fbDirty[name]){ _fbDirty[name] = true; _rawSaveJSON('ars_fb_dirty', _fbDirty); }
   clearTimeout(_fbDocTimers[name]);
   // A single edit often saves 2–4 times in a row (name, price, unit…) — send one upload, not four.
   _fbDocTimers[name] = setTimeout(function(){ fbPushDoc(name); }, 150);
 }
+function fbPushUsers(full){
+  if(!_fbDb || _fbReadOnly) return;
+  if(full){   // the server has no accounts at all (first phone ever)
+    var all; try{ all = fbClean(USERS); }catch(e){ return; }
+    _fbDb.ref('users').set(all).then(function(){ _usersPend = {}; _rawSaveJSON('ars_users_pending', _usersPend); fbNoteOk(); }).catch(fbNoteError);
+    return;
+  }
+  var ids = Object.keys(_usersPend || {}); if(!ids.length) return;
+  var upd = {}, sent = {};
+  ids.forEach(function(id){ if(/[.#$\/\[\]]/.test(id)) return; var u = (USERS || {})[id]; try{ upd[id] = u ? fbClean(u) : null; sent[id] = _usersPend[id]; }catch(e){} });
+  if(!Object.keys(upd).length) return;
+  _fbDb.ref('users').update(upd).then(function(){
+    Object.keys(sent).forEach(function(id){ if(_usersPend[id] === sent[id]) delete _usersPend[id]; });   // changed again meanwhile: send again
+    _rawSaveJSON('ars_users_pending', _usersPend); fbNoteOk();
+  }).catch(fbNoteError);
+}
 function fbPushDoc(name){
   if(!_fbDb || _fbReadOnly) return;
+  if(name === 'users'){ if(_fbUsersSeen) fbPushUsers(false); return; }   // before the server's list arrives nothing is sent
   var doc = FB_DOCS[name], seq = _fbDocSeq[name] || 0, data;
   try{ data = fbClean(doc.get()); }catch(e){ return; }
   _fbDb.ref(doc.path).set(data).then(function(){
@@ -2306,6 +2348,15 @@ function fbPushDoc(name){
 }
 function fbOnDocValue(name, remote){
   var doc = FB_DOCS[name];
+  if(name === 'users'){
+    var first = !_fbUsersSeen; _fbUsersSeen = true;
+    if(fbCanon(remote) === undefined){ if(!doc.isEmpty() && !_fbReadOnly) fbPushUsers(true); return; }
+    usersDropStale();
+    if(Object.keys(_usersPend).length && !_fbReadOnly) fbPushUsers(false);   // this phone's own account changes (only those accounts)
+    if(!fbSame(remote, USERS)) applyRemoteUsers(remote); else if(!_usersSnap) usersSnapNow();
+    if(first && typeof session !== 'undefined' && session && session.role === 'admin'){ try{ var _ch = usersHashPins(); if(ensureUserPids() || _ch) saveJSON('ars_users', USERS); stampSellerPids(); usersRepairPids(); }catch(e){} }
+    return;
+  }
   if(fbCanon(remote) === undefined){
     // Nothing on the server yet (first ever connection) — upload what this phone has.
     if(name === 'pricelist'){ plMarkLive(); }
@@ -2353,14 +2404,17 @@ function applyRemotePricelist(r){
 }
 function applyRemoteUsers(r){
   var users = fbToObj(r);
+  usersDropStale();
+  if(Object.keys(_usersPend || {}).length){ users = JSON.parse(JSON.stringify(users)); Object.keys(_usersPend).forEach(function(id){ if(USERS[id]) users[id] = JSON.parse(JSON.stringify(USERS[id])); else delete users[id]; }); }   // this phone's own changes, not on the server yet
   // Never accept an account list with no admin in it — that would lock everyone out.
   var hasAdmin = Object.keys(users).some(function(id){ return users[id] && users[id].role === 'admin'; });
   if(!hasAdmin) return;
   USERS = users;
   _rawSaveJSON('ars_users', USERS);
+  usersSnapNow();
   fbRefreshUI('accounts');
   try{ enforceSessionAgainstUsers(); }catch(e){}
-  if(typeof session !== 'undefined' && session && session.role === 'admin' && usersHashPins()) saveJSON('ars_users', USERS);   // an older phone added a plain PIN
+  if(_fbUsersSeen && typeof session !== 'undefined' && session && session.role === 'admin' && usersHashPins()) saveJSON('ars_users', USERS);   // an older phone added a plain PIN
 }
 function applyRemoteUpi(r){
   if(!r || typeof r !== 'object') return;
@@ -2820,6 +2874,10 @@ async function bkRestore(data, types, overwrite){
     if(!want[typ] || bk == null || mode === 2) continue;
     var cur = (await fbTimeout(_fbDb.ref(name).once('value'), 60000, 'Restore')).val();
     if(mode === 1 && typeof bk === 'object'){
+      if(name === 'users' && overwrite && cur && typeof cur === 'object'){   // accounts: exactly as in the backup
+        var _hasAdm = Object.keys(bk).some(function(k){ return bk[k] && bk[k].role === 'admin'; });
+        if(_hasAdm) Object.keys(cur).forEach(function(k){ if(bk[k] == null){ upd['users/' + k] = null; got[typ] = (got[typ] || 0) + 1; } });
+      }
       Object.keys(bk).forEach(function(k){
         if(cur && cur[k] != null && !overwrite) return;
         if(cur && cur[k] != null && (name === 'sales' || name === 'loginHistory') && (saleProtected(cur[k]) || saleProtected(bk[k]))) return;   // locked year
@@ -2953,7 +3011,7 @@ async function bkRestoreGo(btn){
   var types = [].slice.call(document.querySelectorAll('#bkRestoreOv .bkT')).filter(function(x){ return x.checked; }).map(function(x){ return x.value; });
   if(!types.length){ alert('Tick at least one type.'); return; }
   var over = !!(document.querySelector('#bkRestoreOv input[name=bkMode]:checked') || {}).value && document.querySelector('#bkRestoreOv input[name=bkMode]:checked').value === 'over';
-  if(over && !(await showConfirm('Overwrite the server with this backup for the ticked types?\nChanges made after the backup go back to the backup copy. New bills are kept.'))) return;
+  if(over && !(await showConfirm('Overwrite the server with this backup for the ticked types?\nChanges made after the backup go back to the backup copy. New bills are kept.' + (types.indexOf('accounts') >= 0 ? '\nAccounts: user IDs, names and PINs become exactly as in this backup (accounts not in it are removed).' : '')))) return;
   if(!_fbDb){ alert('Connect to the internet first.'); return; }
   var old = btn.innerHTML; btn.disabled = true; btn.innerHTML = 'Restoring&hellip;';
   try{
@@ -3759,7 +3817,7 @@ saveJSON = function(key, val){
       schedulePriceChangeDiff();
       fbDocChanged('pricelist');
     }
-    else if(key === 'ars_users') fbDocChanged('users');
+    else if(key === 'ars_users'){ if(usersNoteChanges()) fbDocChanged('users'); }
     else if(key === 'ars_upi') fbDocChanged('upi');
     else if(key === 'ars_promo') fbDocChanged('promo');
     else if(key === 'ars_offer') fbDocChanged('offer');
@@ -4569,11 +4627,12 @@ async function fetchLatestUsers(){
   await fbTimeout(ensureFirebaseLib(), 10000, 'Loading');
   initFirebase();
   if(!_fbDb) throw new Error('no db');
-  // a local, not-yet-uploaded account change must win over the server copy
-  if(_fbDirty.users && Object.keys(USERS).length){ fbPushDoc('users'); return 'local'; }
   const snap = await fbTimeout(_fbDb.ref('users').once('value'), 10000, 'Users');
   const remote = snap.val();
+  _fbUsersSeen = true;
   if(fbCanon(remote) === undefined){ return 'empty'; }   // nothing on server yet - this phone's list is the first
+  usersDropStale();
+  if(Object.keys(_usersPend).length && !_fbReadOnly) fbPushUsers(false);   // only the accounts changed on this phone
   applyRemoteUsers(remote);
   return 'ok';
 }
@@ -4798,7 +4857,7 @@ function enterApp(){
   } else {
     hideSyncWaitBanner();                  // prices were confirmed recently; live updates keep arriving in the background
   }
-  if(session && session.role === 'admin'){ fbAttachAdminColls(); if(usersHashPins()) saveJSON('ars_users', USERS); }
+  if(session && session.role === 'admin'){ fbAttachAdminColls(); if(_fbUsersSeen && usersHashPins()) saveJSON('ars_users', USERS); }
   else { try{ var _tr = salesTrimForPhone(loadJSON('ars_sales', []) || []); if(_tr.length !== SALES.length){ SALES = _tr; _rawSaveJSON('ars_sales', SALES); } }catch(e){} }
   setTimeout(function(){ try{ markAppOpen(); lastSeenAttach(); }catch(e){} }, 1200);
   setTimeout(function(){ try{ bkAutoMaybe(); }catch(e){} }, 20000);   // main admin: today's full server backup, by itself   // opened after 1 hour+ (or a login): save the open time
@@ -5546,7 +5605,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v91';
+var APP_BUILD = 'v92';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -9127,7 +9186,7 @@ function closeQtySheets(){
   try{ _pubSheetSn = null; var b = document.getElementById('pubQtySheet'); if(b) b.style.display = 'none'; }catch(e){}
 }
 function showAdmin(){
-  try{ if(session && session.role === 'admin'){ ensureUserPids(); stampSellerPids(); } }catch(e){}
+  try{ if(session && session.role === 'admin' && (_fbUsersSeen || !FB_CONFIG)){ ensureUserPids(); stampSellerPids(); usersRepairPids(); } }catch(e){}   // only with the server's own account list
   closeQtySheets();
   adminItemsBranch = adminScope() || '';                 // a branch's own price view never sticks
   salesStatsOpen = false;                                // Sales totals start hidden (eye button shows them)
@@ -9353,6 +9412,22 @@ function ensureUserPids(){
 }
 /* Old bills get the account number of their person before that person is renamed or removed. Only a bill's own
    number field is written to the server (the rest of the bill is left exactly as the server has it). */
+/* Bills from the last few days that carry an account number no account has any more (an old phone gave out new
+   numbers for a while) get their person's real number back - only when that same account still exists. */
+function usersRepairPids(){
+  var have = {}; Object.keys(USERS || {}).forEach(function(id){ var p = (USERS[id] || {}).pid; if(p) have[p] = id; });
+  var since = Date.now() - 4 * 86400000, fixed = [];
+  (SALES || []).forEach(function(s){
+    if(!s || !s.sellerPid || have[s.sellerPid] || !USERS[s.sellerId] || !USERS[s.sellerId].pid) return;
+    if(!(Date.parse(s.time) > since)) return;
+    s.sellerPid = USERS[s.sellerId].pid; fixed.push(s);
+  });
+  if(!fixed.length) return;
+  _rawSaveJSON('ars_sales', SALES);
+  try{ var rem = FB_COLL.sales && FB_COLL.sales.remote;
+    if(_fbDb && !_fbReadOnly) fixed.forEach(function(s){ if(rem && rem.has && rem.has(s.id)) _fbDb.ref('sales/' + fbSafeKey(s.id) + '/sellerPid').set(s.sellerPid).catch(function(){}); });
+  }catch(e){}
+}
 function stampSellerPids(onlyId){
   var stamped = [];
   (SALES || []).forEach(function(s){
