@@ -838,6 +838,25 @@
   .mi-box{background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden; margin:0 0 12px;}
   .mi-row{display:flex; align-items:center; gap:10px; padding:10px 12px; border-top:1px solid #f1e6d2; cursor:pointer;}
   .mi-row:first-child{border-top:none;}
+  .mi-row[data-lp]{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+  .mi-out{flex:0 0 auto; display:inline-flex; align-items:center; gap:3px; height:30px; padding:0 8px; border-radius:15px; border:1.5px solid #e9b4ae; background:#fff5f4; color:#b3261e; cursor:pointer;}
+  .mi-out b{font-size:11.5px; font-weight:900;}
+  .ld-all{display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin:12px 0 4px; padding:11px; border:none; border-radius:11px; background:#b3261e; color:#fff; font-weight:800; font-size:13.5px; cursor:pointer;}
+  .ld-row{background:#fff; border:1.5px solid #eadcc0; border-radius:12px; padding:10px; margin-top:10px;}
+  .ld-row.blk{border-color:#e9b4ae; background:#fff7f6;}
+  .ld-top{display:flex; align-items:flex-start; gap:8px;}
+  .ld-ic{font-size:20px; line-height:1.1;}
+  .ld-name{font-weight:800; font-size:13.5px; color:#2a1408; word-break:break-word;}
+  .ld-st{display:inline-block; margin-top:2px; font-size:11.5px; font-weight:800;}
+  .ld-st.on{color:#1e7a3c;} .ld-st.so{color:#8a6a44;} .ld-st.bl{color:#b3261e;}
+  .ld-tag{display:inline-block; padding:1px 7px; border-radius:9px; font-size:10px; font-weight:900; vertical-align:middle;}
+  .ld-tag.first{background:#fff3d6; color:#9a6b00;} .ld-tag.me{background:#e8f3ec; color:#1e7a3c; padding:4px 10px; font-size:11px;}
+  .ld-grid{display:grid; grid-template-columns:auto 1fr; gap:3px 12px; margin:8px 0 0 28px; font-size:12px;}
+  .ld-grid span{color:#8a6a44;} .ld-grid b{color:#3a2a14; font-weight:800;}
+  .ld-oth{margin:6px 0 0 28px; font-size:11.5px; color:#b45309; font-weight:700;}
+  .ld-btns{display:flex; gap:8px; justify-content:flex-end; margin-top:8px; flex-wrap:wrap;}
+  .ld-btn{display:inline-flex; align-items:center; gap:5px; padding:7px 12px; border-radius:16px; border:1.5px solid #c9b48f; background:#fff; color:#5b4630; font-weight:800; font-size:12px; cursor:pointer;}
+  .ld-btn.out{border-color:#e9b4ae; color:#b3261e;} .ld-btn.bl{border-color:#b3261e; background:#b3261e; color:#fff;}
   .mi-row.on{background:#fff3d6;}
   .mi-av{flex:0 0 auto; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:900; color:#fff; position:relative; text-transform:uppercase;}
   .mi-av.admin{background:var(--maroon);} .mi-av.seller{background:#1e7a3c;} .mi-av.off{background:#c9b99a;}
@@ -1855,6 +1874,28 @@ function saleProtected(s){ return yearLockAny() && !!s && yearLockOn(recYear(s))
 /* Bill numbers start again from 1 every new year from 2027 on: the series of 2027 is "main_2027" (2026 keeps "main"). */
 function billSeriesKey(bid, year){ bid = bid || 'main'; year = Number(year) || new Date().getFullYear(); return year >= 2027 ? bid + '_' + year : bid; }
 function billSeriesOf(s){ return billSeriesKey((s && s.branchId) || 'main', recYear(s)); }
+/* Login control (Login History tab): the admin signs a person out of all phones or of one phone, or blocks an unwanted
+   phone. settings/loginControl = { out: { <user>: { all: time, dev: { <phone>: time } } }, block: { <phone>: { at, by, label } }, v }.
+   Times are the server's clock; a phone compares them in its own clock (server offset), so a wrong phone clock does not matter.
+   Login history itself is never changed. */
+var LOGIN_CTL = loadJSON('ars_login_ctl', {}) || {};
+var _fbTimeOff = 0, _fbTimeOffKnown = false;
+function myDeviceId(){ try{ var d = localStorage.getItem('ars_device_id'); if(!d){ d = 'D' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); localStorage.setItem('ars_device_id', d); } return d; }catch(e){ return ''; } }
+function loginCtlBlock(dev){ var b = dev && (LOGIN_CTL.block || {})[dev]; return b && b.at ? b : null; }
+function loginCtlOutAt(uid, dev){   // server time of the newest sign-out for this person (all phones or this phone)
+  var o = (LOGIN_CTL.out || {})[fbSafeKey(uid)]; if(!o) return 0;
+  return Math.max(Number(o.all) || 0, Number((o.dev || {})[dev]) || 0);
+}
+function loginCtlCheck(){
+  if(typeof session === 'undefined' || !session) return;
+  var app = document.getElementById('app'), adm = document.getElementById('adminScreen');
+  if(!app || !adm || (app.classList.contains('hidden') && adm.classList.contains('hidden'))) return;
+  var dev = myDeviceId();
+  if(loginCtlBlock(dev)){ forceLogout('\u26D4 This phone is blocked by the admin. / \u0B87\u0BA8\u0BCD\u0BA4 \u0BAA\u0BCB\u0BA9\u0BCD \u0BA4\u0B9F\u0BC1\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1.'); return; }
+  if(!_fbTimeOffKnown) return;
+  var out = loginCtlOutAt(session.id, dev);
+  if(out && out - _fbTimeOff > (Number(session.at) || 0)) forceLogout('You were signed out by the admin. Please login again. / \u0BA8\u0BBF\u0BB0\u0BCD\u0BB5\u0BBE\u0B95\u0BBF \u0B89\u0B99\u0BCD\u0B95\u0BB3\u0BC8 \u0BB5\u0BC6\u0BB3\u0BBF\u0BAF\u0BC7\u0BB1\u0BCD\u0BB1\u0BBF\u0BA9\u0BBE\u0BB0\u0BCD.');
+}
 /* Backup tab -> Year lock. Shows by itself once a past year has bills or logins (from 2027). Locking a year hides its bills
    and login history everywhere and nobody can change or delete them. Unlock (admin password) opens it to view for 24 hours,
    then it locks itself again. */
@@ -2284,6 +2325,12 @@ const FB_DOCS = {
     get: function(){ return PID_SEQ; },
     isEmpty: function(){ return !PID_SEQ || !(PID_SEQ.S || PID_SEQ.A); },
     apply: function(r){ if(!r || typeof r !== 'object') return; Object.keys(r).forEach(function(k){ if((Number(r[k]) || 0) > (PID_SEQ[k] || 0)) PID_SEQ[k] = Number(r[k]); }); _rawSaveJSON('ars_pid_seq', PID_SEQ); }
+  },
+  logctl: {
+    path: 'settings/loginControl',
+    get: function(){ return LOGIN_CTL; },
+    isEmpty: function(){ return true; },   // only written path by path (never the whole list from a phone)
+    apply: function(r){ LOGIN_CTL = (r && typeof r === 'object') ? r : {}; _rawSaveJSON('ars_login_ctl', LOGIN_CTL); loginCtlCheck(); loginCtlRefresh(); }
   },
   yearlock: {
     path: 'settings/yearLock',
@@ -3362,6 +3409,7 @@ function initFirebase(opts){
   }catch(e){}
   try{
     _fbDb = firebase.database();
+    _fbDb.ref('.info/serverTimeOffset').on('value', function(s){ _fbTimeOff = Number(s.val()) || 0; _fbTimeOffKnown = true; try{ loginCtlCheck(); }catch(e){} });
 
     // Connection state, so the admin can see at a glance whether it's live.
     _fbDb.ref('.info/connected').on('value', function(snap){
@@ -4698,8 +4746,9 @@ async function attemptLogin(){
     if(!USERS[id]){ const low = idRaw.toLowerCase(); id = Object.keys(USERS).filter(function(k){ return k.toLowerCase() === low; })[0] || idRaw; }
     const u = USERS[id];
     if(!u || !(u === _quickU || pinCheck(u, pin))){ err.textContent = 'Invalid ID / PIN. / தவறான ID / PIN.'; return; }
+    if(loginCtlBlock(myDeviceId())){ err.textContent = '\u26D4 This phone is blocked by the admin. Ask the admin. / \u0B87\u0BA8\u0BCD\u0BA4 \u0BAA\u0BCB\u0BA9\u0BCD \u0BA4\u0B9F\u0BC1\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1.'; return; }
     err.textContent = '';
-    session = {id, name:u.name, role:u.role, pinHash: u.pinHash || pinHashFor(id, pin), day: arsToday()};
+    session = {id, name:u.name, role:u.role, pinHash: u.pinHash || pinHashFor(id, pin), day: arsToday(), at: Date.now(), dev: myDeviceId()};
     saveJSON('ars_session', session);
     saveJSON('ars_last_login', {id});
     _rawSaveJSON('ars_last_use', 0);                       // a login always counts as opening the app
@@ -4813,7 +4862,7 @@ document.addEventListener('visibilitychange', function(){
 });
 var _lastTapAt = 0;
 document.addEventListener('pointerdown', function(){ _lastTapAt = Date.now(); if(session) noteAppUse(); }, true);
-setInterval(function(){ if(session){ sellerDayTick(); lastSeenSend(); lastSeenAttach(); try{ bkAutoMaybe(); }catch(e){} } }, 60000);
+setInterval(function(){ if(session){ sellerDayTick(); lastSeenSend(); lastSeenAttach(); try{ bkAutoMaybe(); }catch(e){} try{ loginCtlCheck(); }catch(e){} } }, 60000);
 function forceLogout(msg){
   session = null;
   saveJSON('ars_session', null);
@@ -5634,7 +5683,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v94';
+var APP_BUILD = 'v96';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -10212,6 +10261,138 @@ function salesRecordsScope(){
    today, all logins, phones used). Tap a person to see only their logins. ---- */
 var loginFilterId = '';
 function loginPick(id){ loginFilterId = loginFilterId === id ? '' : id; listReset('logins'); renderAdmin(); }
+var LOGOUT_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>';
+/* one line per phone this person logged in from (first login first) */
+function loginPhones(uid){
+  var all = (LOGIN_HISTORY || []).filter(function(l){ return l && !saleHidden(l); }), by = {}, today = saleLocalDate(new Date());
+  all.forEach(function(l){
+    var k = (l.device && (l.device.deviceId || deviceLabel(l.device))) || 'unknown';
+    if(l.id !== uid){ if(by[k]) by[k].others[l.name || l.id] = 1; return; }
+    var t = Date.parse(l.time) || 0, e = by[k] || (by[k] = { key: k, dev: (l.device && l.device.deviceId) || '', first: t, last: t, n: 0, info: l.device || {}, others: {} });
+    e.n++; if(t < e.first) e.first = t; if(t >= e.last){ e.last = t; e.info = l.device || e.info; }
+  });
+  all.forEach(function(l){ if(l.id === uid) return; var k = (l.device && (l.device.deviceId || deviceLabel(l.device))) || 'unknown'; if(by[k]) by[k].others[l.name || l.id] = 1; });
+  var u = USERS[uid] || {}, role = u.role || 'seller';
+  return Object.keys(by).map(function(k){
+    var e = by[k], out = loginCtlOutAt(uid, e.dev);
+    e.blocked = !!loginCtlBlock(e.dev);
+    e.signedOut = !!out && out >= e.last;
+    e.outAt = out;
+    e.dayOver = role !== 'admin' && saleLocalDate(new Date(e.last)) !== today;
+    e.active = !e.blocked && !e.signedOut && !e.dayOver && !!e.dev;
+    e.mine = !!e.dev && e.dev === myDeviceId() && session && session.id === uid;
+    return e;
+  }).sort(function(a, b){ return a.first - b.first; });
+}
+function loginActivePhones(uid){ try{ return loginPhones(uid).filter(function(e){ return e.active && !e.mine; }); }catch(e){ return []; } }
+function loginWhen(t){
+  if(!t) return '-';
+  var d = new Date(t), tm = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }), today = saleLocalDate(new Date());
+  if(saleLocalDate(d) === today) return 'Today, ' + tm;
+  if(saleLocalDate(new Date(Date.now() - 86400000)) === saleLocalDate(d)) return 'Yesterday, ' + tm;
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + tm;
+}
+var _ldUid = '';
+function closeLoginDevices(){ var o = document.getElementById('ldOv'); _ldUid = ''; if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
+function loginCtlRefresh(){
+  try{ if(_ldUid && document.getElementById('ldOv')) openLoginDevices(_ldUid, true); }catch(e){}
+  try{ if(typeof adminTab !== 'undefined' && adminTab === 'logins' && !document.getElementById('adminScreen').classList.contains('hidden')) renderAdmin(); }catch(e){}
+}
+function openLoginDevices(uid, refresh){
+  var u = USERS[uid] || {}, list = loginPhones(uid), nm = u.name || uid, self = session && session.id === uid;
+  var sc = refresh && document.querySelector('#ldOv .pg-sheet') ? document.querySelector('#ldOv .pg-sheet').scrollTop : 0;
+  closeLoginDevices(); _ldUid = uid;
+  var act = list.filter(function(e){ return e.active && !e.mine; }).length;
+  var rows = list.map(function(e, i){
+    var lbl = deviceLabel(e.info) || (e.dev ? 'Phone ' + e.dev.slice(-5) : 'Unknown phone');
+    var st = e.blocked ? '<span class="ld-st bl">&#9940; Blocked</span>'
+      : e.signedOut ? '<span class="ld-st so">Signed out &middot; ' + loginWhen(e.outAt) + '</span>'
+      : e.dayOver ? '<span class="ld-st so">Day over</span>'
+      : '<span class="ld-st on">&#9679; Signed in</span>';
+    var others = Object.keys(e.others);
+    var btns = e.mine ? '<span class="ld-tag me">This phone</span>' :
+      ((e.active ? '<button type="button" class="ld-btn out" onclick="loginSignOutDev(\'' + String(uid).replace(/'/g, '') + '\', \'' + e.dev + '\')">' + LOGOUT_SVG + ' Sign out</button>' : '') +
+       (e.dev && !(e.dev === myDeviceId()) ? (e.blocked ? '<button type="button" class="ld-btn" onclick="loginBlockDev(\'' + e.dev + '\', false)">&#10003; Unblock</button>' : '<button type="button" class="ld-btn bl" onclick="loginBlockDev(\'' + e.dev + '\', true, \'' + custEsc(lbl).replace(/'/g, '') + '\')">&#9940; Block</button>') : ''));
+    return '<div class="ld-row' + (e.blocked ? ' blk' : '') + '">' +
+      '<div class="ld-top"><span class="ld-ic">&#128241;</span><div style="flex:1; min-width:0;"><div class="ld-name">' + estEsc(lbl) + (i === 0 ? ' <span class="ld-tag first">First phone</span>' : '') + '</div>' + st + '</div></div>' +
+      '<div class="ld-grid"><span>First login</span><b>' + loginWhen(e.first) + '</b><span>Last login</span><b>' + loginWhen(e.last) + '</b><span>Logins</span><b>' + e.n + '</b></div>' +
+      (others.length ? '<div class="ld-oth">Also used by: ' + others.map(estEsc).join(', ') + '</div>' : '') +
+      (btns ? '<div class="ld-btns">' + btns + '</div>' : '') + '</div>';
+  }).join('');
+  var ov = document.createElement('div'); ov.id = 'ldOv'; ov.className = 'pg-ov';
+  ov.innerHTML = '<div class="pg-sheet">' +
+    '<div style="width:42px; height:4px; border-radius:2px; background:#d9c7a6; margin:0 auto 10px;"></div>' +
+    '<div style="display:flex; align-items:center; gap:10px;"><div class="mi-av ' + (u.role === 'admin' ? 'admin' : 'seller') + '">' + custEsc(String(nm).trim().charAt(0) || '?') + '</div>' +
+      '<div style="flex:1; min-width:0;"><div style="font-weight:900; font-size:16px; color:#2a1408;">' + estEsc(nm) + ' <small style="font-size:11px; color:#8a6a44;">' + (u.role === 'admin' ? 'Admin' : 'Seller') + (u.pid ? ' &middot; ' + estEsc(u.pid) : '') + '</small></div>' +
+      '<div style="font-size:11.5px; color:#8a6a44;">' + list.length + ' phone' + (list.length === 1 ? '' : 's') + ' used &middot; ' + act + ' signed in now' + (self ? ' (other phones)' : '') + '</div></div>' +
+      '<button type="button" onclick="closeLoginDevices()" aria-label="Close" style="flex:0 0 auto; width:34px; height:34px; border:none; border-radius:50%; background:#f1e6d2; color:#7a1414; font-size:15px; font-weight:900; cursor:pointer;">&#10005;</button></div>' +
+    (act ? '<button type="button" class="ld-all" onclick="loginSignOutAll(\'' + String(uid).replace(/'/g, '') + '\')">' + LOGOUT_SVG + ' Sign out from all ' + (self ? 'other ' : '') + 'phones (' + act + ')</button>' : '') +
+    (rows || '<div style="font-size:12.5px; color:#8a6a44; margin:14px 2px;">No logins yet.</div>') +
+    '<div style="font-size:11px; color:#8a6a44; margin:10px 2px 0;">Login history is kept as it is. After a sign out, the next login counts as new.</div></div>';
+  ov.addEventListener('click', function(e){ if(e.target === ov) closeLoginDevices(); });
+  document.body.appendChild(ov);
+  if(sc){ var sh = ov.querySelector('.pg-sheet'); if(sh) sh.scrollTop = sc; }
+  if(!refresh){ try{ if(!history.state) history.pushState({ arsApp: true }, ''); }catch(e){} }
+}
+function loginCtlTs(){ try{ return firebase.database.ServerValue.TIMESTAMP; }catch(e){ return Date.now(); } }
+async function loginCtlWrite(upd, local){
+  if(!_fbDb || _fbReadOnly){ alert('Connect to the internet first.'); return false; }
+  upd.v = loginCtlTs();   // the list never becomes empty (an empty list would not reach the phones)
+  try{ await fbTimeout(_fbDb.ref('settings/loginControl').update(upd), 15000, 'Save'); }
+  catch(e){ alert('Could not save: ' + ((e && e.message) || e)); return false; }
+  try{ local(); _rawSaveJSON('ars_login_ctl', LOGIN_CTL); }catch(e){}
+  loginCtlRefresh();
+  return true;
+}
+async function loginSignOutAll(uid, ev){
+  if(ev){ ev.stopPropagation(); ev.preventDefault(); }
+  var u = USERS[uid] || {}, nm = u.name || uid, self = session && session.id === uid;
+  var phones = loginActivePhones(uid);
+  if(!(await showConfirm('Sign out ' + nm + ' from all ' + (self ? 'other ' : '') + 'phones?\n\n' + phones.length + ' phone(s) signed in now. They must log in again with their ID and password.\nLogin history is not changed.'))) return;
+  var key = fbSafeKey(uid), upd = {}, now = Date.now();
+  if(self){ phones.forEach(function(e){ upd['out/' + key + '/dev/' + e.dev] = loginCtlTs(); }); if(!Object.keys(upd).length) return; }
+  else upd['out/' + key + '/all'] = loginCtlTs();
+  upd['out/' + key + '/by'] = (session && session.name) || '';
+  await loginCtlWrite(upd, function(){
+    LOGIN_CTL.out = LOGIN_CTL.out || {}; var o = LOGIN_CTL.out[key] = LOGIN_CTL.out[key] || {};
+    if(self){ o.dev = o.dev || {}; phones.forEach(function(e){ o.dev[e.dev] = now; }); } else o.all = now;
+  });
+  showAdminNotification('\u2713 ' + nm + ' signed out');
+}
+async function loginSignOutDev(uid, dev){
+  if(!dev) return;
+  var u = USERS[uid] || {}, nm = u.name || uid, key = fbSafeKey(uid), now = Date.now(), upd = {};
+  if(!(await showConfirm('Sign out ' + nm + ' from this phone?'))) return;
+  upd['out/' + key + '/dev/' + dev] = loginCtlTs(); upd['out/' + key + '/by'] = (session && session.name) || '';
+  await loginCtlWrite(upd, function(){ LOGIN_CTL.out = LOGIN_CTL.out || {}; var o = LOGIN_CTL.out[key] = LOGIN_CTL.out[key] || {}; o.dev = o.dev || {}; o.dev[dev] = now; });
+  showAdminNotification('\u2713 Signed out');
+}
+async function loginBlockDev(dev, on, label){
+  if(!dev) return;
+  if(on && dev === myDeviceId()){ alert('This is your own phone - it cannot be blocked.'); return; }
+  if(!(await showConfirm(on ? '\u26D4 Block this phone?\n\n' + (label || '') + '\nNobody can log in on it (any account) until you unblock it. Anyone using it now is signed out.' : 'Unblock this phone? It can log in again.'))) return;
+  var upd = {}, now = Date.now();
+  upd['block/' + dev] = on ? { at: loginCtlTs(), by: (session && session.name) || '', label: String(label || '').slice(0, 80) } : null;
+  await loginCtlWrite(upd, function(){ LOGIN_CTL.block = LOGIN_CTL.block || {}; if(on) LOGIN_CTL.block[dev] = { at: now, by: (session && session.name) || '', label: label || '' }; else delete LOGIN_CTL.block[dev]; });
+}
+/* long press a person in Login History = the phones they used */
+(function loginRowLongPress(){
+  var tm = null, x0 = 0, y0 = 0, el = null, lastOpen = 0, swallow = false;
+  function clear(){ if(tm){ clearTimeout(tm); tm = null; } el = null; }
+  function fire(id){ if(!id || Date.now() - lastOpen < 900) return; lastOpen = Date.now(); swallow = true; try{ if(navigator.vibrate) navigator.vibrate(25); }catch(_e){} openLoginDevices(id); }
+  function row(e){ return e.target && e.target.closest ? e.target.closest('.mi-row[data-lp]') : null; }
+  document.addEventListener('pointerdown', function(e){
+    if(e.target && e.target.closest && e.target.closest('.mi-out')) return;
+    var r = row(e); if(!r) return; clear(); el = r; x0 = e.clientX; y0 = e.clientY;
+    tm = setTimeout(function(){ tm = null; var id = el && el.getAttribute('data-lp'); el = null; fire(id); }, 480);
+  }, true);
+  document.addEventListener('pointermove', function(e){ if(tm && (Math.abs(e.clientX - x0) > 8 || Math.abs(e.clientY - y0) > 8)) clear(); }, true);
+  document.addEventListener('pointerup', clear, true);
+  document.addEventListener('pointercancel', clear, true);
+  document.addEventListener('pointerdown', function(){ if(swallow && Date.now() - lastOpen > 400) swallow = false; }, true);
+  document.addEventListener('click', function(e){ if(!swallow) return; swallow = false; if(Date.now() - lastOpen > 5000) return; e.preventDefault(); e.stopImmediatePropagation(); }, true);
+  document.addEventListener('contextmenu', function(e){ var r = row(e); if(!r) return; e.preventDefault(); clear(); fire(r.getAttribute('data-lp')); }, true);
+})();
 function loginSummaryHtml(){
   var list = (LOGIN_HISTORY || []).filter(function(l){ return !saleHidden(l); }), today = saleLocalDate(new Date()), by = {}, devs = {}, devsToday = {}, todayN = 0;
   Object.keys(USERS || {}).forEach(function(id){ var u = USERS[id] || {}; by[id] = { id: id, name: u.name || id, role: u.role || 'seller', n: 0, nToday: 0, last: '', dev: {} }; });
@@ -10220,7 +10401,9 @@ function loginSummaryHtml(){
     var p = by[l.id] || (by[l.id] = { id: l.id, name: l.name || l.id, role: l.role || 'seller', n: 0, nToday: 0, last: '', dev: {}, gone: true });
     p.n++; if(!p.last || String(l.time) > p.last) p.last = String(l.time);
     var d = (l.device && (l.device.deviceId || deviceLabel(l.device))) || '';
-    if(d){ p.dev[d] = 1; devs[d] = 1; }
+    var _all = Number(((LOGIN_CTL.out || {})[fbSafeKey(l.id)] || {}).all) || 0;
+    if(d && (Date.parse(l.time) || 0) > _all) p.dev[d] = 1;   // phones counted again from the last "sign out all"
+    if(d) devs[d] = 1;
     if(saleLocalDate(l.time) === today){ p.nToday++; todayN++; if(d) devsToday[d] = 1; }
   });
   var people = Object.keys(by).map(function(k){ var p = by[k], ls = (LAST_SEEN || {})[fbSafeKey(p.id)]; p.open = (ls && ls.time && (Date.parse(ls.time) || 0) > (Date.parse(p.last) || 0) + 120000) ? String(ls.time) : ''; p.act = p.open || p.last; return p; });
@@ -10235,16 +10418,18 @@ function loginSummaryHtml(){
   var h = '<div class="pe-top"><div class="pe-title"><b>Login History</b><span>' + inToday + ' of ' + accounts + ' people logged in today</span></div>' +
     '<div class="pe-more"><button type="button" class="pe-ibtn" onclick="shareLoginHistoryPDF()" title="Login history PDF">' + SHARE_ICON_SVG_SM + 'PDF</button></div></div>' +
     '<div class="mi-kpis">' + kpi(todayN, 'Logins today') + kpi(Object.keys(devsToday).length, 'Phones today') + kpi(list.length, 'All logins') + '</div>';
-  h += '<div class="mi-sec"><span>People</span><span style="text-transform:none; letter-spacing:0; font-weight:700;">tap a person for their logins</span></div><div class="mi-box">' +
+  h += '<div class="mi-sec"><span>People</span><span style="text-transform:none; letter-spacing:0; font-weight:700;">tap = logins &middot; long press = phones</span></div><div class="mi-box">' +
     people.map(function(p){
       var sel = loginFilterId === p.id, nDev = Object.keys(p.dev).length;
-      return '<div class="mi-row' + (sel ? ' on' : '') + '" onclick="loginPick(\'' + String(p.id).replace(/'/g, '') + '\')">' +
+      var _act = p.gone ? 0 : loginActivePhones(p.id).length;
+      return '<div class="mi-row' + (sel ? ' on' : '') + '" data-lp="' + custEsc(String(p.id)) + '" onclick="loginPick(\'' + String(p.id).replace(/'/g, '') + '\')">' +
         '<div class="mi-av ' + (p.gone ? 'off' : (p.role === 'admin' ? 'admin' : 'seller')) + '">' + custEsc(String(p.name || '?').trim().charAt(0) || '?') + (p.nToday ? '<i></i>' : '') + '</div>' +
         '<div class="mi-mid"><div class="mi-name">' + custEsc(p.name) + '<small>' + (p.role === 'admin' ? 'Admin' : 'Seller') + '</small>' + (p.gone ? ' <small style="color:#b3261e;">deleted</small>' : '') + '</div>' +
           '<div class="mi-sub">' + (p.last ? 'Last ' + when(p.last) : '<span style="color:#b3261e;">Never logged in</span>') + (p.open ? ' &middot; <b style="color:#0b5fd8;">opened ' + when(p.open).replace(/^Today /, '') + '</b>' : '') + (p.n ? ' &middot; ' + p.n + ' login' + (p.n === 1 ? '' : 's') + ' &middot; ' + nDev + ' phone' + (nDev === 1 ? '' : 's') : '') + '</div></div>' +
+        (_act ? '<button type="button" class="mi-out" onclick="loginSignOutAll(\'' + String(p.id).replace(/'/g, '') + '\', event)" title="Sign out" aria-label="Sign out">' + LOGOUT_SVG + '<b>' + _act + '</b></button>' : '') +
         '<div class="mi-pill' + (p.nToday ? ' on' : '') + '" title="Logins today">' + p.nToday + '</div></div>';
     }).join('') + '</div>' +
-    '<div style="font-size:10.5px; color:#8a6a44; margin:-6px 4px 4px;">Green dot = logged in today &middot; number = logins today &middot; sellers sign in again every day from 12 am</div>';
+    '<div style="font-size:10.5px; color:#8a6a44; margin:-6px 4px 4px;">Green dot = logged in today &middot; number = logins today &middot; <b>long press a name = phones used</b> &middot; red button = sign out</div>';
   return h;
 }
 
@@ -12014,6 +12199,7 @@ function pePriceHtml(price, loc, unit, k, branchView){
 }
 /* ---- Price Edit: long press an item name -> its price history as a simple line graph (date / month and price) ----
    From the price-change log (normal price). The line holds a price until it changed; dots mark each change. */
+function priceGraphEdit(k){ closePriceGraph(); peEdit(k); }   // ✏️ on the price history: straight to the item's edit panel
 function closePriceGraph(){ var o = document.getElementById('pgOv'); if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
 function priceHistoryPoints(ci, ii){
   var code = itemCode(ci, ii), serial = itemSerialNo(ci, ii), cur = Number(getBasePrice(ci, ii)) || 0;
@@ -12100,6 +12286,7 @@ function openPriceGraph(k){
     '<div style="width:42px; height:4px; border-radius:2px; background:#d9c7a6; margin:0 auto 10px;"></div>' +
     '<div style="display:flex; align-items:center; gap:10px;">' + snDot(itemSerialNo(ci, ii), 26, 12) +
       '<div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:15px; color:#2a1408; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + estEsc(nm.ta) + '</div><div style="font-size:11.5px; color:#8a6a44; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + estEsc(nm.en) + ' &middot; Price history</div></div>' +
+      '<button type="button" onclick="priceGraphEdit(\'' + k + '\')" aria-label="Edit item" title="Edit item" style="flex:0 0 auto; width:34px; height:34px; border:1.5px solid #7a1414; border-radius:50%; background:#fff; color:#7a1414; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>' +
       '<button type="button" onclick="closePriceGraph()" aria-label="Close" style="flex:0 0 auto; width:34px; height:34px; border:none; border-radius:50%; background:#f1e6d2; color:#7a1414; font-size:15px; font-weight:900; cursor:pointer;">&#10005;</button></div>' +
     '<div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin:12px 2px 4px;"><div><span style="font-size:24px; font-weight:900; color:#7a1414;">' + inr(cur) + '</span> <span style="font-size:11px; font-weight:700; color:#8a6a44;">/ ' + unit + ' now</span></div><div style="font-size:12px; font-weight:800; text-align:right;">' + chg + '</div></div>' +
     '<div style="background:#fff; border:1px solid #eadcc0; border-radius:12px; padding:8px 6px 4px;">' + priceGraphSvg(ev, cur) + '</div>' +
@@ -14408,7 +14595,7 @@ function openAddBranchModal(){
     if(_so && _so.style.display === 'flex'){ closeScanOrder(true); return; }
     if(_estPopping){ _estPopping = false; return; }
     if(_pubHist){ publicMenu(true); return; }
-    if(pdfPreviewClose() || closeShareMenu() || closePromoQuick() || closeMySummary() || closePriceGraph()){ stay(); return; }
+    if(pdfPreviewClose() || closeShareMenu() || closePromoQuick() || closeMySummary() || closePriceGraph() || closeLoginDevices()){ stay(); return; }
     var appEl = document.getElementById('app'), adminEl = document.getElementById('adminScreen');
     var loggedIn = (typeof session !== 'undefined') && session;
     var _pr = document.getElementById('promoShareOverlay');
