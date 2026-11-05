@@ -2354,7 +2354,7 @@ function fbOnDocValue(name, remote){
     usersDropStale();
     if(Object.keys(_usersPend).length && !_fbReadOnly) fbPushUsers(false);   // this phone's own account changes (only those accounts)
     if(!fbSame(remote, USERS)) applyRemoteUsers(remote); else if(!_usersSnap) usersSnapNow();
-    if(first && typeof session !== 'undefined' && session && session.role === 'admin'){ try{ var _ch = usersHashPins(); if(ensureUserPids() || _ch) saveJSON('ars_users', USERS); stampSellerPids(); usersRepairPids(); }catch(e){} }
+    if(first && typeof session !== 'undefined' && session && session.role === 'admin'){ try{ var _ch = usersHashPins(); if(ensureUserPids() || _ch) saveJSON('ars_users', USERS); stampSellerPids(); }catch(e){} }
     return;
   }
   if(fbCanon(remote) === undefined){
@@ -2562,6 +2562,10 @@ function mergeRemoteSales(list){
       ['items', 'subtotal', 'discount', 'discountPercent', 'total', 'paidAmount', 'cashAmount', 'upiAmount', 'edited', 'editOrig'].forEach(function(f){ existing[f] = remote[f] === undefined ? null : remote[f]; });
       if(existing.editOrig && existing.editOrig.items && !Array.isArray(existing.editOrig.items)) existing.editOrig.items = fbToArr(existing.editOrig.items);
       existing._sheetSynced = false; changed = true;
+    }
+    if(existing && !_fbUnsentSales[remote.id] && ((remote.sellerPid && existing.sellerPid !== remote.sellerPid) || (remote.sellerId && existing.sellerId !== remote.sellerId))){
+      existing.sellerPid = remote.sellerPid || existing.sellerPid || null; existing.sellerId = remote.sellerId || existing.sellerId;   // the admin merged a repeated name (Accounts -> Fix)
+      if(remote.sellerName) existing.sellerName = remote.sellerName; changed = true;
     }
     if(existing && !_fbUnsentSales[remote.id] && remote.billNo && (existing.billNo !== remote.billNo || !!existing.billNoTemp !== !!remote.billNoTemp)){
       existing.billNo = remote.billNo; changed = true;                                       // a temporary (no-signal) number was confirmed / changed
@@ -5630,7 +5634,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v93';
+var APP_BUILD = 'v94';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -9211,7 +9215,7 @@ function closeQtySheets(){
   try{ _pubSheetSn = null; var b = document.getElementById('pubQtySheet'); if(b) b.style.display = 'none'; }catch(e){}
 }
 function showAdmin(){
-  try{ if(session && session.role === 'admin' && (_fbUsersSeen || !FB_CONFIG)){ ensureUserPids(); stampSellerPids(); usersRepairPids(); } }catch(e){}   // only with the server's own account list
+  try{ if(session && session.role === 'admin' && (_fbUsersSeen || !FB_CONFIG)){ ensureUserPids(); stampSellerPids(); } }catch(e){}   // only with the server's own account list
   closeQtySheets();
   adminItemsBranch = adminScope() || '';                 // a branch's own price view never sticks
   salesStatsOpen = false;                                // Sales totals start hidden (eye button shows them)
@@ -9440,6 +9444,7 @@ function ensureUserPids(){
 /* Bills from the last few days that carry an account number no account has any more (an old phone gave out new
    numbers for a while) get their person's real number back - only when that same account still exists. */
 function usersRepairPids(){
+  return;   // switched off: Accounts -> Fix accounts moves bills by the person, as the admin checked
   var have = {}; Object.keys(USERS || {}).forEach(function(id){ var p = (USERS[id] || {}).pid; if(p) have[p] = id; });
   var since = Date.now() - 4 * 86400000, fixed = [];
   (SALES || []).forEach(function(s){
@@ -10983,7 +10988,7 @@ function renderAdmin(){
     const adminCount = Object.values(USERS).filter(u => u.role === 'admin').length;
     const sellerCount = Object.values(USERS).filter(u => u.role !== 'admin').length;
     try{ if(!adminScope()) usersRecAttach(); }catch(e){}
-    let html = usersRecCardHtml() + `<div class="pe-top"><div class="pe-title"><b>Accounts</b><span>${adminCount} admin${adminCount === 1 ? '' : 's'} &middot; ${sellerCount} seller${sellerCount === 1 ? '' : 's'} &middot; tap a person to edit</span></div>
+    let html = acctFixCardHtml() + usersRecCardHtml() + `<div class="pe-top"><div class="pe-title"><b>Accounts</b><span>${adminCount} admin${adminCount === 1 ? '' : 's'} &middot; ${sellerCount} seller${sellerCount === 1 ? '' : 's'} &middot; tap a person to edit</span></div>
         <div class="pe-more"><button type="button" class="pe-ibtn" onclick="shareSellerCredentialsPDF()" title="Seller login list (PDF)">${SHARE_ICON_SVG_SM}PDF</button></div>
         <button type="button" class="pe-new" onclick="openNewSellerModal()">&plus; New</button></div>`;
     const _ids = Object.keys(USERS);
@@ -12597,6 +12602,100 @@ function usersRecList(){
     .filter(function(e){ return Object.keys(e.users).length; })
     .sort(function(a, b){ return b.at - a.at; });
 }
+/* 🛠 Fix accounts (5 Nov 2026): the right account number for each person, as the owner gave them. Repeated names are
+   merged into one account (the extra accounts removed) and their bills moved to that person's number. When a phone sent
+   its old list (🛟), that person's ID and password are taken from the list that has the right number. */
+var ACCT_FIX = [{ n: 'ravi', pid: 'A001', role: 'admin' }, { n: 'sridhar', pid: 'A002', role: 'admin' }, { n: 'madhan', pid: 'S001', role: 'seller' },
+  { n: 'surendar', pid: 'S009', role: 'seller' }, { n: 'selvakumar', pid: 'S008', role: 'seller' }];
+function acctNameKey(v){ return String(v || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+function acctFixWho(name){ var k = acctNameKey(name), f = k.split(' ')[0]; return ACCT_FIX.filter(function(t){ return k === t.n || f === t.n; })[0] || null; }
+function acctFixPlan(){
+  var cur = USERS || {}, recs = usersRecList(), plan = { accounts: [], remove: [], bills: [], missing: [], users: {}, del: {}, delTo: {} };
+  ACCT_FIX.forEach(function(t){
+    t._keep = null; t._name = '';
+    var mine = Object.keys(cur).filter(function(id){ var w = acctFixWho((cur[id] || {}).name); return w && w.n === t.n; });
+    var keep = null, data = null, from = '';
+    var right = mine.filter(function(id){ return cur[id].pid === t.pid; })[0];
+    if(right){ keep = right; data = JSON.parse(JSON.stringify(cur[right])); }
+    else {
+      for(var i = 0; i < recs.length && !keep; i++){
+        var u = recs[i].users; Object.keys(u).forEach(function(id){ if(!keep && u[id] && u[id].pid === t.pid){ var w = acctFixWho(u[id].name); if(w && w.n === t.n){ keep = id; data = JSON.parse(JSON.stringify(u[id])); from = bkWhen(recs[i].at); } } });
+      }
+      if(!keep && mine.length){   // the account with the most bills / the newest login
+        var cnt = {}; (SALES || []).forEach(function(b){ if(b && mine.indexOf(b.sellerId) >= 0) cnt[b.sellerId] = (cnt[b.sellerId] || 0) + 1; });
+        keep = mine.slice().sort(function(a, b){ return (cnt[b] || 0) - (cnt[a] || 0); })[0]; data = JSON.parse(JSON.stringify(cur[keep]));
+      }
+    }
+    if(!keep){ plan.missing.push(t); return; }
+    var old = cur[keep];
+    data.pid = t.pid; if(!data.role) data.role = t.role;
+    if(JSON.stringify(old) !== JSON.stringify(data)) { plan.users[keep] = data; plan.accounts.push({ id: keep, u: data, was: old, from: from }); }
+    mine.forEach(function(id){ if(id !== keep){ plan.del[id] = 1; plan.delTo[id] = t; plan.remove.push({ id: id, u: cur[id] }); } });
+    t._keep = keep; t._name = data.name || keep;
+  });
+  // bills: one number (and one account) per person
+  var after = Object.assign({}, cur); Object.keys(plan.users).forEach(function(id){ after[id] = plan.users[id]; }); Object.keys(plan.del).forEach(function(id){ delete after[id]; });
+  var moves = {};
+  (SALES || []).forEach(function(b){
+    if(!b || saleProtected(b)) return;
+    var t = plan.delTo[b.sellerId] || acctFixWho(b.sellerName) || (after[b.sellerId] ? acctFixWho(after[b.sellerId].name) : null); if(!t || !t._keep) return;   // a removed account's bills always go to the kept one
+    var newId = after[b.sellerId] && acctFixWho(after[b.sellerId].name) === t ? b.sellerId : t._keep;
+    if(b.sellerPid === t.pid && b.sellerId === newId) return;
+    plan.bills.push({ b: b, pid: t.pid, id: newId, name: t._name });
+    var k = t._name + ' ' + (b.sellerPid && b.sellerPid !== t.pid ? b.sellerPid + ' \u2192 ' : '') + t.pid + (b.sellerId !== newId ? ' (ID ' + newId + ')' : ''); moves[k] = (moves[k] || 0) + 1;
+  });
+  plan.moves = Object.keys(moves).map(function(k){ return moves[k] + ' bill' + (moves[k] === 1 ? '' : 's') + ': ' + k; });
+  plan.todo = plan.accounts.length + plan.remove.length + plan.bills.length;
+  return plan;
+}
+function acctFixCardHtml(){
+  if(adminScope() || !bkIsMainAdmin()) return '';
+  var p; try{ p = acctFixPlan(); }catch(e){ return ''; }
+  if(!p.todo) return '';
+  var pw = function(u){ return u && u.pin != null && u.pin !== '' ? estEsc(String(u.pin)) : '&#128274; (hidden)'; };
+  var h = '<div style="background:#f3f8f4; border:2px solid #1e7a3c; border-radius:14px; padding:12px; margin:0 0 14px;">' +
+    '<div style="font-weight:900; font-size:15px; color:#1e7a3c;">&#128736;&#65039; Fix accounts &amp; repeated names</div>' +
+    '<div style="font-size:11.5px; color:#4b6a55; margin:2px 0 8px;">Ravi A001 &middot; Sridhar A002 &middot; madhan S001 &middot; surendar S009 &middot; selvakumar S008</div>';
+  p.accounts.forEach(function(a){
+    h += '<div style="background:#fff; border-radius:10px; padding:8px 10px; margin-bottom:6px; font-size:12.5px;"><b>' + estEsc(a.u.name || a.id) + '</b> <span style="color:#6b7c70;">' + estEsc(a.u.pid) + (a.was && a.was.pid && a.was.pid !== a.u.pid ? ' (was ' + estEsc(a.was.pid) + ')' : '') + '</span>' +
+      '<div>ID: <b>' + estEsc(a.id) + '</b> &middot; Password: <b>' + pw(a.u) + '</b>' + (a.from ? ' <span style="color:#1e7a3c;">&middot; from phone list ' + a.from + '</span>' : '') + '</div></div>';
+  });
+  p.remove.forEach(function(r){ h += '<div style="background:#fff; border-radius:10px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; color:#b3261e;">&#10006; Remove repeated: <b>' + estEsc((r.u && r.u.name) || r.id) + '</b> ' + estEsc((r.u && r.u.pid) || '') + ' &middot; ID ' + estEsc(r.id) + '</div>'; });
+  if(p.moves.length) h += '<div style="background:#fff; border-radius:10px; padding:8px 10px; margin-bottom:6px; font-size:12.5px;">&#129534; ' + p.moves.map(estEsc).join('<br>&#129534; ') + '</div>';
+  h += '<div style="font-size:12px; font-weight:800; color:#1e7a3c; margin:2px 2px 6px;">&#10003; No bill is removed &mdash; every bill of a repeated account moves to that person&rsquo;s one account, so their History stays together.</div>';
+  p.missing.forEach(function(t){ h += '<div style="font-size:12px; color:#b45309; margin-bottom:4px;">&#9888;&#65039; No account for ' + estEsc(t.n) + ' (' + t.pid + ') - add it with + New</div>'; });
+  h += '<button onclick="acctFixApply(this)" style="width:100%; margin-top:4px; padding:12px; border:none; border-radius:10px; background:#1e7a3c; color:#fff; font-weight:800; font-size:14px; cursor:pointer;">&#10003; Apply fix</button></div>';
+  return h;
+}
+async function acctFixApply(btn){
+  if(!bkIsMainAdmin()) return;
+  if(!_fbDb || _fbReadOnly){ alert('Connect to the internet first.'); return; }
+  var p = acctFixPlan(); if(!p.todo){ renderAdmin(); return; }
+  var me = session && session.id, meGone = !!(me && p.del[me]), mePw = !!(me && p.users[me] && p.users[me].pinHash !== (USERS[me] || {}).pinHash);
+  if(!(await showConfirm('Apply this fix?\n\n' + p.accounts.length + ' account(s) set, ' + p.remove.length + ' repeated account(s) removed, ' + p.bills.length + ' bill(s) moved to the right person. No bill is removed.' + (meGone || mePw ? '\n\nYou will log in again with the ID and password shown.' : '')))) return;
+  var old = btn ? btn.innerHTML : ''; if(btn){ btn.disabled = true; btn.innerHTML = 'Fixing&hellip;'; }
+  try{
+    var upd = {};
+    Object.keys(p.users).forEach(function(id){ upd['users/' + id] = fbClean(p.users[id]); });
+    Object.keys(p.del).forEach(function(id){ upd['users/' + id] = null; });
+    var rem = FB_COLL.sales && FB_COLL.sales.remote;
+    p.bills.forEach(function(x){
+      x.b.sellerPid = x.pid; x.b.sellerId = x.id; x.b.sellerName = x.name;
+      if(rem && rem.has && rem.has(x.b.id)){ var k = 'sales/' + fbSafeKey(x.b.id); upd[k + '/sellerPid'] = x.pid; upd[k + '/sellerId'] = x.id; upd[k + '/sellerName'] = x.name; }
+    });
+    var keys = Object.keys(upd);
+    for(var j = 0; j < keys.length; j += 300){ var part = {}; keys.slice(j, j + 300).forEach(function(k){ part[k] = upd[k]; }); await fbTimeout(_fbDb.ref().update(part), 60000, 'Fix'); }
+    p.bills.forEach(function(x){ if(rem && rem.has && rem.has(x.b.id)) fbNoteSaleEdit(x.b); });   // every phone (also older bills) gets the new person on the bill
+    Object.keys(p.users).forEach(function(id){ USERS[id] = p.users[id]; }); Object.keys(p.del).forEach(function(id){ delete USERS[id]; });
+    _rawSaveJSON('ars_users', USERS); usersSnapNow();
+    Object.keys(p.users).concat(Object.keys(p.del)).forEach(function(id){ delete _usersPend[id]; }); _rawSaveJSON('ars_users_pending', _usersPend);
+    _rawSaveJSON('ars_sales', SALES);
+    alert('\u2713 Accounts fixed. Repeated names merged.\nOn every phone: close the app, open it again and log in.');
+    try{ enforceSessionAgainstUsers(); }catch(e){}
+    renderAdmin();
+  }catch(e){ alert('Could not fix: ' + ((e && e.message) || e) + '\nCheck the internet and try again.'); }
+  if(btn){ btn.disabled = false; btn.innerHTML = old; }
+}
 function usersRecCardHtml(){
   if(adminScope()) return '';
   var list = usersRecList(); if(!list.length) return '';
@@ -12643,7 +12742,6 @@ async function usersRecRestore(key){
     await fbTimeout(_fbDb.ref('users').set(fbClean(list)), 30000, 'Restore');
     _usersPend = {}; _rawSaveJSON('ars_users_pending', _usersPend);
     USERS = JSON.parse(JSON.stringify(list)); _rawSaveJSON('ars_users', USERS); usersSnapNow();
-    try{ usersRepairPids(); }catch(e){}
     alert('\u2713 Accounts restored (' + Object.keys(list).length + ').\nOn every phone: close the app, open it again and log in.');
     try{ enforceSessionAgainstUsers(); }catch(e){}
     renderAdmin();
@@ -12657,7 +12755,6 @@ async function usersRecPutOne(key, id){
   try{
     await fbTimeout(_fbDb.ref('users/' + id).set(fbClean(u)), 20000, 'Restore');
     USERS[id] = JSON.parse(JSON.stringify(u)); _rawSaveJSON('ars_users', USERS); usersSnapNow();
-    try{ usersRepairPids(); }catch(e){}
     renderAdmin(); showAdminNotification('\u2713 ' + (u.name || id) + ' put back');
   }catch(e){ alert('Could not put back: ' + ((e && e.message) || e)); }
 }
