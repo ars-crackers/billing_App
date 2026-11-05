@@ -928,7 +928,7 @@
   .sl-kpi.k-cash{background:#fff1dc;} .sl-kpi.k-cash b{color:#b45309;}
   .sl-kpi.k-upi{background:#e6efff;} .sl-kpi.k-upi b{color:#0b5fd8;}
   .sl-quick{display:flex; gap:8px; margin:0 0 10px;}
-  .sl-quick button{flex:1; height:40px; border-radius:12px; border:1.5px solid var(--line); background:#fff; color:var(--maroon); font-weight:800; font-size:13px; cursor:pointer;}
+  .sl-quick button{flex:1; height:40px; border-radius:12px; border:1.5px solid var(--line); background:#fff; color:var(--maroon); font-weight:800; font-size:12px; cursor:pointer; white-space:nowrap; padding:0 4px; min-width:0; overflow:hidden; text-overflow:ellipsis;}
   .sl-card{background:#fff; border-radius:12px; padding:10px 12px; margin-bottom:6px;}
   .sl-card.sl-off{background:#fbf3ef; opacity:.85;}
   .sl-top{display:flex; align-items:center; gap:10px; cursor:pointer;}
@@ -998,6 +998,39 @@
   .sale-card-actions button{border:none; padding:6px 11px; border-radius:7px; font-size:11px; font-weight:700; cursor:pointer;}
   .btn-cancel-order{background:var(--danger); color:#fff;}
   .status-badge.pending{background:#fff0d6; color:#b45309;}
+  .status-badge.pl{background:#fde8d4; color:#b45309; font-weight:900;}
+  .status-badge.plp{background:#e8f3ec; color:#1e7a3c;}
+  .pp-banner{display:flex; align-items:center; gap:10px; width:100%; box-sizing:border-box; margin:0 0 10px; padding:10px 12px; border-radius:12px; border:1.5px solid #e0a43a; background:#fff6e5; cursor:pointer; text-align:left; font-family:inherit;}
+  .pp-banner b{display:block; font-size:14px; color:#7a3a00;} .pp-banner small{display:block; font-size:11.5px; color:#8a6a44; font-weight:700;}
+  .pp-ic{font-size:22px;} .pp-amt{flex:0 0 auto; font-size:17px; font-weight:900; color:#b3261e;}
+  .pp-row{background:#fff; border:1.5px solid #eadcc0; border-radius:12px; padding:10px; margin-top:8px;}
+  .pp-row.late{border-color:#e9b4ae; background:#fff8f7;}
+  .pp-name{font-weight:900; font-size:14.5px; color:#2a1408;} .pp-sub{font-size:11.5px; color:#8a6a44; margin-top:1px;}
+  .pp-due{font-size:17px; font-weight:900; color:#b3261e;}
+  .pp-btns{display:flex; gap:8px; justify-content:flex-end; margin-top:8px;}
+  .pp-btn{display:inline-flex; align-items:center; gap:5px; padding:8px 14px; border-radius:18px; border:none; font-weight:800; font-size:13px; cursor:pointer;}
+  .pp-btn.go{background:#1e7a3c; color:#fff;} .pp-btn.wa{background:#e8f6ee; color:#0e7a3c; border:1.5px solid #9fd4b4;}
+  .pc-grid{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin:10px 2px 0; font-size:13px;} .pc-grid span{color:#8a6a44;} .pc-grid b{text-align:right; color:#2a1408;}
+  .pl-lb{display:block; font-size:12px; font-weight:800; color:#8a6a44; margin:10px 2px 4px;}
+  .pl-in{width:100%; box-sizing:border-box; padding:10px 12px; border-radius:10px; border:1.5px solid #e2d3b5; font-size:15px; font-family:inherit; background:#fff;}
+  .pl-m{flex:1; padding:10px; border-radius:10px; border:1.5px solid #d9c7a6; background:#fff; color:#5b4630; font-weight:800; font-size:14px; cursor:pointer;}
+  .pl-m.on{border-color:#1e7a3c; background:#e8f3ec; color:#1e7a3c;}
+  .pl-sum{margin-top:12px; padding:10px 12px; border-radius:10px; background:#fff6e5; font-size:13.5px; font-weight:700; color:#5b4630;}
+  #plGo:disabled{opacity:0.5;}
+  .status-badge.pl{cursor:pointer;}
+  .sl-quick .pl-chip{color:#b45309;} .sl-quick .pl-chip.on{background:#b45309; color:#fff; border-color:#b45309;}
+  .sl-quick .pl-chip.on .pl-n{background:#fff; color:#b45309;}
+  .pl-chip .pl-n{display:inline-block; min-width:18px; padding:0 5px; margin-left:3px; border-radius:9px; background:#b45309; color:#fff; font-size:11px; line-height:18px; text-align:center;}
+  .pl-track{margin:8px 0 2px; padding:10px; border-radius:12px; background:#fff6e5; border:1.5px solid #e0a43a;}
+  .pl-segs{display:flex; gap:6px;}
+  .pl-seg{flex:1; padding:8px 4px; border-radius:9px; border:1.5px solid #e2c98f; background:#fff; color:#7a3a00; font-weight:800; font-size:12px; cursor:pointer; white-space:nowrap;}
+  .pl-seg.on{background:#b45309; border-color:#b45309; color:#fff;}
+  .pl-kpis{display:flex; gap:6px; margin-top:8px;}
+  .pl-kpis > div{flex:1; background:#fff; border-radius:9px; padding:7px 4px; text-align:center;}
+  .pl-kpis b{display:block; font-size:15px; font-weight:900; color:#2a1408;} .pl-kpis span{display:block; font-size:10.5px; color:#8a6a44; font-weight:700;}
+  .pl-note{font-size:11px; color:#8a6a44; margin:7px 2px 0;}
+  .se-pay{margin-top:12px; padding:10px; border-radius:12px; background:#fffaf0; border:1.5px solid #ead9b8;}
+  .se-pay-h{font-size:13px; font-weight:900; color:#7a1414; margin-bottom:8px;}
   .cancel-ico{flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:none; font-size:16px; line-height:1; cursor:pointer; margin-left:8px; display:flex; align-items:center; justify-content:center;}
   .cancel-ico.do{background:#fde2df; color:#b3261e;}
   .cancel-ico.undo{background:#fff0d6; color:#b45309;}
@@ -1120,9 +1153,6 @@ function __appNotLoaded(){
         <button id="billCatBtn" type="button" class="cat-pick-btn" title="Category filter" aria-label="Category filter" onclick="toggleBillCat()"><span class="cpb-ico">&#128193;</span><span class="cpb-txt" id="billCatLbl">Category</span></button>
         <span id="billFilterBtns" style="display:flex; gap:6px; flex:0 0 auto;">
           <button id="bfIncart" type="button" class="bf-btn" title="Only items in the cart" aria-label="In cart" onclick="setBillFilter('incart')">&#128722;</button>
-          <button id="bfLow" type="button" class="bf-btn sm" title="Price low to high (tap again for S.No order)" aria-label="Price low to high" onclick="setBillFilter('sort', billFilters.sort === 'low' ? '' : 'low')">&#8377;&#9650;</button>
-          <button id="bfHigh" type="button" class="bf-btn sm" title="Price high to low (tap again for S.No order)" aria-label="Price high to low" onclick="setBillFilter('sort', billFilters.sort === 'high' ? '' : 'high')">&#8377;&#9660;</button>
-          <button id="bfRecent" type="button" class="bf-btn" title="Recently sold items (most sold first)" aria-label="Recently sold items" onclick="setBillFilter('recent')">&#128293;</button>
         </span>
         <div id="billSearchBox" class="bill-sbox">
           <span class="sb-ico">&#128269;</span>
@@ -1205,6 +1235,7 @@ function __appNotLoaded(){
       <button class="btn-complete" id="cashBtn" onclick="completeSale('cash')">&#128181; Cash</button>
       <button class="btn-complete" id="upiBtn" onclick="completeSaleUPI()" style="background:#1ebe5d;">&#128241; UPI</button>
       <button class="btn-complete" id="splitBtn" onclick="openSplitPayment()" style="background:#7a3fa0;">&#128181;+&#128241; Split</button>
+      <button class="btn-complete" id="payLaterBtn" onclick="openPayLater()" style="background:#fff6e5; color:#b45309; border:1.5px solid #e0a43a; flex:1 1 100%; padding:9px;">&#9203; Pay later / &#2986;&#3007;&#2985;&#3021;&#2985;&#2992;&#3021; &#2970;&#3014;&#2994;&#3009;&#2980;&#3021;&#2980;&#3009;&#2980;&#2994;&#3021;</button>
       <button class="btn-whatsapp" onclick="shareBillWhatsApp()" title="Share: opens your phone's share sheet (WhatsApp or any other app) with the bill as an image" aria-label="Share bill image">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"></circle><circle cx="6" cy="12" r="2.6"></circle><circle cx="18" cy="19" r="2.6"></circle><line x1="8.3" y1="10.7" x2="15.7" y2="6.8"></line><line x1="8.3" y1="13.3" x2="15.7" y2="17.2"></line></svg>
       </button>
@@ -1339,6 +1370,7 @@ function __appNotLoaded(){
       <div id="saleEditItems"></div>
       <div style="font-size:10.5px; color:#8a6a44; margin:6px 0 8px;">Qty 0 removes that item from the bill.</div>
       <div id="saleEditTotals"></div>
+      <div id="saleEditPay"></div>
     </div>
     <div class="confirm-actions" style="padding:6px 18px 18px;">
       <button class="btn-confirm-no" onclick="closeSaleEdit()">Cancel</button>
@@ -1874,7 +1906,7 @@ function saleHidden(s){ return yearLockAny() && !!s && yearHidden(recYear(s)); }
 function saleProtected(s){ return yearLockAny() && !!s && yearLockOn(recYear(s)); }    // never changed
 /* Bill numbers start again from 1 every new year from 2027 on: the series of 2027 is "main_2027" (2026 keeps "main"). */
 function billSeriesKey(bid, year){ bid = bid || 'main'; year = Number(year) || new Date().getFullYear(); return year >= 2027 ? bid + '_' + year : bid; }
-function billSeriesOf(s){ return billSeriesKey((s && s.branchId) || 'main', recYear(s)); }
+function billSeriesOf(s){ return billSeriesKey((s && s.branchId) || 'main', recYear(s && s.billTime ? { time: s.billTime } : s)); }
 /* Login control (Login History tab): the admin signs a person out of all phones or of one phone, or blocks an unwanted
    phone. settings/loginControl = { out: { <user>: { all: time, dev: { <phone>: time } } }, block: { <phone>: { at, by, label } }, v }.
    Times are the server's clock; a phone compares them in its own clock (server offset), so a wrong phone clock does not matter.
@@ -2557,6 +2589,7 @@ let _fbUnsentSales = loadJSON('ars_fb_unsent_sales', {}) || {};
 let _fbUnsentSeq = 0;
 function pushSaleToFirebase(sale, isEdit){
   if(_fbReadOnly || !sale || !sale.id) return;
+  try{ if(sale.payLater || sale.payRev) fbPendingSync(sale); }catch(e){}
   if(isEdit) fbNoteSaleEdit(sale);
   var seq = ++_fbUnsentSeq;
   _fbUnsentSales[sale.id] = seq;
@@ -2609,6 +2642,18 @@ function mergeRemoteSales(list){
       // an admin changed this bill's items / amounts
       ['items', 'subtotal', 'discount', 'discountPercent', 'total', 'paidAmount', 'cashAmount', 'upiAmount', 'edited', 'editOrig'].forEach(function(f){ existing[f] = remote[f] === undefined ? null : remote[f]; });
       if(existing.editOrig && existing.editOrig.items && !Array.isArray(existing.editOrig.items)) existing.editOrig.items = fbToArr(existing.editOrig.items);
+      existing._sheetSynced = false; changed = true;
+    }
+    if(existing && !_fbUnsentSales[remote.id] && (Number(remote.payRev) || 0) > (Number(existing.payRev) || 0)){
+      // a Pay later bill: money collected (or the bill finished) on another phone
+      try{
+        var _pl = fbToArr(remote.payLog).filter(Boolean), _last = _pl[_pl.length - 1];
+        if(_last && typeof session !== 'undefined' && session && session.role === 'admin' && _last.byId !== session.id && Date.now() - (Date.parse(_last.at) || 0) < 3600000 && _pl.length > payLogOf(existing).length)
+          adminAlert('\uD83D\uDCB0 \u20B9' + (Number(_last.amt) || 0).toLocaleString('en-IN') + ' collected: Bill ' + billNoRef(remote), (remote.buyerName || '') + ' \u2014 by ' + (_last.by || '') + (remote.paidAt ? ' \u2022 fully paid' : ' \u2022 \u20B9' + (Number(remote.payDue) || 0).toLocaleString('en-IN') + ' still pending'));
+      }catch(e){}
+      ['payLater', 'payDue', 'payLog', 'payBy', 'payNote', 'paidAt', 'billTime', 'paidAmount', 'cashAmount', 'upiAmount', 'paymentMethod', 'payRev', 'buyerName', 'buyerPhone'].forEach(function(f){ existing[f] = remote[f] === undefined ? null : remote[f]; });
+      if(remote.time) existing.time = remote.time;
+      if(existing.payLog && !Array.isArray(existing.payLog)) existing.payLog = fbToArr(existing.payLog);
       existing._sheetSynced = false; changed = true;
     }
     if(existing && !_fbUnsentSales[remote.id] && ((remote.sellerPid && existing.sellerPid !== remote.sellerPid) || (remote.sellerId && existing.sellerId !== remote.sellerId))){
@@ -3410,6 +3455,7 @@ function initFirebase(opts){
   }catch(e){}
   try{
     _fbDb = firebase.database();
+    _fbDb.ref('pendingPay').on('value', function(s){ PENDING_PAY = s.val() || {}; _rawSaveJSON('ars_pending_pay', PENDING_PAY); try{ pendingRefresh(); }catch(e){} }, function(){});
     _fbDb.ref('.info/serverTimeOffset').on('value', function(s){ _fbTimeOff = Number(s.val()) || 0; _fbTimeOffKnown = true; try{ loginCtlCheck(); }catch(e){} });
 
     // Connection state, so the admin can see at a glance whether it's live.
@@ -4280,7 +4326,9 @@ function slTopHtml(s, detailId, nameHtml, isNew){
   var badge = status === 'cancelled' ? '<span class="status-badge cancelled">Cancelled</span>' : status === 'cancel_pending' ? '<span class="status-badge pending">Cancel requested</span>' : '';
   var qty = (s.items || []).reduce(function(a, it){ return a + (Number(it.qty) || 0); }, 0);
   var d = new Date(s.time), dt = d.toLocaleString('en-IN', d.getFullYear() === new Date().getFullYear() ? { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-  var pay = s.paymentMethod === 'split' ? '&#128181;+&#128241; Split' : s.paymentMethod === 'upi' ? '&#128241; UPI' : '&#128181; Cash';
+  var pay = s.paymentMethod === 'later' ? '&#9203; Pay later' : s.paymentMethod === 'split' ? '&#128181;+&#128241; Split' : s.paymentMethod === 'upi' ? '&#128241; UPI' : '&#128181; Cash';
+  if(salePending(s)) badge += (badge ? ' ' : '') + '<span class="status-badge pl" role="button" title="Collect payment" onclick="event.stopPropagation(); openPayCollect(\'' + s.id + '\')">&#9203; &#8377;' + payDueOf(s).toLocaleString('en-IN') + ' due &middot; Collect</span>';
+  else if(s.payLater && s.paidAt) badge += (badge ? ' ' : '') + '<span class="status-badge plp">Paid later' + (s.billTime ? ' &middot; billed ' + new Date(s.billTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '') + '</span>';
   return '<div class="sl-top" onclick="toggleSaleDetail(\'' + detailId + '\')">' +
       '<div class="sl-no">' + billNoRef(s) + '</div>' +
       '<div class="sl-mid"><div class="sl-who">' + nameHtml + (isNew ? ' <span class="new-tag">NEW</span>' : '') + (badge ? ' ' + badge : '') + billNoTag(s) + saleEditTag(s) + '</div>' +   // a 30%+ discount shows as the red % next to the amount
@@ -4354,7 +4402,7 @@ cart = cart1; // Default to Bill 1
 let activeCat = 'ALL';
 let activeTab = 'billing1';
 let adminTab = 'sales';
-let salesFilters = { seller:'', billNo:'', phone:'', branch:'', from:'', to:'', yr: 'y:' + new Date().getFullYear() };
+let salesFilters = { seller:'', billNo:'', phone:'', branch:'', from:'', to:'', yr: 'y:' + new Date().getFullYear(), pl: '' };
 let salesStatsOpen = false;   // Sales tab totals: hidden until the admin taps the eye
 let historyPhoneFilter = '';
 let historyBranchFilter = '';
@@ -4632,13 +4680,31 @@ function getUnit(ci, ii){ return getInvItem(ci, ii).unit || 'box'; }
 function saleStatus(s){ return s.status || 'confirmed'; }
 /* A bill counts in every total only while it is confirmed. A bill the seller has asked
    to cancel ('cancel_pending') is left out at once, before the admin has answered. */
-function isCountedSale(s){ var st = saleStatus(s); return st !== 'cancelled' && st !== 'cancel_pending'; }
+function isCountedSale(s){ var st = saleStatus(s); return st !== 'cancelled' && st !== 'cancel_pending' && !(s && s.payLater && !s.paidAt); }   // a "Pay later" bill counts only after full payment (on that day)
+/* ---- Pay later (credit) bills ----
+   payLater: true, payLog: [{ at, amt, m: 'cash'|'upi', by, byId }], payDue: balance, payBy: 'YYYY-MM-DD', payNote, payRev (+1 per change).
+   When the last rupee comes in: paidAt = that time, billTime = the bill's own time, time = paidAt (so the bill counts on the
+   payment day everywhere), paymentMethod / cashAmount / upiAmount = what was really received. */
+function salePending(s){ var st = s && saleStatus(s); return !!s && !!s.payLater && !s.paidAt && st !== 'cancelled' && st !== 'cancel_pending'; }
+function payLogOf(s){ return (s && s.payLog ? fbToArr(s.payLog) : []).filter(function(p){ return p && Number(p.amt) > 0; }); }
+function payPaidSoFar(s){ return payLogOf(s).reduce(function(a, p){ return a + (Number(p.amt) || 0); }, 0); }
+function payDueOf(s){ return Math.max(0, Math.round((Number(s && s.total) || 0) - payPaidSoFar(s))); }
+function payFinish(rec, iso, log){
+  log = log || payLogOf(rec);
+  var cash = 0, upi = 0; log.forEach(function(p){ if(p.m === 'upi') upi += Number(p.amt) || 0; else cash += Number(p.amt) || 0; });
+  rec.paidAt = iso; rec.billTime = rec.billTime || rec.time; rec.time = iso;
+  rec.cashAmount = cash; rec.upiAmount = upi; rec.paymentMethod = (cash > 0 && upi > 0) ? 'split' : (upi > 0 ? 'upi' : 'cash');
+  rec.paidAmount = Number(rec.total) || 0; rec.payDue = 0;
+}
+function payDateTxt(t){ var d = new Date(t); if(!(d.getTime() > 0)) return ''; return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); }
 /* A sale's cash/UPI split — for a plain 'cash' or 'upi' sale this is just the
    whole total on one side; for a 'split' sale it uses the two amounts that
    were actually recorded at checkout. */
 function saleCashAmount(s){ return s.paymentMethod === 'split' ? (s.cashAmount || 0) : (s.paymentMethod !== 'upi' ? (s.total || 0) : 0); }
 function saleUpiAmount(s){ return s.paymentMethod === 'split' ? (s.upiAmount || 0) : (s.paymentMethod === 'upi' ? (s.total || 0) : 0); }
 function paymentMethodLabel(s){
+  if(s.paymentMethod === 'later') return 'Pay later';
+  if(s.payLater && s.paidAt) return (s.paymentMethod === 'split' ? 'Cash ₹' + (s.cashAmount||0).toLocaleString('en-IN') + ' + UPI ₹' + (s.upiAmount||0).toLocaleString('en-IN') : s.paymentMethod === 'upi' ? 'UPI' : 'Cash') + ' · paid later';
   if(s.paymentMethod === 'split') return 'Cash ₹' + (s.cashAmount||0).toLocaleString('en-IN') + ' + UPI ₹' + (s.upiAmount||0).toLocaleString('en-IN');
   return s.paymentMethod === 'upi' ? 'UPI' : 'Cash';
 }
@@ -5181,7 +5247,7 @@ function toggleBillFilters(){ billFilterOpen = !billFilterOpen; render(); }
 var billSearchOpen = false;
 function toggleBillSearch(){ var el = document.getElementById('search'); if(el) el.focus(); }   // the search box is always in the row now
 function closeBillSearch(){ billSearchOpen = false; var el = document.getElementById('search'); if(el){ el.value = ''; el.blur(); } render(); }
-function setBillFilter(k, v){ billFilters[k] = (k === 'incart' || k === 'recent') ? !billFilters[k] : v; render(); }
+function setBillFilter(k, v){ billFilters[k] = (k === 'incart' || k === 'recent') ? !billFilters[k] : v; if(!document.getElementById('bfRecent')) billFilters.recent = false; if(!document.getElementById('bfLow')) billFilters.sort = ''; render(); }
 function resetBillFilters(){ billFilters = { incart:false, recent:false, sort:'' }; billSearchOpen = false; var el = document.getElementById('search'); if(el) el.value = ''; activeCat = 'ALL'; try{ buildCatNav(); }catch(e){} render(); }
 function billFilterPass(price, qty, rk){
   var f = billFilters;
@@ -5470,6 +5536,8 @@ function openBill(preserveEntries){
   document.getElementById('upiBtn').textContent = '\u{1F4F1} UPI';
   const splitBtnReset = document.getElementById('splitBtn');
   if(splitBtnReset){ splitBtnReset.disabled = false; splitBtnReset.textContent = SPLIT_BTN_LABEL; }
+  const plBtnReset = document.getElementById('payLaterBtn');
+  if(plBtnReset){ plBtnReset.disabled = false; plBtnReset.textContent = '\u23F3 Pay later / \u0BAA\u0BBF\u0BA9\u0BCD\u0BA9\u0BB0\u0BCD \u0B9A\u0BC6\u0BB2\u0BC1\u0BA4\u0BCD\u0BA4\u0BC1\u0BA4\u0BB2\u0BCD'; }
   document.getElementById('billOverlay').classList.add('show');
 }
 
@@ -5684,7 +5752,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v97';
+var APP_BUILD = 'v101';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -6869,7 +6937,7 @@ const SPLIT_BTN_LABEL = '\u{1F4B5}+\u{1F4F1} Split';
 /* splitDetails (optional) = {cashAmount, upiAmount} — only set when the sale
    was paid partly in cash and partly by UPI via the Split Payment modal. */
 let _saleSaving = false;
-async function completeSale(paymentMethod, splitDetails){
+async function completeSale(paymentMethod, splitDetails, later){
   if(branchHoldBlocksBilling()) return;
   if(_saleSaving) return;
   const { count, subtotal, discount, grand, percent, paidAmount } = renderBillTotals();
@@ -6883,16 +6951,18 @@ async function completeSale(paymentMethod, splitDetails){
       items.push({ta:name.ta, en:name.en, price, qty, sn: itemSerialNo(ci, ii)});
     }
   }));
-  const buyerPhone = document.getElementById('billCustomerPhone').value.trim();
-  const buyerName = ((document.getElementById('billCustomerName') || {}).value || '').trim();
-  const finalMethod = paymentMethod || 'cash';
+  const buyerPhone = later ? (later.phone || '') : document.getElementById('billCustomerPhone').value.trim();
+  const buyerName = later ? later.name : ((document.getElementById('billCustomerName') || {}).value || '').trim();
+  const finalMethod = later ? 'later' : (paymentMethod || 'cash');
+  if(later && (!later.name || !(Number(later.adv) < grand))){ alert('Pay later: customer name is needed, and the amount paid now must be less than the bill.'); return; }
   // Never record more cash/UPI than the bill total (paid > total = change given back)
   const _effectivePaid = Math.min(paidAmount || grand, grand);
-  const cashAmount = splitDetails ? Math.min(splitDetails.cashAmount, grand) : (finalMethod === 'upi' ? 0 : _effectivePaid);
-  const upiAmount  = splitDetails ? Math.min(splitDetails.upiAmount,  grand) : (finalMethod === 'upi' ? _effectivePaid : 0);
+  const _adv = later ? Math.max(0, Math.round(Number(later.adv) || 0)) : 0;
+  const cashAmount = later ? (later.m === 'upi' ? 0 : _adv) : splitDetails ? Math.min(splitDetails.cashAmount, grand) : (finalMethod === 'upi' ? 0 : _effectivePaid);
+  const upiAmount  = later ? (later.m === 'upi' ? _adv : 0) : splitDetails ? Math.min(splitDetails.upiAmount,  grand) : (finalMethod === 'upi' ? _effectivePaid : 0);
   // the bill number comes from the server (unique across phones); no signal -> a temporary number
   _saleSaving = true;
-  const _payBtns = ['cashBtn', 'upiBtn', 'splitBtn'].map(function(id){ return document.getElementById(id); }).filter(Boolean);
+  const _payBtns = ['cashBtn', 'upiBtn', 'splitBtn', 'payLaterBtn'].map(function(id){ return document.getElementById(id); }).filter(Boolean);
   _payBtns.forEach(function(b){ b.disabled = true; });
   const _bBid = activeBranchId || 'main';
   let bn;
@@ -6916,6 +6986,16 @@ async function completeSale(paymentMethod, splitDetails){
     status: 'confirmed',
     branchId: _bBid
   };
+  if(later){
+    const _now = new Date().toISOString();
+    newSale.payLater = true;
+    newSale.payLog = _adv > 0 ? [{ at: _now, amt: _adv, m: later.m === 'upi' ? 'upi' : 'cash', by: session.name || session.id, byId: session.id }] : [];
+    newSale.payDue = Math.max(0, grand - _adv);
+    newSale.paidAmount = _adv;
+    if(later.payBy) newSale.payBy = later.payBy;
+    if(later.note) newSale.payNote = later.note;
+    newSale.payRev = 1;
+  }
   if(bn.temp){
     newSale.billNoTemp = true;
     _billClaims[newSale.id] = 1; _rawSaveJSON('ars_bill_claims', _billClaims);
@@ -6945,7 +7025,252 @@ async function completeSale(paymentMethod, splitDetails){
     splitBtnDone.disabled = true;
     splitBtnDone.textContent = finalMethod === 'split' ? 'Saved \u2713' : SPLIT_BTN_LABEL;
   }
+  const plBtnDone = document.getElementById('payLaterBtn');
+  if(plBtnDone){ plBtnDone.disabled = true; plBtnDone.textContent = finalMethod === 'later' ? 'Saved \u2713 (\u20B9' + newSale.payDue.toLocaleString('en-IN') + ' due)' : '\u23F3 Pay later'; }
+  if(later){ var _cn = document.getElementById('billCustomerName'); if(_cn) _cn.value = later.name; var _cp = document.getElementById('billCustomerPhone'); if(_cp && later.phone) _cp.value = later.phone; }
   render();
+}
+
+/* ======== Pay later ========
+   Bill screen -> "Pay later": customer name (must), mobile, part paid now (Cash / UPI), pay-by date, note.
+   pendingPay/<bill> on the server = a small list of every unpaid bill, so any phone (admin or any seller of that branch)
+   can see it and collect the money. Collecting is done straight on the server (one at a time), so two phones can never
+   take the same money twice. Login history / bills are never removed. */
+var PENDING_PAY = loadJSON('ars_pending_pay', {}) || {};
+function pendingEntry(s){
+  return { id: s.id, billNo: s.billNo || '', billCode: s.billCode || '', branchId: s.branchId || 'main', time: s.billTime || s.time,
+    name: s.buyerName || '', phone: s.buyerPhone || '', total: Number(s.total) || 0, paid: payPaidSoFar(s), due: payDueOf(s),
+    sellerName: s.sellerName || '', sellerId: s.sellerId || '', payBy: s.payBy || '', note: s.payNote || '', rev: Number(s.payRev) || 0 };
+}
+function fbPendingSync(s){
+  if(!_fbDb || _fbReadOnly || !s || !s.id || !(s.payLater || s.payRev)) return;
+  var k = 'pendingPay/' + fbSafeKey(s.id);
+  if(salePending(s)) _fbDb.ref(k).set(fbClean(pendingEntry(s))).catch(function(){});
+  else _fbDb.ref(k).remove().catch(function(){});
+}
+/* every unpaid bill this person may see: the server list + this phone's own (newest change wins) */
+function pendingList(branch){
+  var map = {};
+  Object.keys(PENDING_PAY || {}).forEach(function(k){ var e = PENDING_PAY[k]; if(e && e.id) map[e.id] = e; });
+  (loadJSON('ars_sales', []) || []).forEach(function(s){
+    if(!s || !(s.payLater || s.payRev)) return;
+    var r = map[s.id], rev = Number(s.payRev) || 0;
+    if(r && (Number(r.rev) || 0) > rev) return;
+    if(salePending(s)) map[s.id] = pendingEntry(s); else delete map[s.id];
+  });
+  var scope = branch || ((typeof session !== 'undefined' && session && session.role !== 'admin') ? (activeBranchId || 'main') : (adminScope() || ''));
+  return Object.keys(map).map(function(k){ return map[k]; })
+    .filter(function(e){ return e.due > 0 && (!scope || (e.branchId || 'main') === scope) && !saleHidden({ time: e.time }); })
+    .sort(function(a, b){ return String(a.time).localeCompare(String(b.time)); });
+}
+function pendingIsLate(e){ return !!e.payBy && e.payBy < saleLocalDate(new Date()); }
+function pendingBannerHtml(branch, hideAmt, onTap){
+  var list = pendingList(branch); if(!list.length) return '';
+  var due = list.reduce(function(a, e){ return a + (Number(e.due) || 0); }, 0), late = list.filter(pendingIsLate).length;
+  return '<button type="button" class="pp-banner" onclick="' + (onTap || ('openPendingPay(\'' + (branch || '') + '\')')) + '">' +
+    '<span class="pp-ic">&#9203;</span><span style="flex:1; min-width:0; text-align:left;"><b>Pending payments</b><small>' + list.length + ' bill' + (list.length === 1 ? '' : 's') + (late ? ' &middot; <span style="color:#b3261e;">' + late + ' late</span>' : '') + ' &middot; tap to collect</small></span>' +
+    '<span class="pp-amt">' + (hideAmt ? '&#8377; &bull;&bull;&bull;' : '&#8377;' + due.toLocaleString('en-IN')) + '</span></button>';
+}
+function pendingRefresh(){
+  try{ if(document.getElementById('ppOv')) openPendingPay(_ppBranch, true); }catch(e){}
+  try{
+    var adm = document.getElementById('adminScreen');
+    if(adm && !adm.classList.contains('hidden')){ if(adminTab === 'sales' && !(document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))) renderAdmin(); }
+    else if(typeof activeTab !== 'undefined' && activeTab === 'history') render();
+  }catch(e){}
+}
+var _ppBranch = '', _ppQ = '';
+function closePendingPay(){ var o = document.getElementById('ppOv'); if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
+function openPendingPay(branch, refresh){
+  _ppBranch = branch || '';
+  var sc = refresh && document.querySelector('#ppOv .pg-sheet') ? document.querySelector('#ppOv .pg-sheet').scrollTop : 0;
+  closePendingPay();
+  var ov = document.createElement('div'); ov.id = 'ppOv'; ov.className = 'pg-ov';
+  ov.innerHTML = '<div class="pg-sheet"><div style="width:42px; height:4px; border-radius:2px; background:#d9c7a6; margin:0 auto 10px;"></div>' +
+    '<div style="display:flex; align-items:center; gap:10px;"><div style="font-size:24px;">&#9203;</div><div style="flex:1; min-width:0;"><div style="font-weight:900; font-size:16px; color:#2a1408;">Pending payments</div><div id="ppSub" style="font-size:11.5px; color:#8a6a44;"></div></div>' +
+    '<button type="button" onclick="closePendingPay()" aria-label="Close" style="flex:0 0 auto; width:34px; height:34px; border:none; border-radius:50%; background:#f1e6d2; color:#7a1414; font-size:15px; font-weight:900; cursor:pointer;">&#10005;</button></div>' +
+    '<input id="ppQ" type="search" placeholder="Search name / mobile / bill no" value="' + custEsc(_ppQ) + '" oninput="_ppQ=this.value; ppListPaint();" style="width:100%; box-sizing:border-box; margin:12px 0 4px; padding:10px 12px; border-radius:10px; border:1.5px solid #e2d3b5; font-size:14px;">' +
+    '<div id="ppList"></div></div>';
+  ov.addEventListener('click', function(e){ if(e.target === ov) closePendingPay(); });
+  document.body.appendChild(ov);
+  ppListPaint();
+  if(sc){ var sh = ov.querySelector('.pg-sheet'); if(sh) sh.scrollTop = sc; }
+  if(!refresh){ try{ if(!history.state) history.pushState({ arsApp: true }, ''); }catch(e){} }
+}
+function ppListPaint(){
+  var box = document.getElementById('ppList'); if(!box) return;
+  var all = pendingList(_ppBranch), q = String(_ppQ || '').trim().toLowerCase(), qd = q.replace(/\D/g, '');
+  var list = !q ? all : all.filter(function(e){ return String(e.name).toLowerCase().indexOf(q) >= 0 || (qd && String(e.phone).replace(/\D/g, '').indexOf(qd) >= 0) || (qd && String(e.billNo).indexOf(qd) >= 0); });
+  var due = all.reduce(function(a, e){ return a + (Number(e.due) || 0); }, 0);
+  var sub = document.getElementById('ppSub'); if(sub) sub.innerHTML = all.length + ' bill' + (all.length === 1 ? '' : 's') + ' &middot; &#8377;' + due.toLocaleString('en-IN') + ' to collect &middot; not in sales until paid';
+  if(!list.length){ box.innerHTML = '<div style="font-size:13px; color:#8a6a44; text-align:center; padding:22px 6px;">' + (all.length ? 'No match.' : '&#10003; No pending payments.') + '</div>'; return; }
+  box.innerHTML = list.map(function(e){
+    var late = pendingIsLate(e), bn = (e.billCode ? e.billCode + '/' : '#') + e.billNo;
+    return '<div class="pp-row' + (late ? ' late' : '') + '">' +
+      '<div style="display:flex; gap:8px; align-items:flex-start;"><div style="flex:1; min-width:0;"><div class="pp-name">' + estEsc(e.name || 'Customer') + '</div>' +
+        '<div class="pp-sub">' + estEsc(bn) + ' &middot; ' + payDateTxt(e.time) + (e.sellerName ? ' &middot; ' + estEsc(e.sellerName) : '') + (e.phone ? ' &middot; &#128222; ' + estEsc(e.phone) : '') + '</div>' +
+        (e.payBy ? '<div class="pp-sub" style="color:' + (late ? '#b3261e' : '#8a6a44') + '; font-weight:800;">' + (late ? '&#9888;&#65039; Late - ' : '') + 'Pay by ' + new Date(e.payBy + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</div>' : '') +
+        (e.note ? '<div class="pp-sub">&#128221; ' + estEsc(e.note) + '</div>' : '') + '</div>' +
+        '<div style="text-align:right; flex:0 0 auto;"><div class="pp-due">&#8377;' + (Number(e.due) || 0).toLocaleString('en-IN') + '</div><div class="pp-sub">of &#8377;' + (Number(e.total) || 0).toLocaleString('en-IN') + (e.paid ? ' &middot; paid &#8377;' + Number(e.paid).toLocaleString('en-IN') : '') + '</div></div></div>' +
+      '<div class="pp-btns">' + (e.phone ? '<button type="button" class="pp-btn wa" onclick="payRemind(\'' + e.id + '\')"><span class="wa-logo" style="width:16px; height:16px;"></span> Remind</button>' : '') +
+        '<button type="button" class="pp-btn go" onclick="openPayCollect(\'' + e.id + '\')">&#128176; Collect</button></div></div>';
+  }).join('');
+}
+function ppFind(id){ var _l = (loadJSON('ars_sales', []) || []).filter(function(x){ return x && x.id === id && salePending(x); })[0]; if(_l) return pendingEntry(_l); return pendingList('').concat(pendingList(_ppBranch)).filter(function(e){ return e.id === id; })[0] || (PENDING_PAY && Object.keys(PENDING_PAY).map(function(k){ return PENDING_PAY[k]; }).filter(function(e){ return e && e.id === id; })[0]) || null; }
+function payRemind(id){
+  var e = ppFind(id); if(!e || !e.phone) return;
+  var br = BRANCHES && BRANCHES[e.branchId], bn = (e.billCode ? e.billCode + '/' : '#') + e.billNo;
+  var msg = 'Vanakkam ' + (e.name || '') + ',\n' + (SHOP.name_ta || 'A.R.S Crackers') + (br && br.name ? ' (' + br.name + ')' : '') + '\n' +
+    'Bill ' + bn + ' (' + new Date(e.time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ') - balance \u20B9' + (Number(e.due) || 0).toLocaleString('en-IN') + ' is pending.\n' +
+    'Kindly pay at the shop or by UPI. Thank you! \uD83D\uDE4F';
+  openWhatsAppWithText(msg, e.phone);
+}
+var _pcId = '', _pcM = 'cash';
+function closePayCollect(){ var o = document.getElementById('pcOv'); if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
+function openPayCollect(id){
+  var e = ppFind(id); if(!e) return;
+  if(!_fbDb || _fbReadOnly || !_fbReady){ alert('Connect to the internet to collect a pending payment.\n(So two phones can never take the same money twice.)'); return; }
+  _pcId = id; _pcM = 'cash'; closePayCollect();
+  var bn = (e.billCode ? e.billCode + '/' : '#') + e.billNo;
+  var ov = document.createElement('div'); ov.id = 'pcOv'; ov.className = 'pg-ov'; ov.style.zIndex = '10060';
+  ov.innerHTML = '<div class="pg-sheet" style="max-width:420px;">' +
+    '<div style="font-weight:900; font-size:16px; color:#2a1408;">&#128176; Collect payment</div>' +
+    '<div style="font-size:12.5px; color:#5b4630; margin-top:4px;"><b>' + estEsc(e.name || 'Customer') + '</b> &middot; ' + estEsc(bn) + ' &middot; ' + payDateTxt(e.time) + '</div>' +
+    '<div class="pc-grid"><span>Bill amount</span><b>&#8377;' + (Number(e.total) || 0).toLocaleString('en-IN') + '</b><span>Paid before</span><b>&#8377;' + (Number(e.paid) || 0).toLocaleString('en-IN') + '</b><span>Balance</span><b style="color:#b3261e;">&#8377;' + (Number(e.due) || 0).toLocaleString('en-IN') + '</b></div>' +
+    '<label style="display:block; font-size:12px; font-weight:800; color:#8a6a44; margin:10px 2px 4px;">Amount received now</label>' +
+    '<input id="pcAmt" type="number" inputmode="numeric" min="1" max="' + e.due + '" value="' + e.due + '" oninput="pcPaint()" style="width:100%; box-sizing:border-box; padding:11px 12px; border-radius:10px; border:1.5px solid #e2d3b5; font-size:20px; font-weight:900;">' +
+    '<div id="pcLeft" style="font-size:12px; font-weight:800; margin:6px 2px 0;"></div>' +
+    '<div style="display:flex; gap:8px; margin-top:10px;"><button type="button" id="pcCash" class="pl-m on" onclick="_pcM=\'cash\'; pcPaint();">&#128181; Cash</button><button type="button" id="pcUpi" class="pl-m" onclick="_pcM=\'upi\'; pcPaint();">&#128241; UPI</button></div>' +
+    '<div style="display:flex; gap:8px; margin-top:14px;"><button type="button" onclick="closePayCollect()" style="flex:1; padding:12px; border-radius:10px; border:none; background:#efe4cf; color:#5b4630; font-weight:800; font-size:14px;">Cancel</button>' +
+    '<button type="button" id="pcGo" onclick="payCollectGo()" style="flex:1.4; padding:12px; border-radius:10px; border:none; background:#1e7a3c; color:#fff; font-weight:900; font-size:14px;">&#10003; Collect</button></div></div>';
+  ov.addEventListener('click', function(ev){ if(ev.target === ov) closePayCollect(); });
+  document.body.appendChild(ov);
+  pcPaint();
+}
+function pcPaint(){
+  var e = ppFind(_pcId); if(!e) return;
+  var a = Math.round(Number((document.getElementById('pcAmt') || {}).value) || 0), left = (Number(e.due) || 0) - a, el = document.getElementById('pcLeft');
+  if(el) el.innerHTML = a <= 0 ? '<span style="color:#b3261e;">Enter the amount received</span>' : left < 0 ? '<span style="color:#b3261e;">More than the balance (&#8377;' + e.due.toLocaleString('en-IN') + ')</span>' : left === 0 ? '<span style="color:#1e7a3c;">&#10003; Fully paid - the bill counts in today&rsquo;s sales</span>' : '<span style="color:#b45309;">&#8377;' + left.toLocaleString('en-IN') + ' will still be pending</span>';
+  var c = document.getElementById('pcCash'), u = document.getElementById('pcUpi');
+  if(c) c.classList.toggle('on', _pcM === 'cash'); if(u) u.classList.toggle('on', _pcM === 'upi');
+}
+function payCollectGo(){
+  var e = ppFind(_pcId); if(!e) return;
+  var a = Math.round(Number((document.getElementById('pcAmt') || {}).value) || 0);
+  if(!(a > 0) || a > e.due){ pcPaint(); return; }
+  var id = _pcId, m = _pcM;
+  if(m === 'upi' && getActiveUpi()){ closePayCollect(); openUpiQr(a, function(){ payCollectCommit(id, a, m); }); return; }
+  payCollectCommit(id, a, m);
+}
+async function payCollectCommit(id, amt, m){
+  var btn = document.getElementById('pcGo'); if(btn){ btn.disabled = true; btn.textContent = 'Saving...'; }
+  var who = { name: (session && (session.name || session.id)) || '', id: (session && session.id) || '' }, iso = new Date().toISOString(), res = {};
+  try{
+    var r = await fbTimeout(_fbDb.ref('sales/' + fbSafeKey(id)).transaction(function(cur){
+      if(!cur) return cur;
+      if(!cur.payLater || cur.paidAt || cur.status === 'cancelled' || cur.status === 'cancel_pending'){ res.err = 'done'; return; }
+      var log = fbToArr(cur.payLog).filter(function(p){ return p && Number(p.amt) > 0; }), paid = log.reduce(function(x, p){ return x + (Number(p.amt) || 0); }, 0);
+      var due = Math.round((Number(cur.total) || 0) - paid);
+      if(due <= 0){ res.err = 'done'; return; }
+      var a = Math.min(amt, due);
+      log.push({ at: iso, amt: a, m: m === 'upi' ? 'upi' : 'cash', by: who.name, byId: who.id });
+      cur.payLog = log; cur.payDue = due - a; cur.paidAmount = paid + a; cur.payRev = (Number(cur.payRev) || 0) + 1;
+      if(cur.payDue <= 0) payFinish(cur, iso, log);
+      res.amt = a; res.full = cur.payDue <= 0; res.left = cur.payDue;
+      return cur;
+    }), 20000, 'Collect');
+    if(!r || !r.committed){
+      if(res.err === 'done'){ alert('This bill is already paid (or cancelled).'); try{ _fbDb.ref('pendingPay/' + fbSafeKey(id)).remove(); }catch(e){} }
+      else alert('Could not save. Please try again.');
+      if(btn){ btn.disabled = false; btn.innerHTML = '&#10003; Collect'; }
+      return;
+    }
+    var v = r.snapshot && r.snapshot.val();
+    if(v){ v.items = fbToArr(v.items); v.payLog = fbToArr(v.payLog); mergeRemoteSales([v]); fbPendingSync(v); }
+    fbNoteSaleEdit({ id: id });
+    closePayCollect();
+    try{ scanToast('\u2713 \u20B9' + (res.amt || amt).toLocaleString('en-IN') + ' collected' + (res.full ? ' \u2022 bill fully paid' : ' \u2022 \u20B9' + (res.left || 0).toLocaleString('en-IN') + ' still pending'), 'green'); }catch(e){}
+    pendingRefresh();
+  }catch(e){
+    alert('Could not save: ' + ((e && e.message) || e) + '\nCheck the internet and try again.');
+    if(btn){ btn.disabled = false; btn.innerHTML = '&#10003; Collect'; }
+  }
+}
+/* bill screen: the Pay later sheet */
+var _plM = 'cash';
+function closePayLater(){ var o = document.getElementById('plOv'); if(o && o.parentNode){ o.parentNode.removeChild(o); return true; } return false; }
+function openPayLater(){
+  if(branchHoldBlocksBilling()) return;
+  var t = renderBillTotals(); if(!t.count) return;
+  _plM = 'cash'; closePayLater();
+  var nm = ((document.getElementById('billCustomerName') || {}).value || '').trim(), ph = ((document.getElementById('billCustomerPhone') || {}).value || '').trim();
+  var ov = document.createElement('div'); ov.id = 'plOv'; ov.className = 'pg-ov'; ov.style.zIndex = '10060';
+  ov.innerHTML = '<div class="pg-sheet" style="max-width:440px;">' +
+    '<div style="font-weight:900; font-size:16px; color:#2a1408;">&#9203; Pay later <small style="font-size:11.5px; color:#8a6a44; font-weight:700;">/ பின்னர் செலுத்துதல்</small></div>' +
+    '<div style="font-size:12px; color:#8a6a44; margin-top:2px;">Bill amount <b style="color:#2a1408;">&#8377;' + t.grand.toLocaleString('en-IN') + '</b> &middot; counts in sales only after full payment</div>' +
+    '<label class="pl-lb">Customer name * / வாடிக்கையாளர் பெயர்</label><input id="plName" type="text" maxlength="40" value="' + custEsc(nm) + '" oninput="plPaint()" class="pl-in" placeholder="Name (must)">' +
+    '<label class="pl-lb">Mobile (optional, for WhatsApp reminder)</label><input id="plPhone" type="tel" inputmode="numeric" maxlength="14" value="' + custEsc(ph) + '" class="pl-in" placeholder="10-digit mobile">' +
+    '<label class="pl-lb">Paid now (advance)</label><input id="plAdv" type="number" inputmode="numeric" min="0" max="' + Math.max(0, t.grand - 1) + '" value="0" oninput="plPaint()" class="pl-in" style="font-size:18px; font-weight:900;">' +
+    '<div id="plMRow" style="display:flex; gap:8px; margin-top:8px;"><button type="button" id="plCash" class="pl-m on" onclick="_plM=\'cash\'; plPaint();">&#128181; Cash</button><button type="button" id="plUpi" class="pl-m" onclick="_plM=\'upi\'; plPaint();">&#128241; UPI</button></div>' +
+    '<div style="display:flex; gap:8px;"><div style="flex:1;"><label class="pl-lb">Pay by (optional)</label><input id="plBy" type="date" min="' + saleLocalDate(new Date()) + '" class="pl-in"></div>' +
+    '<div style="flex:1.3;"><label class="pl-lb">Note (optional)</label><input id="plNote" type="text" maxlength="60" class="pl-in" placeholder="e.g. will pay Sunday"></div></div>' +
+    '<div id="plSum" class="pl-sum"></div>' +
+    '<div style="display:flex; gap:8px; margin-top:12px;"><button type="button" onclick="closePayLater()" style="flex:1; padding:12px; border-radius:10px; border:none; background:#efe4cf; color:#5b4630; font-weight:800; font-size:14px;">Cancel</button>' +
+    '<button type="button" id="plGo" onclick="payLaterSave()" style="flex:1.4; padding:12px; border-radius:10px; border:none; background:#b45309; color:#fff; font-weight:900; font-size:14px;">&#10003; Save bill</button></div></div>';
+  ov.addEventListener('click', function(ev){ if(ev.target === ov) closePayLater(); });
+  document.body.appendChild(ov);
+  plPaint();
+  if(!nm){ var ni = document.getElementById('plName'); if(ni) setTimeout(function(){ ni.focus(); }, 60); }
+}
+function plPaint(){
+  var t = renderBillTotals(), adv = Math.round(Number((document.getElementById('plAdv') || {}).value) || 0), nm = ((document.getElementById('plName') || {}).value || '').trim();
+  var bal = t.grand - adv, el = document.getElementById('plSum');
+  if(el) el.innerHTML = adv < 0 || adv >= t.grand ? '<span style="color:#b3261e;">Paid now must be less than &#8377;' + t.grand.toLocaleString('en-IN') + ' (for full payment use Cash / UPI)</span>'
+    : '<div style="display:flex; justify-content:space-between;"><span>Paid now</span><b>&#8377;' + adv.toLocaleString('en-IN') + '</b></div><div style="display:flex; justify-content:space-between; font-size:16px;"><span>Balance pending</span><b style="color:#b3261e;">&#8377;' + bal.toLocaleString('en-IN') + '</b></div>';
+  var mr = document.getElementById('plMRow'); if(mr) mr.style.display = adv > 0 ? 'flex' : 'none';
+  var c = document.getElementById('plCash'), u = document.getElementById('plUpi'); if(c) c.classList.toggle('on', _plM === 'cash'); if(u) u.classList.toggle('on', _plM === 'upi');
+  var go = document.getElementById('plGo'); if(go) go.disabled = !nm || adv < 0 || adv >= t.grand;
+  var ni = document.getElementById('plName'); if(ni) ni.style.borderColor = nm ? '' : '#e0a43a';
+}
+function payLaterSave(){
+  var t = renderBillTotals();
+  var later = { name: ((document.getElementById('plName') || {}).value || '').trim().slice(0, 40), phone: ((document.getElementById('plPhone') || {}).value || '').trim(),
+    adv: Math.round(Number((document.getElementById('plAdv') || {}).value) || 0), m: _plM,
+    payBy: (document.getElementById('plBy') || {}).value || '', note: ((document.getElementById('plNote') || {}).value || '').trim().slice(0, 60) };
+  if(!later.name){ alert('Customer name is needed for a Pay later bill. / வாடிக்கையாளர் பெயர் தேவை.'); plPaint(); return; }
+  if(later.phone && later.phone.replace(/\D/g, '').length < 10){ alert('Mobile number: 10 digits (or leave it empty).'); return; }
+  if(later.adv < 0 || later.adv >= t.grand){ plPaint(); return; }
+  closePayLater();
+  if(later.adv > 0 && later.m === 'upi' && getActiveUpi()){ openUpiQr(later.adv, function(){ completeSale('later', null, later); }); return; }
+  completeSale('later', null, later);
+}
+/* bill details: the Pay later lines */
+function payLaterDetailHtml(s){
+  if(!s || !s.payLater) return '';
+  var h = '<div style="margin-top:4px; border-top:1px dashed #e2d3b5; padding-top:4px;"><span>&#9203; Pay later</span><span>Bill &#8377;' + (Number(s.total) || 0).toLocaleString('en-IN') + '</span></div>';
+  payLogOf(s).forEach(function(p){ h += '<div><span style="font-size:11px;">' + payDateTxt(p.at) + ' &middot; ' + (p.m === 'upi' ? 'UPI' : 'Cash') + (p.by ? ' &middot; ' + custEsc(p.by) : '') + '</span><span>&#8377;' + (Number(p.amt) || 0).toLocaleString('en-IN') + '</span></div>'; });
+  if(salePending(s)){
+    h += '<div style="color:#b3261e; font-weight:800;"><span>Balance due' + (s.payBy ? ' (pay by ' + new Date(s.payBy + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ')' : '') + '</span><span>&#8377;' + payDueOf(s).toLocaleString('en-IN') + '</span></div>';
+    h += '<div style="justify-content:flex-end; gap:8px; padding-top:6px;">' + (s.buyerPhone ? '<button type="button" class="pp-btn wa" onclick="event.stopPropagation(); payRemind(\'' + s.id + '\')"><span class="wa-logo" style="width:16px; height:16px;"></span> Remind</button>' : '') +
+      '<button type="button" class="pp-btn go" onclick="event.stopPropagation(); openPayCollect(\'' + s.id + '\')">&#128176; Collect &#8377;' + payDueOf(s).toLocaleString('en-IN') + '</button></div>';
+  }
+  else if(s.paidAt) h += '<div style="color:#1e7a3c; font-weight:800;"><span>Fully paid ' + payDateTxt(s.paidAt) + (s.billTime ? ' &middot; billed ' + payDateTxt(s.billTime) : '') + '</span><span>&#10003;</span></div>';
+  if(s.payNote) h += '<div><span>Note</span><span>' + custEsc(s.payNote) + '</span></div>';
+  return h;
+}
+/* receipt / picture: the Pay later lines (big balance) */
+function payLaterPrintHtml(s, big){
+  if(!s || !s.payLater) return '';
+  var fs = big ? 15 : 11, row = function(a, b, st){ return '<div style="display:flex; justify-content:space-between; font-size:' + fs + 'px; ' + (st || '') + '"><span>' + a + '</span><span>' + b + '</span></div>'; };
+  var h = '<div style="padding:' + (big ? '8px 10px' : '5px 10px') + '; border-top:' + (big ? 2 : 1.5) + 'px dashed #000;">';
+  if(s.buyerName) h += row('Customer', custEsc(s.buyerName), 'font-weight:800;');
+  h += row('Bill amount', '&#8377;' + (Number(s.total) || 0).toLocaleString('en-IN'));
+  if(salePending(s)){
+    h += row('Paid', '&#8377;' + payPaidSoFar(s).toLocaleString('en-IN'));
+    h += '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:3px; font-size:' + (big ? 20 : 14) + 'px; font-weight:900;"><span>BALANCE DUE</span><span>&#8377;' + payDueOf(s).toLocaleString('en-IN') + '</span></div>';
+    if(s.payBy) h += row('Pay by', new Date(s.payBy + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }), 'font-weight:800;');
+  } else if(s.paidAt) h += row('Fully paid', payDateTxt(s.paidAt), 'font-weight:800;');
+  return h + '</div>';
 }
 
 function completeSaleUPI(){
@@ -7076,8 +7401,8 @@ function buildCurrentBillPseudoSale(){
 /* The WhatsApp bill message (plain text). Same layout everywhere it is shared. */
 function buildWhatsAppBillText(sale){
   const inr = n => '\u20B9' + (Number(n) || 0).toLocaleString('en-IN');
-  const paid = sale.paidAmount != null ? sale.paidAmount : sale.total;
-  const method = sale.paymentMethod === 'upi' ? 'upi' : sale.paymentMethod === 'split' ? 'split' : 'cash';
+  const paid = salePending(sale) ? payPaidSoFar(sale) : (sale.paidAmount != null ? sale.paidAmount : sale.total);
+  const method = sale.paymentMethod === 'later' ? 'pay later' : sale.paymentMethod === 'upi' ? 'upi' : sale.paymentMethod === 'split' ? 'split' : 'cash';
   const no = (sale.billNo && !/pending/i.test(String(sale.billNo))) ? billNoLabel(sale) + ' ' : '';
   const lines = [];
   lines.push('\uD83E\uDDFE *' + SHOP.name_ta + '*');
@@ -7086,7 +7411,8 @@ function buildWhatsAppBillText(sale){
   if(sale.sellerName) lines.push('Seller: ' + sale.sellerName);
   lines.push('Bill Value: ' + inr(sale.subtotal));
   if(sale.discount > 0) lines.push('Discount: -' + inr(sale.discount));
-  lines.push('*Paid:* ' + inr(paid) + ' \u2705');
+  if(salePending(sale)){ if(sale.buyerName) lines.push('Customer: ' + sale.buyerName); lines.push('*Paid now:* ' + inr(paid)); lines.push('*Balance due:* ' + inr(payDueOf(sale)) + ' \u23F3'); }
+  else lines.push('*Paid:* ' + inr(paid) + ' \u2705');
   lines.push('');
   lines.push('*Details:*');
   sale.items.forEach((it, idx) => {
@@ -7703,6 +8029,7 @@ function renderHistoryList(){
   const _tile = (fn, bg, ico, label) => `<button onclick="${fn}" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:10px 4px; min-height:76px; background:${bg}; color:#fff; border:none; border-radius:12px; cursor:pointer;"><span style="font-size:27px; line-height:1;">${ico}</span><span style="font-size:10.5px; font-weight:800; text-align:center; line-height:1.2;">${label}</span></button>`;
   html += `<div style="display:flex; gap:8px; margin:10px 0;">${_tile('openPriceListPDFPreview()', '#7a1414', '&#128269;', 'Price list<br>PDF')}${_tile('promoQuickOpen()', '#1faa59', '<span class="wa-logo" style="width:30px; height:30px;"></span>', 'WhatsApp<br>Promotion')}${_tile('openPriceQr()', '#1a5276', '&#128290;', 'Customer<br>QR')}</div>`;
 
+  html += pendingBannerHtml(isAdmin ? (historyBranchFilter || '') : '', false);
   html += highDiscNotice(list);
   if(isAdmin) html += branchChipsHtml(historyBranchFilter, 'setHistoryBranch');
   if(isAdmin && historyBranchFilter && BRANCHES[historyBranchFilter]){
@@ -7733,7 +8060,8 @@ function renderHistoryList(){
     if(s.discount>0) itemsHtml += `<div class="sd-disc"><span>Discount${s.discountPercent?' ('+s.discountPercent+'%)':''}</span><span>-₹${s.discount.toLocaleString('en-IN')}</span></div>`;
     if(s.buyerName) itemsHtml += `<div><span>Customer</span><span>${custEsc(s.buyerName)}</span></div>`;
     if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${fmtPhones(s.buyerPhone)}</span></div>`;
-    if(s.paidAmount) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
+    if(s.paidAmount && !s.payLater) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
+    itemsHtml += payLaterDetailHtml(s);
     itemsHtml += saleEditNote(s);
     const _off = status === 'confirmed' ? '' : ' sl-off';
     html += (swAct ? `<div class="pe-swipe" style="margin-bottom:6px;"><div class="pe-act">${swAct}</div><div class="sale-card sl-card pe-row${_off}" style="display:block; margin:0;">` : `<div class="sale-card sl-card${_off}">`) + `
@@ -7838,8 +8166,9 @@ function buildBillPictureHTML(s){
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding:9px 10px; border-top:2px dashed #000;">
         <span style="font-size:16px; font-weight:800; line-height:1.3;">Paid Amount<br><span style="font-size:13.5px; font-weight:700;">செலுத்திய தொகை</span></span>
-        <span style="text-align:right;"><span style="display:block; font-size:28px; font-weight:800;">${inr(s.paidAmount || s.total)}</span>${s.paymentMethod ? '<span style="font-size:13px; font-weight:600; color:#222;">(' + paymentMethodLabel(s) + ')</span>' : ''}</span>
+        <span style="text-align:right;"><span style="display:block; font-size:28px; font-weight:800;">${inr(salePending(s) ? payPaidSoFar(s) : (s.paidAmount || s.total))}</span>${s.paymentMethod ? '<span style="font-size:13px; font-weight:600; color:#222;">(' + paymentMethodLabel(s) + ')</span>' : ''}</span>
       </div>
+      ${payLaterPrintHtml(s, true)}
       <div style="padding:5px 10px 0; font-size:13.5px; text-align:center;">Thank you from ${custEsc(SHOP.name_ta)}!</div>
       ${saleStatus(s) === 'cancelled' ? '<div style="margin-top:6px; text-align:center; font-size:15px; font-weight:800; padding:7px 8px; border-top:2px dashed #000;">&#9888; ORDER CANCELLED</div>' : ''}
     </div>`;
@@ -8009,6 +8338,7 @@ function buildBillReceiptHTML(s){
       </table>
       <div class="br-summary">${summary}</div>
       <div class="br-total-row"><span style="font-size:12px; font-weight:800; white-space:nowrap;">Paid Amount<br><span class="br-tam" style="font-size:11.5px; white-space:nowrap;">செலுத்திய தொகை</span></span><span style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;"><span style="font-size:${printCfg('paid').s}px; font-weight:${printW('paid')};">&#8377;${(s.paidAmount||0).toLocaleString('en-IN')}</span>${s.paymentMethod ? '<span style="font-size:9px; font-weight:700; color:#000; white-space:nowrap;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>
+      ${payLaterPrintHtml(s, false)}
       <div style="padding:6px 10px 4px; font-size:8.5px; color:#000; text-align:center;">Thank you from ${SHOP.name_ta}!</div>
       ${cancelledNote}
     </div>`;
@@ -9369,8 +9699,63 @@ function openSaleEdit(id){
       '<input type="number" inputmode="decimal" min="0" class="se-p" value="' + r.price + '" oninput="saleEditRow(' + i + ',\'price\',this.value)" aria-label="Price">' +
       '<div class="se-amt" id="seAmt' + i + '"></div></div>';
   }).join('');
+  sePayInit(s);
   saleEditPaint(true);
   document.getElementById('saleEditOverlay').classList.add('show');
+}
+/* ---- Edit bill -> Payment: a paid bill can be changed to Pay later; a Pay later bill can get its customer / pay-by
+   changed, or be corrected back to "paid at billing" (counts on the bill's own date). Real later payments = Collect. ---- */
+var _sePay = null;
+function sePayInit(s){
+  var pend = salePending(s), done = !!(s.payLater && s.paidAt);
+  _sePay = { kind: done ? 'done' : pend ? 'pending' : 'paid', mode: 'keep', name: s.buyerName || '', phone: s.buyerPhone || '', adv: pend ? payPaidSoFar(s) : 0, m: 'cash', by: s.payBy || '', note: s.payNote || '' };
+  var box = document.getElementById('saleEditPay'); if(!box) return;
+  if(done){ box.innerHTML = '<div class="se-pay"><div class="se-pay-h">&#128179; Payment</div><div style="font-size:12.5px; color:#1e7a3c; font-weight:800;">&#10003; Paid later on ' + payDateTxt(s.paidAt) + ' (' + custEsc(paymentMethodLabel(s)) + ')</div></div>'; return; }
+  var seg = function(v, l){ return '<button type="button" class="pl-seg" data-pm="' + v + '" onclick="sePayMode(\'' + v + '\')">' + l + '</button>'; };
+  var today = saleLocalDate(new Date());
+  box.innerHTML = '<div class="se-pay"><div class="se-pay-h">&#128179; Payment</div>' +
+    '<div class="pl-segs">' + (pend ? seg('keep', '&#9203; Pay later') + seg('paid', '&#10003; Paid at billing') : seg('keep', '&#10003; Paid (' + custEsc(paymentMethodLabel(s)) + ')') + seg('later', '&#9203; Change to Pay later')) + '</div>' +
+    '<div id="sePayLater" style="display:none;">' +
+      '<label class="pl-lb">Customer name *</label><input id="sePName" class="pl-in" maxlength="40" value="' + custEsc(_sePay.name) + '" oninput="_sePay.name=this.value; sePayPaint();" placeholder="Name (must)">' +
+      '<label class="pl-lb">Mobile (optional)</label><input id="sePPhone" class="pl-in" type="tel" inputmode="numeric" maxlength="14" value="' + custEsc(_sePay.phone) + '" oninput="_sePay.phone=this.value;">' +
+      (pend ? '' : '<label class="pl-lb">Already paid (advance)</label><input id="sePAdv" class="pl-in" type="number" inputmode="numeric" min="0" value="0" oninput="_sePay.adv=Math.round(Number(this.value)||0); sePayPaint();" style="font-weight:900;">' +
+        '<div id="sePAdvM" style="display:none; gap:8px; margin-top:8px;"><button type="button" class="pl-m" data-m="cash" onclick="_sePay.m=\'cash\'; sePayPaint();">&#128181; Cash</button><button type="button" class="pl-m" data-m="upi" onclick="_sePay.m=\'upi\'; sePayPaint();">&#128241; UPI</button></div>') +
+      '<div style="display:flex; gap:8px;"><div style="flex:1;"><label class="pl-lb">Pay by</label><input id="sePBy" class="pl-in" type="date" min="' + today + '" value="' + custEsc(_sePay.by) + '" onchange="_sePay.by=this.value;"></div>' +
+      '<div style="flex:1.3;"><label class="pl-lb">Note</label><input id="sePNote" class="pl-in" maxlength="60" value="' + custEsc(_sePay.note) + '" oninput="_sePay.note=this.value;"></div></div>' +
+    '</div>' +
+    '<div id="sePayPaid" style="display:none;"><div class="pl-lb">Paid by</div><div style="display:flex; gap:8px;"><button type="button" class="pl-m" data-m2="cash" onclick="_sePay.m=\'cash\'; sePayPaint();">&#128181; Cash</button><button type="button" class="pl-m" data-m2="upi" onclick="_sePay.m=\'upi\'; sePayPaint();">&#128241; UPI</button></div>' +
+      '<div class="pl-note" style="margin-top:6px;">Use this only to correct a mistake: the bill counts on its own date as fully paid. For money received now, use <b>Collect</b>.</div></div>' +
+    '<div id="sePaySum" class="pl-sum" style="display:none;"></div></div>';
+}
+function sePayMode(v){ if(_sePay) _sePay.mode = v; sePayPaint(); }
+function sePayPaint(){
+  var box = document.getElementById('saleEditPay'); if(!box || !_sePay || _sePay.kind === 'done') return;
+  var c = _seCalc(), inr = function(n){ return '&#8377;' + Math.round(n).toLocaleString('en-IN'); };
+  box.querySelectorAll('[data-pm]').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-pm') === _sePay.mode); });
+  var showLater = _sePay.kind === 'pending' ? _sePay.mode === 'keep' : _sePay.mode === 'later';
+  var l = document.getElementById('sePayLater'); if(l) l.style.display = showLater ? 'block' : 'none';
+  var pd = document.getElementById('sePayPaid'); if(pd) pd.style.display = _sePay.mode === 'paid' ? 'block' : 'none';
+  var am = document.getElementById('sePAdvM'); if(am) am.style.display = _sePay.adv > 0 ? 'flex' : 'none';
+  box.querySelectorAll('[data-m],[data-m2]').forEach(function(b){ b.classList.toggle('on', (b.getAttribute('data-m') || b.getAttribute('data-m2')) === _sePay.m); });
+  var ni = document.getElementById('sePName'); if(ni) ni.style.borderColor = String(_sePay.name).trim() ? '' : '#e0a43a';
+  var sum = document.getElementById('sePaySum');
+  if(sum){
+    if(showLater){
+      var bal = c.tot - (Number(_sePay.adv) || 0);
+      sum.style.display = 'block';
+      sum.innerHTML = bal <= 0 ? '<span style="color:#b3261e;">Already paid must be less than ' + inr(c.tot) + '</span>' :
+        '<div style="display:flex; justify-content:space-between;"><span>Paid</span><b>' + inr(_sePay.adv || 0) + '</b></div><div style="display:flex; justify-content:space-between; font-size:15px;"><span>Balance pending</span><b style="color:#b3261e;">' + inr(bal) + '</b></div>' +
+        (_sePay.kind === 'paid' ? '<div class="pl-note">The bill leaves the sales totals until it is fully paid.</div>' : '');
+    } else sum.style.display = 'none';
+  }
+}
+/* what the payment part wants to change ('' = nothing) */
+function sePayChange(s){
+  if(!_sePay || _sePay.kind === 'done') return '';
+  if(_sePay.kind === 'paid') return _sePay.mode === 'later' ? 'later' : '';
+  if(_sePay.mode === 'paid') return 'paid';
+  var d = String(_sePay.name).trim() !== (s.buyerName || '') || String(_sePay.phone).trim() !== (s.buyerPhone || '') || (_sePay.by || '') !== (s.payBy || '') || String(_sePay.note).trim() !== (s.payNote || '');
+  return d ? 'info' : '';
 }
 function closeSaleEdit(){ document.getElementById('saleEditOverlay').classList.remove('show'); _seId = null; }
 function saleEditRow(i, field, v){
@@ -9407,6 +9792,7 @@ function saleEditPaint(full, typing){
   document.getElementById('seCmp').innerHTML = 'Bill amount: ' + inr(old) + ' &rarr; <span style="font-size:15px; color:var(--maroon);">' + inr(c.tot) + '</span>' +
     (diff ? ' <span style="color:' + (diff > 0 ? 'var(--green)' : '#b3261e') + ';">(' + (diff > 0 ? '+' : '&minus;') + inr(Math.abs(diff)) + ')</span>' : ' <span style="color:#8a6a44;">(no change)</span>') +
     (c.pct >= HIGH_DISC_PCT ? '<div style="color:#b3261e; margin-top:3px;">&#9888; Discount ' + c.pct + '%</div>' : '');
+  sePayPaint();
 }
 async function saveSaleEdit(){
   if(typeof session === 'undefined' || !session || session.role !== 'admin') return;
@@ -9417,20 +9803,50 @@ async function saveSaleEdit(){
   if(!kept.length){ alert('A bill needs at least one item. To remove the whole bill, use Cancel Order.'); return; }
   var same = c.tot === Number(s.total) && kept.length === (s.items || []).length &&
     _seRows.every(function(r){ return r.qty === (Number(r.it.qty) || 0) && r.price === (Number(r.it.price) || 0); });
-  if(same){ closeSaleEdit(); return; }
-  var ok = await showConfirm('Save changes to bill ' + billNoRef(s) + '?\n\n₹' + (Number(s.total) || 0).toLocaleString('en-IN') + '  →  ₹' + c.tot.toLocaleString('en-IN') + '\n\nThe bill will show "Edited" on every phone.');
+  var pch = sePayChange(s);
+  if(same && !pch){ closeSaleEdit(); return; }
+  if(pch === 'later' || pch === 'info'){
+    if(!String(_sePay.name).trim()){ alert('Customer name is needed for a Pay later bill. / வாடிக்கையாளர் பெயர் தேவை.'); return; }
+    if(String(_sePay.phone).trim() && String(_sePay.phone).replace(/\D/g, '').length < 10){ alert('Mobile number: 10 digits (or leave it empty).'); return; }
+    if(pch === 'later' && !((Number(_sePay.adv) || 0) >= 0 && (Number(_sePay.adv) || 0) < c.tot)){ alert('Already paid must be less than the bill amount.'); return; }
+  }
+  var _pmsg = pch === 'later' ? '\n\n⏳ Change to Pay later: ₹' + (c.tot - (Number(_sePay.adv) || 0)).toLocaleString('en-IN') + ' pending from ' + String(_sePay.name).trim() + '. The bill leaves the sales totals until fully paid.'
+    : pch === 'paid' ? '\n\n✓ Change to paid at billing (' + (_sePay.m === 'upi' ? 'UPI' : 'Cash') + '). The bill counts on its own date.' : pch === 'info' ? '\n\nPay later details updated.' : '';
+  var ok = await showConfirm('Save changes to bill ' + billNoRef(s) + '?' + (same ? '' : '\n\n₹' + (Number(s.total) || 0).toLocaleString('en-IN') + '  →  ₹' + c.tot.toLocaleString('en-IN')) + _pmsg + '\n\nThe bill will show "Edited" on every phone.');
   if(!ok) return;
   if(!s.editOrig) s.editOrig = { items: (s.items || []).map(function(it){ return Object.assign({}, it); }), subtotal: s.subtotal, discount: s.discount, discountPercent: s.discountPercent, total: s.total, paymentMethod: s.paymentMethod || 'cash' };
   var oldTot = Number(s.total) || 0;
   s.items = kept.map(function(r){ return Object.assign({}, r.it, { qty: r.qty, price: r.price }); });
   s.subtotal = c.sub; s.discount = c.disc; s.discountPercent = c.pct; s.total = c.tot;
-  if(s.paidAmount != null) s.paidAmount = c.tot;
   var m = s.paymentMethod || 'cash';
-  if(m === 'split'){
+  if(salePending(s)){   // a Pay later bill: the balance follows the new amount
+    s.payRev = (Number(s.payRev) || 0) + 1; s.payDue = payDueOf(s); s.paidAmount = payPaidSoFar(s);
+    if(s.payDue <= 0) payFinish(s, new Date().toISOString());
+    m = 'later-skip';
+  } else if(s.paidAmount != null) s.paidAmount = c.tot;
+  if(m === 'later-skip'){}
+  else if(m === 'split'){
     var cash = oldTot > 0 ? Math.round((Number(s.cashAmount) || 0) * c.tot / oldTot) : c.tot;
     s.cashAmount = Math.max(0, Math.min(c.tot, cash)); s.upiAmount = c.tot - s.cashAmount;
   } else if(m === 'upi'){ s.cashAmount = 0; s.upiAmount = c.tot; }
   else { s.cashAmount = c.tot; s.upiAmount = 0; }
+  if(pch === 'later'){        // paid bill -> Pay later
+    var _adv = Math.max(0, Math.round(Number(_sePay.adv) || 0));
+    s.payLater = true; s.buyerName = String(_sePay.name).trim().slice(0, 40); s.buyerPhone = String(_sePay.phone).trim() || null;
+    s.payLog = _adv > 0 ? [{ at: s.time, amt: _adv, m: _sePay.m === 'upi' ? 'upi' : 'cash', by: session.name || session.id, byId: session.id }] : [];
+    s.payDue = c.tot - _adv; s.paidAmount = _adv; s.paymentMethod = 'later';
+    s.cashAmount = _sePay.m === 'upi' ? 0 : _adv; s.upiAmount = _sePay.m === 'upi' ? _adv : 0;
+    s.payBy = _sePay.by || null; s.payNote = String(_sePay.note).trim().slice(0, 60) || null;
+    s.paidAt = null; s.billTime = null; s.payRev = (Number(s.payRev) || 0) + 1;
+  } else if(pch === 'paid'){  // Pay later -> paid at billing (a correction: counts on the bill's own date)
+    s.payLater = false; s.payLog = null; s.payDue = null; s.payBy = null; s.payNote = null; s.paidAt = null; s.billTime = null;
+    s.paymentMethod = _sePay.m === 'upi' ? 'upi' : 'cash'; s.paidAmount = c.tot;
+    s.cashAmount = _sePay.m === 'upi' ? 0 : c.tot; s.upiAmount = _sePay.m === 'upi' ? c.tot : 0;
+    s.payRev = (Number(s.payRev) || 0) + 1;
+  } else if(pch === 'info'){
+    s.buyerName = String(_sePay.name).trim().slice(0, 40); s.buyerPhone = String(_sePay.phone).trim() || null;
+    s.payBy = _sePay.by || null; s.payNote = String(_sePay.note).trim().slice(0, 60) || null; s.payRev = (Number(s.payRev) || 0) + 1;
+  }
   s.edited = { at: new Date().toISOString(), by: session.name || session.id, byId: session.id, n: ((s.edited && s.edited.n) || 0) + 1 };
   s._sheetSynced = false;                               // the admin's next "Save to Google Sheet" re-sends this row
   saveJSON('ars_sales', SALES);
@@ -9438,7 +9854,7 @@ async function saveSaleEdit(){
   closeSaleEdit();
   if(!document.getElementById('adminScreen').classList.contains('hidden')) renderAdmin(); else render();
   refreshNotifBadges();
-  try{ scanToast('✎ Bill ' + billNoRef(s) + ' updated • ₹' + c.tot.toLocaleString('en-IN'), 'green'); }catch(e){}
+  try{ scanToast('✎ Bill ' + billNoRef(s) + ' updated • ₹' + c.tot.toLocaleString('en-IN') + (pch === 'later' ? ' • ⏳ Pay later' : pch === 'paid' ? ' • paid' : ''), 'green'); }catch(e){}
 }
 /* Seller: ask the admin to cancel one of their own bills. The bill stops counting in the totals
    straight away; the admin then approves or rejects. */
@@ -10172,7 +10588,10 @@ function salesInDates(s){
 function applySalesFilters(salesList){
   return salesList.filter(s => {
     if(saleHidden(s)) return false;
-    if(!salesInDates(s)) return false;
+    if(salesFilters.pl === 'pending'){ if(!salePending(s)) return false; }              // every unpaid bill, from any date
+    else if(salesFilters.pl === 'paid'){ if(!(s.payLater && s.paidAt)) return false; }
+    else if(salesFilters.pl === 'all'){ if(!s.payLater) return false; }
+    if(salesFilters.pl !== 'pending' && !salesInDates(s)) return false;
     if(salesFilters.seller && sellerKeyOf(s) !== salesFilters.seller) return false;
     if(salesFilters.billNo && !String(s.billNo||'').includes(salesFilters.billNo.trim())) return false;
     if(salesFilters.phone && !String(s.buyerPhone||'').replace(/\D/g,'').includes(salesFilters.phone.replace(/\D/g,''))) return false;
@@ -10182,6 +10601,31 @@ function applySalesFilters(salesList){
     }
     return true;
   });
+}
+/* Sales tab -> ⏳ Pay later: Pending (every unpaid bill, oldest first) / Paid later / All, with a small tracker */
+function slPayLater(v){ salesFilters.pl = v != null ? v : (salesFilters.pl ? '' : 'pending'); listReset('sales'); renderAdmin(); }
+function slPayLaterTrackerHtml(list){
+  var pend = list.filter(salePending), paid = list.filter(function(s){ return s.payLater && s.paidAt; });
+  var allPend = SALES.filter(function(s){ return salePending(s) && saleInBranch(s, salesFilters.branch) && (!salesFilters.seller || sellerKeyOf(s) === salesFilters.seller); });
+  var allPaid = SALES.filter(function(s){ return s.payLater && s.paidAt && saleInBranch(s, salesFilters.branch) && salesInDates(s) && (!salesFilters.seller || sellerKeyOf(s) === salesFilters.seller); });
+  var sum = function(a, f){ return a.reduce(function(x, s){ return x + (Number(f(s)) || 0); }, 0); };
+  var inr = function(n){ return '&#8377;' + Math.round(n).toLocaleString('en-IN'); };
+  var today = saleLocalDate(new Date());
+  var seg = function(v, l){ return '<button type="button" class="pl-seg' + (salesFilters.pl === v ? ' on' : '') + '" onclick="slPayLater(\'' + v + '\')">' + l + '</button>'; };
+  var h = '<div class="pl-track"><div class="pl-segs">' + seg('pending', '&#9203; Pending (' + allPend.length + ')') + seg('paid', '&#10003; Paid later (' + allPaid.length + ')') + seg('all', 'All') + '</div>';
+  if(salesFilters.pl === 'pending'){
+    var due = sum(pend, payDueOf), adv = sum(pend, payPaidSoFar), late = pend.filter(function(s){ return s.payBy && s.payBy < today; }).length;
+    var oldest = pend.reduce(function(m, s){ var t = Date.parse(s.billTime || s.time) || 0; return !m || t < m ? t : m; }, 0), days = oldest ? Math.floor((Date.now() - oldest) / 86400000) : 0;
+    h += '<div class="pl-kpis"><div><b style="color:#b3261e;">' + inr(due) + '</b><span>to collect</span></div><div><b>' + pend.length + '</b><span>bills</span></div>' +
+      '<div><b style="color:' + (late ? '#b3261e' : '#2a1408') + ';">' + late + '</b><span>late</span></div><div><b>' + inr(adv) + '</b><span>advance taken</span></div></div>' +
+      (pend.length ? '<div class="pl-note">Oldest: ' + days + ' day' + (days === 1 ? '' : 's') + ' &middot; tap <b>&#9203; due</b> on a bill to collect &middot; not in sales until fully paid</div>' : '<div class="pl-note">&#10003; Nothing pending.</div>');
+  } else {
+    var got = sum(paid, function(s){ return s.total; });
+    h += '<div class="pl-kpis"><div><b style="color:#1e7a3c;">' + inr(got) + '</b><span>collected later</span></div><div><b>' + paid.length + '</b><span>bills paid</span></div>' +
+      (salesFilters.pl === 'all' ? '<div><b style="color:#b3261e;">' + inr(sum(pend, payDueOf)) + '</b><span>still pending</span></div>' : '') + '</div>' +
+      '<div class="pl-note">A paid-later bill counts in sales on the day it was fully paid.</div>';
+  }
+  return h + '</div>';
 }
 function onSalesFilterChange(){
   listReset('sales');
@@ -10196,7 +10640,7 @@ function customerSummaryHtml(list){
 }
 function clearSalesFilters(){
   listReset('sales');
-  salesFilters = { seller:'', billNo:'', phone:'', branch: salesFilters.branch || '', from:'', to:'', yr: salesDefaultYr() };   // the branch chip stays
+  salesFilters = { seller:'', billNo:'', phone:'', branch: salesFilters.branch || '', from:'', to:'', yr: salesDefaultYr(), pl: '' };   // the branch chip stays
   slSearchOpen = false;
   renderAdmin();
 }
@@ -10840,14 +11284,15 @@ function renderAdmin(){
     const sellerOptions = [...sellerNames.entries()];
 
     const filteredSales = applySalesFilters(SALES);
+    const _plN = SALES.filter(s => salePending(s) && saleInBranch(s, salesFilters.branch)).length;
 
     const scopeBr = salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch] : null;
     const totalCash = confirmedSales.reduce((a,s)=>a+saleCashAmount(s),0), totalUpi = confirmedSales.reduce((a,s)=>a+saleUpiAmount(s),0);
-    const _filtered = !!(salesFilters.seller || salesFilters.billNo || salesFilters.phone || _dates || salesFilters.yr !== salesDefaultYr());
+    const _filtered = !!(salesFilters.seller || salesFilters.billNo || salesFilters.phone || _dates || salesFilters.yr !== salesDefaultYr() || salesFilters.pl);
     const _srchOn = slSearchOpen || !!(salesFilters.billNo || salesFilters.phone);
     const _kpi = (v, l, c) => `<div class="sl-kpi ${c || ''}"><b>${v}</b><span>${l}</span></div>`;
     const _pchip = (v, l) => `<button type="button" class="pe-chip${!_dates && salesFilters.yr === v ? ' on' : ''}" onclick="slPeriod('${v}')"><span class="t">${l}</span></button>`;
-    let html = branchChipsHtml(salesFilters.branch, 'setAdminBranch') +
+    let html = branchChipsHtml(salesFilters.branch, 'setAdminBranch') + (salesFilters.pl === 'pending' ? '' : pendingBannerHtml(salesFilters.branch || '', !salesStatsOpen, "slPayLater('pending')")) +
       `<div class="pe-top"><div class="pe-title"><b>Sales</b><span>${salesPeriodLabel()} &middot; ${salesFilters.seller ? custEsc(sellerNames.get(salesFilters.seller) || salesFilters.seller) : 'All sellers'} &middot; ${scopeBr ? estEsc(scopeBr.short || scopeBr.name) : 'All branches'}</span></div>
         <div class="pe-more"><button type="button" class="pe-ibtn" onclick="slMore()" aria-label="More">&#8943; More</button>${slMoreOpen ? `<div class="pe-shade" onclick="slMore(false)"></div><div class="pe-menu" role="menu">
           <button type="button" onclick="slMoreDo('pdf')">&#128196; PDF (A4) report</button>
@@ -10860,7 +11305,7 @@ function renderAdmin(){
         ${slGraphHtml(confirmedSales, salesStatsOpen)}
         ${slChipsHtml(confirmedSales, salesStatsOpen)}
       </div>
-      <div class="sl-quick"><button type="button" onclick="openSalesHist('items')">&#128230; Item History</button><button type="button" onclick="openSalesHist('sellers')">&#128100; Seller History</button></div>
+      <div class="sl-quick"><button type="button" onclick="openSalesHist('items')">&#128230; Item History</button><button type="button" onclick="openSalesHist('sellers')">&#128100; Seller History</button><button type="button" class="pl-chip${salesFilters.pl ? ' on' : ''}" onclick="slPayLater()" aria-label="Pay later bills">&#9203; Pay later${_plN ? ' <b class="pl-n">' + _plN + '</b>' : ''}</button></div>
       <div class="pl-sticky-head">
         ${_srchOn ? `<div class="pe-search" style="margin-bottom:8px;"><span class="ico">&#128269;</span><input id="salesSearch" type="text" inputmode="numeric" autocomplete="off" placeholder="Bill no or customer mobile" value="${salesFilters.billNo || salesFilters.phone || ''}" oninput="onSalesSearchInput()"><button type="button" class="clr" aria-label="Close search" onclick="slSearchClose()">&#10005;</button></div>` : ''}
         <div class="pe-chips" style="margin-top:0;">
@@ -10868,6 +11313,7 @@ function renderAdmin(){
           ${_pchip('today', 'Today')}${_pchip('yday', 'Yesterday')}${_pchip(salesDefaultYr(), 'This year')}${_pchip('all', 'All')}
           <button type="button" class="pe-chip${_dates ? ' on' : ''}" onclick="toggleSalesDates()" aria-label="Choose dates"><span class="t">&#128197; Dates</span></button>
         </div>
+        ${salesFilters.pl ? slPayLaterTrackerHtml(filteredSales) : ''}
         <div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
           <select id="filterSeller" class="pe-sort" style="max-width:none; flex:1;" onchange="onSalesFilterChange()">
             <option value="">&#128100; All sellers</option>
@@ -10884,7 +11330,7 @@ function renderAdmin(){
           <div style="font-size:11px; font-weight:800; color:#8a6a44; margin-bottom:5px;">&#128100; Present days (at least 1 bill)</div>
           <div style="display:flex; flex-wrap:wrap; gap:6px;">${salesAttendance().map(a => `<button onclick="salesPickSeller('${String(a.id).replace(/'/g, '')}')" style="display:flex; align-items:center; gap:6px; padding:5px 6px 5px 10px; border-radius:999px; border:1.5px solid var(--maroon); background:${salesFilters.seller === a.id ? 'var(--maroon)' : '#fff'}; color:${salesFilters.seller === a.id ? '#fff8e6' : 'var(--maroon)'}; font-weight:800; font-size:12.5px; cursor:pointer;">${custEsc(a.name)} <span style="min-width:22px; padding:1px 6px; border-radius:999px; background:${salesFilters.seller === a.id ? '#fff8e6' : 'var(--maroon)'}; color:${salesFilters.seller === a.id ? 'var(--maroon)' : '#fff8e6'}; font-size:12px; text-align:center;">${a.n}</span></button>`).join('') || '<span style="font-size:12px; color:#8a6a44;">No bills in these dates.</span>'}</div>
         </div>` : ''}` + `
-      <div class="pe-count"><span>${filteredSales.length} bill${filteredSales.length === 1 ? '' : 's'} &middot; latest first</span>${_filtered ? '<button type="button" onclick="clearSalesFilters()">Clear filters</button>' : ''}</div>`;
+      <div class="pe-count"><span>${filteredSales.length} bill${filteredSales.length === 1 ? '' : 's'} &middot; ${salesFilters.pl === 'pending' ? 'oldest first (all dates)' : 'latest first'}</span>${_filtered ? '<button type="button" onclick="clearSalesFilters()">Clear filters</button>' : ''}</div>`;
 
     if(salesFilters.phone){
       html += `<div style="font-size:11.5px; color:#8a6a44; margin:0 2px;">Customer ${salesFilters.phone}</div>` + customerSummaryHtml(filteredSales);
@@ -10954,7 +11400,9 @@ function renderAdmin(){
       html += `<div class="empty-admin">${SALES.length===0 ? 'No sales recorded yet.' : 'No sales match the selected filters.'}</div>`;
     } else {
       const lastSeen = loadJSON('ars_admin_last_seen_sales', 0);
-      [...filteredSales].reverse().slice(0, _listLimit.sales).forEach(s => {
+      const _ord = salesFilters.pl === 'pending' ? [...filteredSales].sort((a, b) => String(a.time).localeCompare(String(b.time)))
+        : [...filteredSales].reverse().sort((a, b) => String(b.time).localeCompare(String(a.time)));
+      _ord.slice(0, _listLimit.sales).forEach(s => {
         const dt = fmtBillTime(s.time);
         const status = saleStatus(s);
         const statusBadge = status === 'cancelled'
@@ -10966,12 +11414,13 @@ function renderAdmin(){
         if(s.discount>0) itemsHtml += `<div class="sd-disc"><span>Discount${s.discountPercent?' ('+s.discountPercent+'%)':''}</span><span>-₹${s.discount}</span></div>`;
         if(s.buyerName) itemsHtml += `<div><span>Customer</span><span>${custEsc(s.buyerName)}</span></div>`;
     if(s.buyerPhone) itemsHtml += `<div><span>Customer Phone</span><span>${fmtPhones(s.buyerPhone)}</span></div>`;
-        if(s.paidAmount) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
+        if(s.paidAmount && !s.payLater) itemsHtml += `<div><span>Paid Amount</span><span>₹${s.paidAmount.toLocaleString('en-IN')}${s.paymentMethod ? ' <span style="font-size:9px;color:#8a6a44;">('+paymentMethodLabel(s)+')</span>' : ''}</span></div>`;
+        itemsHtml += payLaterDetailHtml(s);
         itemsHtml += saleEditNote(s);
         const isNew = new Date(s.time).getTime() > lastSeen;
         const _qty = (s.items || []).reduce((a, it) => a + (Number(it.qty) || 0), 0);
         const _d = new Date(s.time), _dt = _d.toLocaleString('en-IN', _d.getFullYear() === new Date().getFullYear() ? { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-        const _pay = s.paymentMethod === 'split' ? '&#128181;+&#128241; Split' : s.paymentMethod === 'upi' ? '&#128241; UPI' : '&#128181; Cash';
+        const _pay = s.paymentMethod === 'later' ? '&#9203; Pay later' : s.paymentMethod === 'split' ? '&#128181;+&#128241; Split' : s.paymentMethod === 'upi' ? '&#128241; UPI' : '&#128181; Cash';
         html += `<div class="sale-card sl-card${status === 'confirmed' ? '' : ' sl-off'}">
             ${slTopHtml(s, s.id, `<span class="sl-name" onclick="event.stopPropagation(); openSalesHist('seller', '${String(s.sellerId).replace(/'/g, '')}')">${estEsc(s.sellerName)}</span>`, isNew)}
             <div class="sale-detail" id="detail-${s.id}">${itemsHtml}
@@ -14606,7 +15055,7 @@ function openAddBranchModal(){
     if(_so && _so.style.display === 'flex'){ closeScanOrder(true); return; }
     if(_estPopping){ _estPopping = false; return; }
     if(_pubHist){ publicMenu(true); return; }
-    if(pdfPreviewClose() || closeShareMenu() || closePromoQuick() || closeMySummary() || closePriceGraph() || closeLoginDevices()){ stay(); return; }
+    if(pdfPreviewClose() || closeShareMenu() || closePromoQuick() || closeMySummary() || closePriceGraph() || closeLoginDevices() || closePayCollect() || closePayLater() || closePendingPay()){ stay(); return; }
     var appEl = document.getElementById('app'), adminEl = document.getElementById('adminScreen');
     var loggedIn = (typeof session !== 'undefined') && session;
     var _pr = document.getElementById('promoShareOverlay');
