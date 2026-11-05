@@ -2402,8 +2402,27 @@ function applyRemotePricelist(r){
   resetPriceChangeBaseline();      // a change made on another phone is logged by THAT phone, not again here
   fbRefreshUI('pricelist');
 }
+/* 🛟 A phone's own account list is kept before the server's list replaces it (when they differ): on this phone and on
+   the server (usersRecovery/<code of the list>), so the admin can see the account lists found on all phones and put the
+   right one back (Accounts tab). The same list from many phones is kept once. */
+function usersListCode(u){ var t = JSON.stringify(fbCanon(u) || {}), h = 5381; for(var i = 0; i < t.length; i++){ h = ((h << 5) + h + t.charCodeAt(i)) | 0; } return 'r' + (h >>> 0).toString(36); }
+function usersKeepCopy(local, incoming){
+  try{
+    if(!local || !Object.keys(local).length) return;
+    if(!Object.keys(local).some(function(id){ return local[id] && local[id].role === 'admin'; })) return;
+    if(fbSame(incoming, local)) return;
+    var copy = JSON.parse(JSON.stringify(local)), at = Date.now();
+    _rawSaveJSON('ars_users_prev', { at: at, users: copy });
+    if(_fbDb && !_fbReadOnly){
+      var who = (typeof session !== 'undefined' && session && session.name) || '';
+      var dev = ''; try{ var _m = navigator.userAgent.match(/Android [\d.]+; (?:[a-z]{2}-[a-z]{2}; )?([^;)]+)/i); dev = (_m && _m[1] && !/^K$/.test(_m[1]) ? _m[1] : (/iPhone/.test(navigator.userAgent) ? 'iPhone' : '')) + ' phone'; }catch(e){}
+      _fbDb.ref('usersRecovery/' + usersListCode(copy)).set({ at: at, by: who, dev: String(dev).slice(0, 80), users: fbClean(copy) }).catch(function(){});
+    }
+  }catch(e){}
+}
 function applyRemoteUsers(r){
   var users = fbToObj(r);
+  usersKeepCopy(USERS, users);
   usersDropStale();
   if(Object.keys(_usersPend || {}).length){ users = JSON.parse(JSON.stringify(users)); Object.keys(_usersPend).forEach(function(id){ if(USERS[id]) users[id] = JSON.parse(JSON.stringify(USERS[id])); else delete users[id]; }); }   // this phone's own changes, not on the server yet
   // Never accept an account list with no admin in it — that would lock everyone out.
@@ -3312,8 +3331,14 @@ function fbAttachSaleEdits(){
   });
 }
 /* After an admin logs in on a phone that started without them: fetch the admin-only lists too. */
+var _usersRec = null, _usersRecOn = false;
+function usersRecAttach(){
+  if(_usersRecOn || !_fbDb || _fbReadOnly) return; _usersRecOn = true;
+  _fbDb.ref('usersRecovery').on('value', function(snap){ _usersRec = snap.val() || {}; try{ if(adminTab === 'accounts' && !document.getElementById('adminScreen').classList.contains('hidden') && !(document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))) renderAdmin(); }catch(e){} }, function(){});
+}
 function fbAttachAdminColls(){
   if(!_fbDb || _fbReadOnly) return;
+  try{ if(session && session.role === 'admin' && !adminScope()) usersRecAttach(); }catch(e){}
   Object.keys(FB_COLL).forEach(function(name){ if(fbCollWanted(name)){ fbAttachColl(name); if(_fbMetaKnown) fbLoadColl(name); } });
 }
 function plMarkLive(){ _fbPricelistLive = true; hideSyncWaitBanner(); _rawSaveJSON('ars_pl_live_at', Date.now()); }
@@ -5605,7 +5630,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v92';
+var APP_BUILD = 'v93';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -10957,7 +10982,8 @@ function renderAdmin(){
   } else if(adminTab === 'accounts'){
     const adminCount = Object.values(USERS).filter(u => u.role === 'admin').length;
     const sellerCount = Object.values(USERS).filter(u => u.role !== 'admin').length;
-    let html = `<div class="pe-top"><div class="pe-title"><b>Accounts</b><span>${adminCount} admin${adminCount === 1 ? '' : 's'} &middot; ${sellerCount} seller${sellerCount === 1 ? '' : 's'} &middot; tap a person to edit</span></div>
+    try{ if(!adminScope()) usersRecAttach(); }catch(e){}
+    let html = usersRecCardHtml() + `<div class="pe-top"><div class="pe-title"><b>Accounts</b><span>${adminCount} admin${adminCount === 1 ? '' : 's'} &middot; ${sellerCount} seller${sellerCount === 1 ? '' : 's'} &middot; tap a person to edit</span></div>
         <div class="pe-more"><button type="button" class="pe-ibtn" onclick="shareSellerCredentialsPDF()" title="Seller login list (PDF)">${SHARE_ICON_SVG_SM}PDF</button></div>
         <button type="button" class="pe-new" onclick="openNewSellerModal()">&plus; New</button></div>`;
     const _ids = Object.keys(USERS);
@@ -12562,6 +12588,88 @@ function updateUserField(id, field, val){
   }
   flashSaved('user-' + id);
   if(field === 'name'){ clearTimeout(window._accRe); window._accRe = setTimeout(function(){ try{ if(adminTab === 'accounts') renderAdmin(); }catch(e){} }, 900); }   // the person's line shows the new name
+}
+
+var _usersRecOpen = {};
+function usersRecList(){
+  var r = _usersRec || {};
+  return Object.keys(r).map(function(k){ var e = r[k] || {}; return { key: k, at: Number(e.at) || 0, by: e.by || '', dev: e.dev || '', users: fbToObj(e.users) }; })
+    .filter(function(e){ return Object.keys(e.users).length; })
+    .sort(function(a, b){ return b.at - a.at; });
+}
+function usersRecCardHtml(){
+  if(adminScope()) return '';
+  var list = usersRecList(); if(!list.length) return '';
+  var cur = USERS || {};
+  var h = '<div style="background:#fff8e6; border:2px solid #e0a43a; border-radius:14px; padding:12px; margin:0 0 14px;">' +
+    '<div style="display:flex; align-items:center; gap:8px;"><div style="flex:1; font-weight:900; font-size:15px; color:#7a1414;">&#128735; Account lists found on phones (' + list.length + ')</div>' +
+    '<button onclick="usersRecClearAll()" style="border:none; background:none; color:#8a6a44; font-weight:800; font-size:12px; cursor:pointer;">Clear all</button></div>' +
+    '<div style="font-size:11.5px; color:#8a6a44; margin:2px 0 8px;">Each phone&rsquo;s own saved accounts, kept before the server&rsquo;s list replaced them. Open one, check the IDs / names / passwords, then put it back.</div>';
+  list.forEach(function(e){
+    var ids = Object.keys(e.users), adm = ids.filter(function(i){ return e.users[i] && e.users[i].role === 'admin'; }).length;
+    var diff = ids.filter(function(i){ return JSON.stringify(e.users[i]) !== JSON.stringify(cur[i]); }).length + Object.keys(cur).filter(function(i){ return !e.users[i]; }).length;
+    var on = !!_usersRecOpen[e.key];
+    h += '<div style="background:#fff; border:1.5px solid #ead9b8; border-radius:12px; margin-top:8px; overflow:hidden;">' +
+      '<div onclick="_usersRecOpen[\'' + e.key + '\']=!_usersRecOpen[\'' + e.key + '\']; renderAdmin();" style="display:flex; align-items:center; gap:8px; padding:10px; cursor:pointer;">' +
+        '<div style="flex:1; min-width:0;"><div style="font-weight:900; font-size:13.5px; color:#3a2a14;">' + bkWhen(e.at) + '</div>' +
+        '<div style="font-size:11.5px; color:#8a6a44;">' + ids.length + ' accounts (' + adm + ' admin) &middot; ' + (diff ? diff + ' different from now' : 'same as now') + (e.by || e.dev ? ' &middot; from ' + estEsc(e.by || '') + (e.dev ? ' ' + estEsc(e.dev) : '') : '') + '</div></div>' +
+        '<span style="font-size:18px; color:#7a1414;">' + (on ? '&#9652;' : '&#9662;') + '</span></div>';
+    if(on){
+      h += '<div style="border-top:1px dashed #ead9b8; padding:6px 10px 10px;">' +
+        ids.sort(function(a, b){ return ((e.users[a].role === 'admin' ? 0 : 1) - (e.users[b].role === 'admin' ? 0 : 1)) || String(a).localeCompare(String(b)); }).map(function(id){
+          var u = e.users[id] || {}, same = JSON.stringify(u) === JSON.stringify(cur[id]);
+          return '<div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px dashed #f0e3c6; font-size:12.5px;">' +
+            '<div style="flex:1; min-width:0;"><b style="color:#3a2a14;">' + estEsc(u.name || id) + '</b> <span style="color:#a08560; font-size:11px;">' + estEsc(u.pid || '') + ' &middot; ' + (u.role === 'admin' ? 'Admin' : 'Seller') + '</span>' +
+            '<div style="color:#5b4630;">ID: <b>' + estEsc(id) + '</b> &middot; Password: <b>' + (u.pin != null && u.pin !== '' ? estEsc(String(u.pin)) : '&#128274; (hidden)') + '</b></div></div>' +
+            (same ? '<span style="font-size:11px; color:#1e7a3c; font-weight:800;">&#10003; same</span>' : '<button onclick="usersRecPutOne(\'' + e.key + '\', \'' + estEsc(id).replace(/'/g, "\\'") + '\')" style="flex:0 0 auto; padding:6px 10px; border-radius:16px; border:1.5px solid #1e7a3c; background:#fff; color:#1e7a3c; font-weight:800; font-size:11.5px; cursor:pointer;">&#8617; Put back</button>') +
+          '</div>';
+        }).join('') +
+        '<div style="display:flex; gap:8px; margin-top:10px;">' +
+          '<button onclick="usersRecRestore(\'' + e.key + '\')" style="flex:1; padding:11px; border:none; border-radius:10px; background:#1e7a3c; color:#fff; font-weight:800; font-size:13.5px; cursor:pointer;">&#9851;&#65039; Restore this whole list</button>' +
+          '<button onclick="usersRecDelete(\'' + e.key + '\')" style="flex:0 0 auto; padding:11px 12px; border:1.5px solid #c9b48f; border-radius:10px; background:#fff; color:#8a6a44; font-weight:800; font-size:13px; cursor:pointer;">&#128465;</button></div></div>';
+    }
+    h += '</div>';
+  });
+  return h + '</div>';
+}
+function usersRecGet(key){ var e = (_usersRec || {})[key]; return e ? fbToObj(e.users) : null; }
+async function usersRecRestore(key){
+  var list = usersRecGet(key); if(!list || !Object.keys(list).length) return;
+  if(!Object.keys(list).some(function(id){ return list[id] && list[id].role === 'admin'; })){ alert('This list has no admin account - it cannot be used.'); return; }
+  if(!_fbDb || _fbReadOnly){ alert('Connect to the internet first.'); return; }
+  var ok = await showConfirm('Restore this whole account list?\n\nAll user IDs, names and passwords become exactly as in this list (' + Object.keys(list).length + ' accounts). Accounts not in it are removed. Bills are not changed.\n\nYou may need to log in again with your ID and password from this list.');
+  if(!ok) return;
+  try{
+    await fbTimeout(_fbDb.ref('users').set(fbClean(list)), 30000, 'Restore');
+    _usersPend = {}; _rawSaveJSON('ars_users_pending', _usersPend);
+    USERS = JSON.parse(JSON.stringify(list)); _rawSaveJSON('ars_users', USERS); usersSnapNow();
+    try{ usersRepairPids(); }catch(e){}
+    alert('\u2713 Accounts restored (' + Object.keys(list).length + ').\nOn every phone: close the app, open it again and log in.');
+    try{ enforceSessionAgainstUsers(); }catch(e){}
+    renderAdmin();
+  }catch(e){ alert('Could not restore: ' + ((e && e.message) || e)); }
+}
+async function usersRecPutOne(key, id){
+  var list = usersRecGet(key); if(!list || !list[id]) return;
+  if(!_fbDb || _fbReadOnly){ alert('Connect to the internet first.'); return; }
+  var u = list[id];
+  if(!(await showConfirm('Put back this account?\n\n' + (u.name || id) + '\nID: ' + id + (u.pin ? '\nPassword: ' + u.pin : '')))) return;
+  try{
+    await fbTimeout(_fbDb.ref('users/' + id).set(fbClean(u)), 20000, 'Restore');
+    USERS[id] = JSON.parse(JSON.stringify(u)); _rawSaveJSON('ars_users', USERS); usersSnapNow();
+    try{ usersRepairPids(); }catch(e){}
+    renderAdmin(); showAdminNotification('\u2713 ' + (u.name || id) + ' put back');
+  }catch(e){ alert('Could not put back: ' + ((e && e.message) || e)); }
+}
+async function usersRecDelete(key){
+  if(!_fbDb) return;
+  if(!(await showConfirm('Delete this saved account list?'))) return;
+  _fbDb.ref('usersRecovery/' + key).remove().catch(function(){});
+}
+async function usersRecClearAll(){
+  if(!_fbDb) return;
+  if(!(await showConfirm('Delete all saved account lists found on phones?\nDo this only after your accounts are right again.'))) return;
+  _fbDb.ref('usersRecovery').remove().catch(function(){});
 }
 
 async function renameUserId(oldId, newIdRaw){
