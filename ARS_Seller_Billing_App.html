@@ -349,6 +349,7 @@
   .item-en3{font-size:10.5px; color:var(--ink-soft); margin-top:1px;}
   .item-price3{font-size:13.5px; font-weight:800; color:var(--maroon); margin-top:6px;}
   .item-price3 .item-unit3{font-size:10px; font-weight:600; color:var(--ink-soft);}
+  .bp-old{color:#8a6a44; font-weight:600; font-size:0.82em;} .bp-new{color:#1e7a3c; font-weight:900;}
   .add-cta2{
     width:100%; margin-top:8px; padding:9px; border-radius:9px; border:none;
     background:var(--maroon); color:#fff8e6; font-weight:800; font-size:12.5px;
@@ -1029,6 +1030,18 @@
   .pl-kpis > div{flex:1; background:#fff; border-radius:9px; padding:7px 4px; text-align:center;}
   .pl-kpis b{display:block; font-size:15px; font-weight:900; color:#2a1408;} .pl-kpis span{display:block; font-size:10.5px; color:#8a6a44; font-weight:700;}
   .pl-note{font-size:11px; color:#8a6a44; margin:7px 2px 0;}
+  .sl-cust{font-weight:900; color:#7a3a00;}
+  .pl-view{display:flex; gap:6px; margin-top:8px;}
+  .pl-view button{flex:1; padding:8px 4px; border-radius:9px; border:1.5px solid #e2c98f; background:#fff; color:#7a3a00; font-weight:800; font-size:12px; cursor:pointer;}
+  .pl-view button.on{background:#7a3a00; border-color:#7a3a00; color:#fff;}
+  .pc-card{background:#fff; border:1.5px solid #eadcc0; border-radius:12px; padding:10px; margin:0 0 10px;}
+  .pc-card.late{border-color:#e9b4ae;}
+  .pc-head{display:flex; gap:8px; align-items:flex-start; padding-bottom:6px; border-bottom:1px dashed #ead9b8;}
+  .pc-name{font-weight:900; font-size:15px; color:#2a1408;}
+  .pc-bill{display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px dashed #f1e6d2; font-size:13px;}
+  .pc-bill.ex{opacity:0.45;} .pc-bill.ex b{text-decoration:line-through;}
+  .pc-tick input{width:20px; height:20px; accent-color:#1e7a3c;}
+  .pp-btn.sm{padding:6px 10px; font-size:14px;}
   .se-pay{margin-top:12px; padding:10px; border-radius:12px; background:#fffaf0; border:1.5px solid #ead9b8;}
   .se-pay-h{font-size:13px; font-weight:900; color:#7a1414; margin-bottom:8px;}
   .cancel-ico{flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:none; font-size:16px; line-height:1; cursor:pointer; margin-left:8px; display:flex; align-items:center; justify-content:center;}
@@ -1170,7 +1183,7 @@ function __appNotLoaded(){
 
   <div class="cart-bar" id="cartBar">
     <div>
-      <div class="cb-left"><span id="cbCount">0</span> items · Grand Total &#8377;<span id="cbSub">0</span></div>
+      <div class="cb-left"><span id="cbCount">0</span> items · <span id="cbLbl">Grand Total</span> <span id="cbSubW">&#8377;<span id="cbSub">0</span></span></div>
       <div class="cb-total">&#8377;<span id="cbTotal">0</span></div>
     </div>
     <div style="display:flex; gap:6px;">
@@ -4329,10 +4342,11 @@ function slTopHtml(s, detailId, nameHtml, isNew){
   var pay = s.paymentMethod === 'later' ? '&#9203; Pay later' : s.paymentMethod === 'split' ? '&#128181;+&#128241; Split' : s.paymentMethod === 'upi' ? '&#128241; UPI' : '&#128181; Cash';
   if(salePending(s)) badge += (badge ? ' ' : '') + '<span class="status-badge pl" role="button" title="Collect payment" onclick="event.stopPropagation(); openPayCollect(\'' + s.id + '\')">&#9203; &#8377;' + payDueOf(s).toLocaleString('en-IN') + ' due &middot; Collect</span>';
   else if(s.payLater && s.paidAt) badge += (badge ? ' ' : '') + '<span class="status-badge plp">Paid later' + (s.billTime ? ' &middot; billed ' + new Date(s.billTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '') + '</span>';
+  var _cust = s.payLater && s.buyerName;
   return '<div class="sl-top" onclick="toggleSaleDetail(\'' + detailId + '\')">' +
       '<div class="sl-no">' + billNoRef(s) + '</div>' +
-      '<div class="sl-mid"><div class="sl-who">' + nameHtml + (isNew ? ' <span class="new-tag">NEW</span>' : '') + (badge ? ' ' + badge : '') + billNoTag(s) + saleEditTag(s) + '</div>' +   // a 30%+ discount shows as the red % next to the amount
-        '<div class="sl-sub">' + dt + ' &middot; ' + pay + ' &middot; ' + qty + ' item' + (qty === 1 ? '' : 's') + '</div></div>' +
+      '<div class="sl-mid"><div class="sl-who">' + (_cust ? '<span class="sl-cust">&#128100; ' + custEsc(s.buyerName) + '</span>' : nameHtml) + (isNew ? ' <span class="new-tag">NEW</span>' : '') + (badge ? ' ' + badge : '') + billNoTag(s) + saleEditTag(s) + '</div>' +   // a 30%+ discount shows as the red % next to the amount
+        '<div class="sl-sub">' + dt + ' &middot; ' + pay + ' &middot; ' + qty + ' item' + (qty === 1 ? '' : 's') + (_cust ? ' &middot; by ' + nameHtml : '') + '</div></div>' +
       '<div class="sl-amt">' + slAmtHtml(s) + '</div></div>';
 }
 function saleAmtHtml(s){
@@ -4518,6 +4532,14 @@ function offerBarHtml(loc){
       '<button type="button" onclick="adminOfferSave()">Save</button></div>' +
     '</div>';
 }
+/* Bill 1 & 2: an item's price with the location's offer on = normal price struck out + the offer price (no unit text) */
+function billOfferPct(){ try{ return offerPctFor(activeBranchId || 'main') || 0; }catch(e){ return 0; } }
+function billUnitPriceHtml(price){
+  var p = Number(price) || 0, pct = billOfferPct();
+  if(!(pct > 0) || !(p > 0)) return '&#8377;' + p;
+  return '<s class="bp-old">&#8377;' + p + '</s> <span class="bp-new">&#8377;' + Math.round(p * (100 - pct) / 100) + '</span>';
+}
+function billLineAmt(price, qty){ var pct = billOfferPct(); return Math.round((Number(qty) || 0) * (Number(price) || 0) * (100 - (pct > 0 ? pct : 0)) / 100); }
 /* Price on a Price Edit row: with an offer on for that location, the normal price struck out and the offer price in bold. */
 function listPriceHtml(price, loc){
   var p = Number(price) || 0, pct = offerPctFor(loc);
@@ -5303,7 +5325,11 @@ function _renderCartTotals(){
   const {count, subtotal, grand} = computeTotals(cart);
   document.getElementById('cbCount').textContent = count;
   document.getElementById('cbSub').textContent = subtotal.toLocaleString('en-IN');
-  document.getElementById('cbTotal').textContent = grand.toLocaleString('en-IN');
+  var _pct = billOfferPct(), _offT = _pct > 0 ? Math.round(subtotal * (100 - _pct) / 100) : grand;   // the offer price total, as on the items
+  document.getElementById('cbTotal').textContent = _offT.toLocaleString('en-IN');
+  var _lb = document.getElementById('cbLbl'), _sw = document.getElementById('cbSubW');
+  if(_lb) _lb.textContent = _pct > 0 ? _pct + '% off' : 'Grand Total';
+  if(_sw) _sw.style.textDecoration = _pct > 0 ? 'line-through' : '';
   document.getElementById('billBtn').disabled = count === 0;
 }
 function paintBillTable(list){
@@ -5343,7 +5369,7 @@ function billSheetPaint(){
   if(!e){ sh.style.display = 'none'; return; }
   var nm = getItemName(e.ci, e.ii), price = getPrice(e.ci, e.ii), c = cart[key(e.ci, e.ii)] || 0, unit = getUnit(e.ci, e.ii);
   var bar = document.getElementById('cartBar'); sh.style.bottom = (bar ? bar.offsetHeight : 60) + 'px';
-  var _pHtml = '&#8377;' + price + ' / ' + unit + (c ? ' <span style="color:#1e7a3c;">= &#8377;' + (c * price).toLocaleString('en-IN') + '</span>' : '');
+  var _pHtml = billUnitPriceHtml(price) + (c ? ' <span style="color:#1e7a3c;">= &#8377;' + billLineAmt(price, c).toLocaleString('en-IN') + '</span>' : '');
   var _sig = 'b' + e.ci + '_' + e.ii + '_' + activeBillingTab;
   if(_qtySheetSync(sh, _sig, _pHtml, c)) return;
   sh.setAttribute('data-sig', _sig);
@@ -5374,11 +5400,7 @@ function render(){
   if(activeTab === 'history'){
     renderBillFilterBar(0);
     list.innerHTML = renderHistoryList();
-    const {count, subtotal, grand} = computeTotals(cart);
-    document.getElementById('cbCount').textContent = count;
-    document.getElementById('cbSub').textContent = subtotal.toLocaleString('en-IN');
-    document.getElementById('cbTotal').textContent = grand.toLocaleString('en-IN');
-    document.getElementById('billBtn').disabled = count === 0;
+    _renderCartTotals();
     return;
   }
 
@@ -5421,7 +5443,7 @@ function render(){
               <div class="item-cat-badge2">${estEsc(cn.en)}</div>
               <div class="item-ta3">${estEsc(name.ta)}</div>
               <div class="item-en3">${estEsc(name.en)}</div>
-              <div class="item-price3">&#8377;${price} <span class="item-unit3">/ ${unit}</span></div>
+              <div class="item-price3">${billUnitPriceHtml(price)}</div>
               ${addControl}
             </div>`;
         const _on = qty > 0;
@@ -5430,7 +5452,7 @@ function render(){
               <div style="width:26px; flex:0 0 auto;">${snDot(serial, 22, 11)}</div>
               <div style="flex:1; min-width:0;"><div style="font-weight:800; font-size:15px; color:#1a1a1a; line-height:1.25;">${estEsc(name.ta)}</div>
                 <div style="font-size:12px; color:#777;">${estEsc(name.en)}</div>
-                <div style="font-size:15px; font-weight:800; color:#7a1414; margin-top:1px;">&#8377;${price} <span style="font-weight:600; font-size:12px; color:#8a6a44;">/ ${unit}</span>${_on ? ` <span style="color:#1e7a3c; margin-left:8px;">= &#8377;${(qty * price).toLocaleString('en-IN')}</span>` : ''}</div></div>
+                <div style="font-size:15px; font-weight:800; color:#7a1414; margin-top:1px;">${billUnitPriceHtml(price)}${_on ? ` <span style="color:#1e7a3c; margin-left:8px;">= &#8377;${billLineAmt(price, qty).toLocaleString('en-IN')}</span>` : ''}</div></div>
               <div style="display:flex; align-items:center; gap:4px; flex:0 0 auto;">
                 <button type="button" onclick="changeQty(${ci},${ii},-1)" ${_on ? '' : 'disabled'} style="${_btn} border:1.5px solid var(--maroon); background:#fff; color:var(--maroon);${_on ? '' : ' opacity:0.35;'}">&minus;</button>
                 <input type="number" inputmode="numeric" min="0" value="${qty}" onchange="setQty(${ci},${ii}, this.value)" style="width:46px; height:36px; box-sizing:border-box; text-align:center; border:1.5px solid var(--line); border-radius:9px; font-size:15px; font-weight:800; background:#fff;">
@@ -5466,11 +5488,7 @@ function render(){
     ? `<div class="empty-state">&#128293; No items sold in the last 30 days yet.<br/>கடந்த 30 நாட்களில் விற்பனை இல்லை.</div>`
     : `<div class="empty-state">No items found.<br/>பொருள் இல்லை.</div>`);
 
-  const {count, subtotal, grand} = computeTotals(cart);
-  document.getElementById('cbCount').textContent = count;
-  document.getElementById('cbSub').textContent = subtotal.toLocaleString('en-IN');
-  document.getElementById('cbTotal').textContent = grand.toLocaleString('en-IN');
-  document.getElementById('billBtn').disabled = count === 0;
+  _renderCartTotals();
 }
 
 /* ---------------- BILL MODAL ---------------- */
@@ -5752,7 +5770,7 @@ function pickPriceBranch(){
 /* The app's web address without the file name: https://ars-crackers.github.io/billing_App/ (the home-screen app opens
    .../ARS_Seller_Billing_App.html - both show the same app). */
 /* Published version - shown on the login screen and in the Admin header (bump with sw.js CACHE on every publish). */
-var APP_BUILD = 'v101';
+var APP_BUILD = 'v103';
 function appVerPaint(){ document.querySelectorAll('.appVer').forEach(function(e){ e.textContent = 'App ' + APP_BUILD; }); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', appVerPaint); else appVerPaint();
 function appBaseUrl(){ return location.origin + location.pathname.replace(/[^\/]*\.html?$/i, ''); }
@@ -7090,6 +7108,7 @@ function openPendingPay(branch, refresh){
     '<div style="display:flex; align-items:center; gap:10px;"><div style="font-size:24px;">&#9203;</div><div style="flex:1; min-width:0;"><div style="font-weight:900; font-size:16px; color:#2a1408;">Pending payments</div><div id="ppSub" style="font-size:11.5px; color:#8a6a44;"></div></div>' +
     '<button type="button" onclick="closePendingPay()" aria-label="Close" style="flex:0 0 auto; width:34px; height:34px; border:none; border-radius:50%; background:#f1e6d2; color:#7a1414; font-size:15px; font-weight:900; cursor:pointer;">&#10005;</button></div>' +
     '<input id="ppQ" type="search" placeholder="Search name / mobile / bill no" value="' + custEsc(_ppQ) + '" oninput="_ppQ=this.value; ppListPaint();" style="width:100%; box-sizing:border-box; margin:12px 0 4px; padding:10px 12px; border-radius:10px; border:1.5px solid #e2d3b5; font-size:14px;">' +
+    '<div class="pl-view" id="ppView"></div>' +
     '<div id="ppList"></div></div>';
   ov.addEventListener('click', function(e){ if(e.target === ov) closePendingPay(); });
   document.body.appendChild(ov);
@@ -7103,6 +7122,8 @@ function ppListPaint(){
   var list = !q ? all : all.filter(function(e){ return String(e.name).toLowerCase().indexOf(q) >= 0 || (qd && String(e.phone).replace(/\D/g, '').indexOf(qd) >= 0) || (qd && String(e.billNo).indexOf(qd) >= 0); });
   var due = all.reduce(function(a, e){ return a + (Number(e.due) || 0); }, 0);
   var sub = document.getElementById('ppSub'); if(sub) sub.innerHTML = all.length + ' bill' + (all.length === 1 ? '' : 's') + ' &middot; &#8377;' + due.toLocaleString('en-IN') + ' to collect &middot; not in sales until paid';
+  var vw = document.getElementById('ppView'); if(vw) vw.innerHTML = '<button type="button" class="' + (!plCustView ? 'on' : '') + '" onclick="plSetCustView(false)">&#129534; Bill wise</button><button type="button" class="' + (plCustView ? 'on' : '') + '" onclick="plSetCustView(true)">&#128101; Customer wise (' + plCustGroups(all.map(plEntryOf)).length + ')</button>';
+  if(list.length && plCustView){ box.innerHTML = plCustCardsHtml(list.map(plEntryOf), 'sheet'); return; }
   if(!list.length){ box.innerHTML = '<div style="font-size:13px; color:#8a6a44; text-align:center; padding:22px 6px;">' + (all.length ? 'No match.' : '&#10003; No pending payments.') + '</div>'; return; }
   box.innerHTML = list.map(function(e){
     var late = pendingIsLate(e), bn = (e.billCode ? e.billCode + '/' : '#') + e.billNo;
@@ -8902,7 +8923,7 @@ async function generatePriceListPDFVector(){
   var title = branchTitle(BRANCHES[bid]) || 'A.R.S பட்டாசுக் கடை';
   var bName = (BRANCHES[bid] && BRANCHES[bid].name) || 'Thanneerpandhal';
   var phone = branchPhoneText(BRANCHES[bid]);
-  var offP = _plExportOffer ? offerPctFor(bid) : 0;   // Price Edit export only: the location's offer %
+  var offP = offerPctFor(bid);   // the location's offer is on: normal price struck out + the offer price (same in every tab)
 
   // ---- text helpers: pick a font per character, wrap, draw (Tamil runs carry their real Unicode for copy/paste) ----
   var isTa = function(cp){ return (cp >= 0x0B80 && cp <= 0x0BFF) || cp === 0x200C || cp === 0x200D; };
@@ -9123,7 +9144,7 @@ async function generatePriceListPDFVector(){
   var nRuns = runsWith(title, F.brTa, F.brLa), nsz = 23 * hk; while(wOf(nRuns, nsz) > cW && nsz > 10) nsz -= 0.5;
   var enT = String(SHOP.name_en || 'A.R.S CRACKERS SHOP').toUpperCase(), ef = F.poB || F.laB, esz = 7.4 * hk, esp = 2.1 * hk;
   var enW = 0; Array.from(enT).forEach(function(ch, i){ enW += ef.widthOfTextAtSize(ch, esz) + (i ? esp : 0); });
-  var _plX = !!_plExportOffer, _ofOn = offerPctFor(bid) > 0, pct = offerPctFor(bid), um = /^(\d{4})-(\d{2})-(\d{2})$/.exec(offerUntilFor(bid) || ''), till = um ? Number(um[3]) + '-' + Number(um[2]) + '-' + um[1] : '';
+  var _plX = true, _ofOn = offerPctFor(bid) > 0, pct = offerPctFor(bid), um = /^(\d{4})-(\d{2})-(\d{2})$/.exec(offerUntilFor(bid) || ''), till = um ? Number(um[3]) + '-' + Number(um[2]) + '-' + um[1] : '';
   var b1 = _ofOn ? (_plX ? 'சிறப்பு விலை / OFFER PRICE' : String(OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!')) : '', b2 = _ofOn ? (pct > 0 ? pct + '% சிறப்பு தள்ளுபடி' + (till ? ' • ' + till + ' வரை' : '') : '') : 'இன்றைய விலைப் பட்டியல்';
   var b1s = 10.2 * hk, b2s = 8.4 * hk, r1 = runsWith(b1, F.brTa, F.brLa), r2 = runsWith(b2, F.brTa, F.brLa);
   var bxW = Math.min(cW * 0.94, Math.max(wOf(r1, b1s), wOf(r2, b2s)) + 34), bxH = (b1 ? b1s * 1.3 : 0) + (b2 ? b2s * 1.3 : 0) + 6 * hk;
@@ -9305,20 +9326,23 @@ function buildPriceListTableHTML(noQr){
     cols[cidx].push(r);
   });
 
+  const _plPct = offerPctFor(_plb);
+  const _plPriceCell = (p) => { p = Number(p) || 0; if(!(_plPct > 0) || !(p > 0)) return '₹' + p.toLocaleString('en-IN');
+    return '<span style="text-decoration:line-through; color:#8a6a44; font-weight:600; font-size:7.5px;">₹' + p.toLocaleString('en-IN') + '</span> <span style="color:#1e7a3c;">₹' + Math.round(p * (100 - _plPct) / 100).toLocaleString('en-IN') + '</span>'; };
   const renderColTable = (rowsIn) => {
     const rows = rowsIn.map((item, idx) => item.kind === 'cat' ? `
       <tr><td colspan="3" style="padding:3px 4px 2px; border-bottom:1.5px solid #7a1414; color:#7a1414; font-weight:800; font-size:9.5px;">${item.no}. ${estEsc(item.en)}${item.cont ? ' <span style="font-weight:600; font-size:8.5px; color:#999;">&hellip;</span>' : ''}</td></tr>` : `
       <tr data-sn="${item.s}" style="background:${(noQr && idx % 2 === 1) ? '#fdf3f1' : '#ffffff'};">
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; vertical-align:middle;">${snDot(item.s, 14, 7.5)}</td>
         <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-size:${noQr ? 10.2 : 10}px; font-weight:800; line-height:1.2; color:#1a1a1a; vertical-align:middle;">${estEsc(item.ta)} <span style="display:inline-block; color:${noQr ? '#777' : '#444'}; font-size:${noQr ? 7 : 8}px;${noQr ? '' : ' font-weight:600;'}">(${estEsc(String(item.en).replace(/-/g, '\u2011'))})</span></td>
-        <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-weight:800; color:#7a1414; font-size:9px; text-align:right; white-space:nowrap; vertical-align:middle;">₹${item.price.toLocaleString('en-IN')}</td>
+        <td style="padding:1.5px 3px; border-bottom:1px solid #eee; font-weight:800; color:#7a1414; font-size:9px; text-align:right; white-space:nowrap; vertical-align:middle;">${_plPriceCell(item.price)}</td>
       </tr>`).join('');
     return `<table style="width:100%; border-collapse:collapse; table-layout:fixed;">
-        <colgroup><col style="width:22px;"><col><col style="width:${noQr ? 80 : 48}px;"></colgroup>
+        <colgroup><col style="width:22px;"><col><col style="width:${noQr ? 80 : (_plPct > 0 ? 62 : 48)}px;"></colgroup>
         <thead><tr style="background:${noQr ? '#f6d9d9' : '#ffffff'}; ${noQr ? '' : 'border-bottom:1.5px solid #7a1414;'}">
           <th style="padding:2px 3px; text-align:left; font-size:9.5px; color:#7a1414;">No.</th>
           <th style="padding:2px 3px; text-align:left; font-size:9.5px; color:#7a1414;">Product Name</th>
-          <th style="padding:2px 3px; text-align:right; font-size:9.5px; color:#7a1414;">Price (₹)</th>
+          <th style="padding:2px 3px; text-align:right; font-size:9.5px; color:#7a1414;">${_plPct > 0 ? 'Price / Offer' : 'Price (₹)'}</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
@@ -9331,7 +9355,7 @@ function buildPriceListTableHTML(noQr){
           <div style="font-family:ARSBaloo, 'Noto Sans Tamil', sans-serif; font-size:27px; font-weight:800; line-height:1.05; color:#ffd34d; text-shadow:0 2px 0 #4a0c0c; white-space:nowrap;">${_plbTitle || 'A.R.S பட்டாசுக் கடை'}</div>
           <div style="font-family:ARSPop, 'Segoe UI', Arial, sans-serif; font-size:8.5px; font-weight:700; letter-spacing:2.6px; color:#fff8ea;">${estEsc(String(SHOP.name_en || 'A.R.S CRACKERS SHOP').toUpperCase())}</div>
           ${(function(){ var on = offerPctFor(plBranchId()) > 0, pct = offerPctFor(plBranchId()), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(offerUntilFor(plBranchId()) || ''), till = m ? Number(m[3]) + '-' + Number(m[2]) + '-' + m[1] : '';
-            var t1 = on ? (OFFER.title || 'தீபாவளிச் சிறப்புச் சலுகை!') : '', t2 = on ? (pct > 0 ? pct + '% சிறப்பு தள்ளுபடி' + (till ? ' &bull; ' + till + ' வரை' : '') : '') : 'இன்றைய விலைப் பட்டியல்';
+            var t1 = on ? 'சிறப்பு விலை / OFFER PRICE' : '', t2 = on ? (pct > 0 ? pct + '% சிறப்பு தள்ளுபடி' + (till ? ' &bull; ' + till + ' வரை' : '') : '') : 'இன்றைய விலைப் பட்டியல்';
             return '<div style="padding:2px 22px 3px; border-radius:6px; background:linear-gradient(180deg,#ffe27a,#f2b52c); font-family:ARSBaloo, \'Noto Sans Tamil\', sans-serif; line-height:1.25;">' + (t1 ? '<div style="font-size:12.5px; font-weight:800; color:#7a1414;">' + estEsc(t1) + '</div>' : '') + (t2 ? '<div style="font-size:10px; font-weight:800; color:#4a0c0c;">' + t2 + '</div>' : '') + '</div>'; })()}
           ${(function(){ var pl = function(t, fill, ico){ return '<span style="display:inline-flex; align-items:center; gap:3px; padding:1px 8px; border-radius:9px; font-family:ARSPop, \'Segoe UI\', Arial, sans-serif; font-size:8.5px; font-weight:600; white-space:nowrap; ' + (fill ? 'background:#ffd34d; color:#4a0c0c;' : 'border:1px solid #fff8ea; color:#fff8ea;') + '">' + (ico || '') + t + '</span>'; };
             var place = _plb === 'main' ? brandPlace() : _plbName;
@@ -10595,6 +10619,7 @@ function applySalesFilters(salesList){
     if(salesFilters.seller && sellerKeyOf(s) !== salesFilters.seller) return false;
     if(salesFilters.billNo && !String(s.billNo||'').includes(salesFilters.billNo.trim())) return false;
     if(salesFilters.phone && !String(s.buyerPhone||'').replace(/\D/g,'').includes(salesFilters.phone.replace(/\D/g,''))) return false;
+    if(salesFilters.cust && acctNameKey(s.buyerName).indexOf(acctNameKey(salesFilters.cust)) < 0) return false;
     if(salesFilters.branch){
       const sbrId = s.branchId || 'main';
       if(sbrId !== salesFilters.branch) return false;
@@ -10603,6 +10628,70 @@ function applySalesFilters(salesList){
   });
 }
 /* Sales tab -> ⏳ Pay later: Pending (every unpaid bill, oldest first) / Paid later / All, with a small tracker */
+/* ---- Pay later: customer wise ----
+   Bills are grouped by the customer's name. The same name can be two different people, so each bill has a tick:
+   untick = "not this person" -> that bill is left out of this customer's total and summary (kept on this phone). */
+var plCustView = false;
+var PL_EXCL = loadJSON('ars_pl_excl', {}) || {};
+function plSetCustView(on){ plCustView = !!on; try{ listReset('sales'); }catch(e){} var adm = document.getElementById('adminScreen'); if(adm && !adm.classList.contains('hidden')) renderAdmin(); ppListPaint(); }
+function plExclToggle(id){ if(PL_EXCL[id]) delete PL_EXCL[id]; else PL_EXCL[id] = 1; _rawSaveJSON('ars_pl_excl', PL_EXCL); var adm = document.getElementById('adminScreen'); if(adm && !adm.classList.contains('hidden') && adminTab === 'sales') renderAdmin(); ppListPaint(); }
+function plEntryOf(x){
+  if(!x) return null;
+  if(x.items){   // a bill
+    var e = pendingEntry(x); e.pending = salePending(x); e.paidAt = x.paidAt || ''; if(!e.pending){ e.due = 0; e.paid = Number(x.total) || 0; } return e;
+  }
+  var y = Object.assign({}, x); y.pending = (Number(y.due) || 0) > 0; return y;
+}
+function plCustGroups(list){
+  var by = {};
+  (list || []).forEach(function(e){
+    if(!e) return;
+    var k = acctNameKey(e.name) || '(no name)';
+    var g = by[k] || (by[k] = { key: k, name: e.name || 'Customer', bills: [], phones: {}, due: 0, total: 0, late: 0, first: '' });
+    g.bills.push(e);
+    if(e.phone) g.phones[String(e.phone).replace(/\D/g, '').slice(-10)] = e.phone;
+    if(!PL_EXCL[e.id]){ g.due += Number(e.due) || 0; g.total += Number(e.total) || 0; if(e.pending && pendingIsLate(e)) g.late++; }
+    if(!g.first || String(e.time) < g.first) g.first = String(e.time);
+  });
+  return Object.keys(by).map(function(k){ var g = by[k]; g.bills.sort(function(a, b){ return String(a.time).localeCompare(String(b.time)); }); return g; })
+    .sort(function(a, b){ return b.due - a.due || String(a.first).localeCompare(String(b.first)); });
+}
+function plCustCardsHtml(list, where){
+  var groups = plCustGroups(list); if(!groups.length) return '<div class="empty-admin">No Pay later bills.</div>';
+  var inr = function(n){ return '&#8377;' + Math.round(Number(n) || 0).toLocaleString('en-IN'); };
+  return groups.map(function(g){
+    var phones = Object.keys(g.phones).map(function(k){ return g.phones[k]; }), out = g.bills.filter(function(e){ return PL_EXCL[e.id]; }).length;
+    var nIn = g.bills.length - out;
+    return '<div class="pc-card' + (g.late ? ' late' : '') + '">' +
+      '<div class="pc-head"><div style="flex:1; min-width:0;"><div class="pc-name">&#128100; ' + estEsc(g.name) + '</div>' +
+        '<div class="pp-sub">' + (phones.length ? '&#128222; ' + phones.map(estEsc).join(', ') + ' &middot; ' : '') + nIn + ' bill' + (nIn === 1 ? '' : 's') + (out ? ' &middot; <span style="color:#b45309;">' + out + ' not counted</span>' : '') + (g.late ? ' &middot; <span style="color:#b3261e; font-weight:800;">' + g.late + ' late</span>' : '') + '</div></div>' +
+        '<div style="text-align:right;"><div class="pp-due">' + (g.due > 0 ? inr(g.due) : '<span style="color:#1e7a3c;">&#10003; paid</span>') + '</div><div class="pp-sub">' + (g.due > 0 ? 'due' : '') + ' of ' + inr(g.total) + '</div></div></div>' +
+      g.bills.map(function(e){
+        var ex = !!PL_EXCL[e.id], bn = (e.billCode ? e.billCode + '/' : '#') + e.billNo;
+        return '<div class="pc-bill' + (ex ? ' ex' : '') + '">' +
+          '<label class="pc-tick" title="Include this bill for this customer"><input type="checkbox"' + (ex ? '' : ' checked') + ' onchange="plExclToggle(\'' + e.id + '\')"></label>' +
+          '<div style="flex:1; min-width:0;"><b>' + estEsc(bn) + '</b> <span class="pp-sub">' + new Date(e.time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + (e.sellerName ? ' &middot; ' + estEsc(e.sellerName) : '') + (e.phone && phones.length > 1 ? ' &middot; ' + estEsc(e.phone) : '') + '</span>' +
+            (e.pending && e.payBy ? '<div class="pp-sub" style="color:' + (pendingIsLate(e) ? '#b3261e' : '#8a6a44') + ';">Pay by ' + new Date(e.payBy + 'T00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '</div>' : '') + '</div>' +
+          '<div style="text-align:right;">' + (e.pending ? '<b style="color:#b3261e;">' + inr(e.due) + '</b>' + (e.paid ? '<div class="pp-sub">paid ' + inr(e.paid) + '</div>' : '') : '<span class="pp-sub" style="color:#1e7a3c; font-weight:800;">&#10003; ' + inr(e.total) + '</span>') + '</div>' +
+          (e.pending && !ex ? '<button type="button" class="pp-btn go sm" onclick="event.stopPropagation(); openPayCollect(\'' + e.id + '\')">&#128176;</button>' : '') +
+        '</div>';
+      }).join('') +
+      (g.due > 0 ? '<div class="pp-btns"><button type="button" class="pp-btn wa" onclick="plCustRemind(\'' + encodeURIComponent(g.key) + '\', \'' + where + '\')"><span class="wa-logo" style="width:16px; height:16px;"></span> Send summary</button></div>' : '') +
+    '</div>';
+  }).join('');
+}
+var _plLastList = [];
+function plCustRemind(keyEnc, where){
+  var key = decodeURIComponent(keyEnc), list = where === 'sheet' ? pendingList(_ppBranch).map(plEntryOf) : applySalesFilters(SALES).map(plEntryOf);
+  var g = plCustGroups(list).filter(function(x){ return x.key === key; })[0]; if(!g) return;
+  var bills = g.bills.filter(function(e){ return e.pending && !PL_EXCL[e.id]; }); if(!bills.length) return;
+  var ph = bills.map(function(e){ return e.phone; }).filter(Boolean)[0] || '';
+  var br = BRANCHES && BRANCHES[bills[0].branchId];
+  var msg = 'Vanakkam ' + g.name + ',\n' + (SHOP.name_ta || 'A.R.S Crackers') + (br && br.name ? ' (' + br.name + ')' : '') + '\n\nPending bills:\n' +
+    bills.map(function(e){ return '\u2022 ' + (e.billCode ? e.billCode + '/' : '#') + e.billNo + ' (' + new Date(e.time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ') - \u20B9' + (Number(e.due) || 0).toLocaleString('en-IN'); }).join('\n') +
+    '\n\n*Total balance: \u20B9' + bills.reduce(function(a, e){ return a + (Number(e.due) || 0); }, 0).toLocaleString('en-IN') + '*\nKindly pay at the shop or by UPI. Thank you! \uD83D\uDE4F';
+  openWhatsAppWithText(msg, ph);
+}
 function slPayLater(v){ salesFilters.pl = v != null ? v : (salesFilters.pl ? '' : 'pending'); listReset('sales'); renderAdmin(); }
 function slPayLaterTrackerHtml(list){
   var pend = list.filter(salePending), paid = list.filter(function(s){ return s.payLater && s.paidAt; });
@@ -10612,7 +10701,8 @@ function slPayLaterTrackerHtml(list){
   var inr = function(n){ return '&#8377;' + Math.round(n).toLocaleString('en-IN'); };
   var today = saleLocalDate(new Date());
   var seg = function(v, l){ return '<button type="button" class="pl-seg' + (salesFilters.pl === v ? ' on' : '') + '" onclick="slPayLater(\'' + v + '\')">' + l + '</button>'; };
-  var h = '<div class="pl-track"><div class="pl-segs">' + seg('pending', '&#9203; Pending (' + allPend.length + ')') + seg('paid', '&#10003; Paid later (' + allPaid.length + ')') + seg('all', 'All') + '</div>';
+  var h = '<div class="pl-track"><div class="pl-segs">' + seg('pending', '&#9203; Pending (' + allPend.length + ')') + seg('paid', '&#10003; Paid later (' + allPaid.length + ')') + seg('all', 'All') + '</div>' +
+    '<div class="pl-view"><button type="button" class="' + (!plCustView ? 'on' : '') + '" onclick="plSetCustView(false)">&#129534; Bill wise</button><button type="button" class="' + (plCustView ? 'on' : '') + '" onclick="plSetCustView(true)">&#128101; Customer wise (' + plCustGroups(list.map(plEntryOf)).length + ')</button></div>';
   if(salesFilters.pl === 'pending'){
     var due = sum(pend, payDueOf), adv = sum(pend, payPaidSoFar), late = pend.filter(function(s){ return s.payBy && s.payBy < today; }).length;
     var oldest = pend.reduce(function(m, s){ var t = Date.parse(s.billTime || s.time) || 0; return !m || t < m ? t : m; }, 0), days = oldest ? Math.floor((Date.now() - oldest) / 86400000) : 0;
@@ -10653,7 +10743,7 @@ var slMoreOpen = false, slSearchOpen = false;
 function slMore(on){ slMoreOpen = (on == null) ? !slMoreOpen : !!on; renderAdmin(); }
 function slMoreDo(a){ slMoreOpen = false; renderAdmin(); if(a === 'pdf') shareDashboardA4(); else if(a === 'print') printDashboardThermal(); else if(a === 'bank') downloadSalesReportBankFormat(); }
 function slSearchShow(){ slSearchOpen = true; renderAdmin(); var el = document.getElementById('salesSearch'); if(el) el.focus(); }
-function slSearchClose(){ slSearchOpen = false; listReset('sales'); salesFilters.billNo = ''; salesFilters.phone = ''; renderAdmin(); }
+function slSearchClose(){ slSearchOpen = false; listReset('sales'); salesFilters.billNo = ''; salesFilters.phone = ''; salesFilters.cust = ''; renderAdmin(); }
 function slPeriod(v){ listReset('sales'); salesFilters.yr = v; salesFilters.from = ''; salesFilters.to = ''; renderAdmin(); }
 /* 📅 next to the search: on = From / To dates (first bill day .. today to start with), off = all dates. */
 function toggleSalesDates(){
@@ -10689,7 +10779,8 @@ function salesDateLabel(d){ try{ var p = d.split('-'); return Number(p[2]) + ' '
 function onSalesSearchInput(){
   listReset('sales');
   var el = document.getElementById('salesSearch'), v = el ? el.value : '', d = v.replace(/\D/g, '');
-  if(d.length >= 6){ salesFilters.phone = d; salesFilters.billNo = ''; } else { salesFilters.billNo = d; salesFilters.phone = ''; }
+  if(/[A-Za-z\u0B80-\u0BFF]/.test(v)){ salesFilters.cust = v.trim(); salesFilters.phone = ''; salesFilters.billNo = ''; }   // letters = customer name
+  else if(d.length >= 6){ salesFilters.phone = d; salesFilters.billNo = ''; salesFilters.cust = ''; } else { salesFilters.billNo = d; salesFilters.phone = ''; salesFilters.cust = ''; }
   renderAdmin();
   var e2 = document.getElementById('salesSearch'); if(e2){ e2.value = v; e2.focus(); try{ e2.setSelectionRange(v.length, v.length); }catch(e){} }
 }
@@ -11288,8 +11379,8 @@ function renderAdmin(){
 
     const scopeBr = salesFilters.branch && BRANCHES[salesFilters.branch] ? BRANCHES[salesFilters.branch] : null;
     const totalCash = confirmedSales.reduce((a,s)=>a+saleCashAmount(s),0), totalUpi = confirmedSales.reduce((a,s)=>a+saleUpiAmount(s),0);
-    const _filtered = !!(salesFilters.seller || salesFilters.billNo || salesFilters.phone || _dates || salesFilters.yr !== salesDefaultYr() || salesFilters.pl);
-    const _srchOn = slSearchOpen || !!(salesFilters.billNo || salesFilters.phone);
+    const _filtered = !!(salesFilters.seller || salesFilters.billNo || salesFilters.phone || salesFilters.cust || _dates || salesFilters.yr !== salesDefaultYr() || salesFilters.pl);
+    const _srchOn = slSearchOpen || !!(salesFilters.billNo || salesFilters.phone || salesFilters.cust);
     const _kpi = (v, l, c) => `<div class="sl-kpi ${c || ''}"><b>${v}</b><span>${l}</span></div>`;
     const _pchip = (v, l) => `<button type="button" class="pe-chip${!_dates && salesFilters.yr === v ? ' on' : ''}" onclick="slPeriod('${v}')"><span class="t">${l}</span></button>`;
     let html = branchChipsHtml(salesFilters.branch, 'setAdminBranch') + (salesFilters.pl === 'pending' ? '' : pendingBannerHtml(salesFilters.branch || '', !salesStatsOpen, "slPayLater('pending')")) +
@@ -11307,7 +11398,7 @@ function renderAdmin(){
       </div>
       <div class="sl-quick"><button type="button" onclick="openSalesHist('items')">&#128230; Item History</button><button type="button" onclick="openSalesHist('sellers')">&#128100; Seller History</button><button type="button" class="pl-chip${salesFilters.pl ? ' on' : ''}" onclick="slPayLater()" aria-label="Pay later bills">&#9203; Pay later${_plN ? ' <b class="pl-n">' + _plN + '</b>' : ''}</button></div>
       <div class="pl-sticky-head">
-        ${_srchOn ? `<div class="pe-search" style="margin-bottom:8px;"><span class="ico">&#128269;</span><input id="salesSearch" type="text" inputmode="numeric" autocomplete="off" placeholder="Bill no or customer mobile" value="${salesFilters.billNo || salesFilters.phone || ''}" oninput="onSalesSearchInput()"><button type="button" class="clr" aria-label="Close search" onclick="slSearchClose()">&#10005;</button></div>` : ''}
+        ${_srchOn ? `<div class="pe-search" style="margin-bottom:8px;"><span class="ico">&#128269;</span><input id="salesSearch" type="text" autocomplete="off" placeholder="Bill no / mobile / customer name" value="${custEsc(salesFilters.billNo || salesFilters.phone || salesFilters.cust || '')}" oninput="onSalesSearchInput()"><button type="button" class="clr" aria-label="Close search" onclick="slSearchClose()">&#10005;</button></div>` : ''}
         <div class="pe-chips" style="margin-top:0;">
           <button type="button" class="pe-chip pe-schip${_srchOn ? ' on' : ''}" aria-label="Search bill no or mobile" onclick="${_srchOn ? 'slSearchClose()' : 'slSearchShow()'}">&#128269;</button>
           ${_pchip('today', 'Today')}${_pchip('yday', 'Yesterday')}${_pchip(salesDefaultYr(), 'This year')}${_pchip('all', 'All')}
@@ -11400,6 +11491,8 @@ function renderAdmin(){
       html += `<div class="empty-admin">${SALES.length===0 ? 'No sales recorded yet.' : 'No sales match the selected filters.'}</div>`;
     } else {
       const lastSeen = loadJSON('ars_admin_last_seen_sales', 0);
+      if(salesFilters.pl && plCustView){ html += plCustCardsHtml(filteredSales.map(plEntryOf), 'admin'); }
+      else {
       const _ord = salesFilters.pl === 'pending' ? [...filteredSales].sort((a, b) => String(a.time).localeCompare(String(b.time)))
         : [...filteredSales].reverse().sort((a, b) => String(b.time).localeCompare(String(a.time)));
       _ord.slice(0, _listLimit.sales).forEach(s => {
@@ -11438,6 +11531,7 @@ function renderAdmin(){
           </div>`;
       });
       html += listMoreBtn('sales', filteredSales.length);
+      }
     }
     main.innerHTML = html;
 
